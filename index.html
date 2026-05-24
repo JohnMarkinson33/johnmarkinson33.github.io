@@ -787,6 +787,10 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
           <option value="monthly">Mesačný</option>
           <option value="yearly">Ročný</option>
         </select>
+        <select id="bdr-flex-type" title="Typ vo Flex zobrazení" style="font-size:11px;padding:5px 8px;background:var(--s2);border:1px solid var(--bd);color:var(--txt);border-radius:4px">
+          <option value="flexible">📊 Flexible</option>
+          <option value="irregular">📅 Nepravidelné</option>
+        </select>
         <input type="number" id="bdr-limit-val" class="inp" placeholder="Suma €" style="flex:1;min-width:100px" min="0" step="10">
         <button class="btn prim" onclick="saveDrillLimit()" style="font-size:11px;padding:5px 12px">Uložiť limit</button>
         <button class="btn danger" onclick="removeDrillLimit()" style="font-size:11px;padding:5px 10px">✕ Zmazať</button>
@@ -919,7 +923,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <input type="text" class="mi" id="re-kw" placeholder="napr. netflix, upc, slovensky telekom...">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div>
-        <div class="ml">Suma (€)</div>
+        <div class="ml" id="re-amt-lbl">Suma (€)</div>
         <input type="number" class="mi" id="re-amt" placeholder="0.00" step="0.01" min="0">
       </div>
       <div>
@@ -942,11 +946,47 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         <select class="mi" id="re-cat"></select>
       </div>
     </div>
+    <div id="re-refmonth-wrap" style="display:none">
+      <div class="ml">Referenčný mesiac platby</div>
+      <select class="mi" id="re-refmonth">
+        <option value="">— auto-detekcia z histórie</option>
+        <option value="0">Január</option><option value="1">Február</option><option value="2">Marec</option>
+        <option value="3">Apríl</option><option value="4">Máj</option><option value="5">Jún</option>
+        <option value="6">Júl</option><option value="7">August</option><option value="8">September</option>
+        <option value="9">Október</option><option value="10">November</option><option value="11">December</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div>
+        <div class="ml">Platí od (voliteľné)</div>
+        <input type="month" class="mi" id="re-start" style="color-scheme:dark">
+      </div>
+      <div>
+        <div class="ml">Platí do (voliteľné)</div>
+        <input type="month" class="mi" id="re-end" style="color-scheme:dark">
+      </div>
+    </div>
     <div class="ml">Poznámka (voliteľné)</div>
     <input type="text" class="mi" id="re-note" placeholder="napr. ročné predplatné, platené vždy v jan...">
     <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
       <button class="btn" onclick="cm('m-recur-edit')" style="color:var(--mu)">Zrušiť</button>
       <button class="btn prim" onclick="saveRecurEdit()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECURRING MATCH MODAL -->
+<div class="modal-bg" id="m-recur-match">
+  <div class="modal" style="width:480px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:700;font-size:13px" id="rm-title">Priradiť transakciu</div>
+      <button class="mc" style="position:static;margin:0" onclick="cm('m-recur-match')">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:10px" id="rm-hint">Vyber transakciu z tohto mesiaca</div>
+    <div id="rm-list" style="max-height:340px;overflow-y:auto;border:1px solid var(--bd);border-radius:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:space-between">
+      <button class="btn" onclick="recurClearPin()" style="color:var(--red);border-color:var(--red);font-size:11px" title="Zruší priradenie aj auto-matching pre tento mesiac">✕ Žiadna platba / Zrušiť</button>
+      <button class="btn" onclick="cm('m-recur-match')" style="color:var(--mu);font-size:11px">Zavrieť</button>
     </div>
   </div>
 </div>
@@ -1113,6 +1153,11 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         <input type="color" id="cat-edit-color" value="#5ea8d8" style="width:42px;height:36px;border:1px solid var(--bd);border-radius:4px;background:var(--s2);cursor:pointer;padding:2px;flex-shrink:0" oninput="document.getElementById('cat-edit-color-hex').value=this.value">
         <input type="text" class="mi" id="cat-edit-color-hex" placeholder="#5ea8d8" style="margin-bottom:0;flex:1;font-family:var(--M)" maxlength="7" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value))document.getElementById('cat-edit-color').value=this.value">
       </div>
+      <div class="ml" style="margin-top:10px">Emoji (voliteľné)</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <input type="text" class="mi" id="cat-edit-emoji" placeholder="napr. 🍕 🚗 🎮 ✈️" style="margin-bottom:0;flex:1;font-size:16px" maxlength="4">
+        <div style="font-size:10px;color:var(--mu);line-height:1.4;max-width:120px">Zobrazí sa v zozname transakcií</div>
+      </div>
       <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--s2);border-radius:5px">
         <input type="checkbox" id="cat-edit-inv" style="width:15px;height:15px;accent-color:var(--grn);flex-shrink:0">
         <label for="cat-edit-inv" style="font-size:12px;cursor:pointer;flex:1">Zaradiť ako <strong>Investovanie / Sporenie</strong><br><span style="color:var(--mu);font-size:10px">Sledovaná zvlášť ako aktívum, nie výdavok</span></label>
@@ -1236,6 +1281,7 @@ function scheduleSave() {
     await Store.set('cols', visCols);
     await Store.set('dethidden', [...detFieldsHidden]);
     await Store.set('cclim', document.getElementById('cc-lim')?.value || '');
+    await Store.set('recurDefs', recurDefs);
     const dot = document.getElementById('save-dot');
     dot.classList.add('on');
     setTimeout(() => dot.classList.remove('on'), 1200);
@@ -2422,6 +2468,7 @@ function renderTxPage(){
   const pg=fTx.slice(pageStart, pageStart+showCount);
   const cv=COLS_DEF.filter(c=>visCols.includes(c.id));
   document.getElementById('tx-bd').innerHTML=pg.map(tx=>{
+    const catForRow=getCatD().find(c=>c.id===tx.category);
     const cells=cv.map(col=>{
       if(col.id==='date'){
         const d=tx.dateOverride||tx.date;
@@ -2464,16 +2511,17 @@ function renderTxPage(){
           const warn=inconsistent?'⚠ ':'';
           return`<td class="sticky-r"><span class="cat-qb" style="border-color:${col};color:${col}" onclick="event.stopPropagation();openCatPicker('${tx.id}',this)">${warn}✂ ${dots}</span></td>`;
         }
-        const cat=getCatD().find(c=>c.id===tx.category);
-        const lbl=cat?cat.l:'Nezaradené';
-        const clr=cat?cat.c:'var(--mu)';
+        const lbl=catForRow?catForRow.l:'Nezaradené';
+        const clr=catForRow?catForRow.c:'var(--mu)';
+        const emojiPfx=catForRow?.emoji?`<span style="margin-right:3px">${catForRow.emoji}</span>`:'';
         const lkIco=tx.categoryLocked?'<span style="font-size:7px;opacity:.6;margin-left:2px" title="Ručne nastavená">🔒</span>':'';
-        return`<td class="sticky-r"><span class="cat-qb" style="border-color:${clr};color:${clr}" onclick="event.stopPropagation();openCatPicker('${tx.id}',this)">${lbl}${lkIco}</span></td>`;
+        return`<td class="sticky-r"><span class="cat-qb" style="border-color:${clr};color:${clr}" onclick="event.stopPropagation();openCatPicker('${tx.id}',this)">${emojiPfx}${lbl}${lkIco}</span></td>`;
       }
       if(col.id==='amount')return`<td class="ta sticky-r ${tx.amount>=0?'pos':'neg'}">${tx.amount>=0?'+':''}${tx.amount.toFixed(2).replace('.',',')} €</td>`;
       return'<td>—</td>';
     }).join('');
-    return`<tr class="${tx.shared?.people?.length?'tx-shared':isDebtLink(tx)?'tx-debtlink':tx.excluded?'tx-excluded':''}" onclick="openDet('${tx.id}')">${cells}</tr>`;
+    const rowBg=catForRow?.c?`background:${catForRow.c}08`:'background:transparent';
+    return`<tr class="${tx.shared?.people?.length?'tx-shared':isDebtLink(tx)?'tx-debtlink':tx.excluded?'tx-excluded':''}" style="${rowBg}" onclick="openDet('${tx.id}')">${cells}</tr>`;
   }).join('');
 }
 
@@ -2898,9 +2946,11 @@ function openCatEditModal(prefillTxId, editId){
     const cat = getCatD().find(c => c.id === _catEditId); if (!cat) return;
     title.textContent = 'Upraviť kategóriu';
     nameEl.value = cat.l; colorEl.value = cat.c; hexEl.value = cat.c; invEl.checked = !!cat.isInvestment;
+    document.getElementById('cat-edit-emoji').value = cat.emoji||'';
   } else {
     title.textContent = 'Nová kategória';
     nameEl.value = ''; colorEl.value = '#5ea8d8'; hexEl.value = '#5ea8d8'; invEl.checked = false;
+    document.getElementById('cat-edit-emoji').value = '';
   }
   document.getElementById('m-cat-edit').classList.add('on');
   setTimeout(() => nameEl.focus(), 80);
@@ -2912,17 +2962,18 @@ function saveCatEdit(){
   const hexEl = document.getElementById('cat-edit-color-hex');
   const color = (/^#[0-9a-fA-F]{6}$/.test(hexEl.value) ? hexEl.value : document.getElementById('cat-edit-color').value) || '#5ea8d8';
   const isInvestment = document.getElementById('cat-edit-inv').checked || undefined;
+  const emoji = document.getElementById('cat-edit-emoji').value.trim() || undefined;
   if (_catEditId) {
     // Edit existing
     const bi = BUILTIN_CATS.findIndex(c => c.id === _catEditId);
-    if (bi >= 0) { BUILTIN_CATS[bi].l = name; BUILTIN_CATS[bi].c = color; BUILTIN_CATS[bi].isInvestment = isInvestment; }
-    else { const ci = customCats.findIndex(c => c.id === _catEditId); if (ci >= 0) { customCats[ci].l = name; customCats[ci].c = color; customCats[ci].isInvestment = isInvestment; } }
+    if (bi >= 0) { BUILTIN_CATS[bi].l = name; BUILTIN_CATS[bi].c = color; BUILTIN_CATS[bi].isInvestment = isInvestment; BUILTIN_CATS[bi].emoji = emoji; }
+    else { const ci = customCats.findIndex(c => c.id === _catEditId); if (ci >= 0) { customCats[ci].l = name; customCats[ci].c = color; customCats[ci].isInvestment = isInvestment; customCats[ci].emoji = emoji; } }
     cm('m-cat-edit'); saveD(); renderCatGrid(); initRuleCatSelect(); updateFilters();
   } else {
     // New category
     if (getCatD().find(c => c.l.toLowerCase() === name.toLowerCase())) { alert('Kategória s týmto názvom už existuje'); return; }
     const id = 'cat_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'') + '_' + Math.random().toString(36).slice(2,5);
-    customCats.push({id, l:name, c:color, builtin:false, isInvestment});
+    customCats.push({id, l:name, c:color, builtin:false, isInvestment, emoji});
     cm('m-cat-edit');
     // Assign to tx if called from detail
     if (_catEditPrefillTxId) { const tx = TX.find(t => t.id === _catEditPrefillTxId); if (tx) { tx.category = id; } }
@@ -3452,15 +3503,29 @@ function renderFlexBudget(){
   const monthInc=txs.filter(t=>t.amount>0&&!isSplatka(t)).reduce((s,t)=>s+txMyAmount(t),0);
 
   // --- FIXED: from recurDefs ---
-  const fixedItems=recurDefs.filter(r=>r.active).map(rec=>{
-    const matches=findRecurTx(rec,yr,mo);
-    const isPaid=matches.length>0;
-    const lastTx=isPaid?matches.sort((a,b)=>b.date-a.date)[0]:null;
-    const mesEq=recMonthlyEq(rec);
+  const bgMonKey=String(yr)+'-'+String(mo).padStart(2,'0');
+  const fixedItems=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=bgMonKey)&&(!r.endMonth||r.endMonth>=bgMonKey)).map(rec=>{
+    const inPayMonth=isPaymentMonth(rec,yr,mo);
+    const blockKey='rec_block_'+rec.id+'_'+yr+'_'+mo;
+    const isBlocked=!!localStorage.getItem(blockKey);
+    const pinKey='rec_pin_'+rec.id+'_'+yr+'_'+mo;
+    const pinnedId=!isBlocked?localStorage.getItem(pinKey):null;
+    const pinnedTx=pinnedId?TX.find(t=>t.id===pinnedId):null;
+    const autoMatches=inPayMonth&&!isBlocked?findRecurTx(rec,yr,mo):[];
+    const matchTx=pinnedTx||(autoMatches.length>0?autoMatches[0]:null);
+    const isPaid=inPayMonth&&!isBlocked&&!!matchTx;
+    const actualAmt=matchTx?Math.abs(matchTx.amount):null;
+    const mesEq=calcHistoricalMesEq(rec,yr,mo);
     const cat=rec.category?CAT[rec.category]:null;
-    return{rec,isPaid,lastTx,mesEq,cat};
+    return{rec,isPaid,inPayMonth,lastTx:matchTx,mesEq,actualAmt,cat};
   });
-  const fixedTotal=fixedItems.reduce((s,x)=>s+x.mesEq,0);
+  // Paid: actual tx amount; Unpaid: rec.amount (expected) or mesEq if amount=0
+  // Q/Y: always amortized mesEq; Monthly: actual or expected
+  const fixedTotal=fixedItems.reduce((s,x)=>{
+    const isAm=x.rec.frequency==='quarterly'||x.rec.frequency==='yearly';
+    if(isAm) return s+x.mesEq;
+    return s+(x.isPaid&&x.actualAmt?x.actualAmt:(x.rec.amount>0?x.rec.amount:x.mesEq));
+  },0);
 
   // --- FLEXIBLE: budgetLimits with type flexible (monthly) ---
   const catd=getCatD().filter(c=>c.id!=='sporenie');
@@ -3470,22 +3535,24 @@ function renderFlexBudget(){
       if(amount<0) bc[category||'__none']=(bc[category||'__none']||0)+Math.abs(amount);
     });
   });
-  const flexItems=budgetLimits.filter(l=>l.type==='monthly'&&l.flexType!=='irregular').map(l=>{
+  const flexItems=budgetLimits.filter(l=>(l.type==='monthly'||l.type==='flexible')&&l.flexType!=='irregular').map(l=>{
     const cat=catd.find(c=>c.id===l.catId);
     if(!cat) return null;
     const spent=bc[l.catId]||0;
-    return{cat,limit:l.amount,spent};
+    const limit=l.amount||0;
+    return{cat,limit,spent,hasLimit:!!l.amount};
   }).filter(Boolean);
   const flexTotal=flexItems.reduce((s,x)=>s+x.spent,0);
-  const flexLimitTotal=flexItems.reduce((s,x)=>s+x.limit,0);
+  const flexLimitTotal=flexItems.reduce((s,x)=>s+(x.limit||0),0);
 
-  // --- IRREGULAR: yearly budgets ---
+  // --- IRREGULAR: yearly or flexType=irregular ---
   const irregItems=budgetLimits.filter(l=>l.type==='yearly'||l.flexType==='irregular').map(l=>{
     const cat=catd.find(c=>c.id===l.catId);
     if(!cat) return null;
     const yearlySpent=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&t.amount<0&&!isCCRepayment(t)&&!t.excluded)
       .reduce((s,t)=>s+getTxCatAmounts(t).filter(({category,amount})=>category===l.catId&&amount<0).reduce((ss,{amount})=>ss+Math.abs(amount),0),0);
-    return{cat,limit:l.amount,spent:yearlySpent,mesEq:l.amount/12};
+    const limit=l.amount||0;
+    return{cat,limit,spent:yearlySpent,mesEq:limit?limit/12:0,hasLimit:!!l.amount};
   }).filter(Boolean);
 
   const totalBudgeted=fixedTotal+flexLimitTotal;
@@ -3515,62 +3582,293 @@ function renderFlexBudget(){
 
   // FIXED SECTION
   let html=secHdr('🔒 Fixné',fabs(fixedTotal)+' €/mes');
-  if(fixedItems.length===0) html+=`<div style="color:var(--mu);font-size:11px;padding:8px 0">Žiadne definície. Pridaj ich v záložke Správy → Pravidelné platby.</div>`;
-  fixedItems.forEach(({rec,isPaid,lastTx,mesEq,cat})=>{
+  if(fixedItems.length===0) html+=`<div style="color:var(--mu);font-size:11px;padding:8px 0">Žiadne definície. Pridaj ich v záložke Prehľady → Pravidelné platby.</div>`;
+  fixedItems.forEach(({rec,isPaid,inPayMonth,lastTx,mesEq,actualAmt,cat})=>{
     const d=lastTx?fd(eDate(lastTx)||lastTx.date):'';
-    const isYearly=rec.frequency!=='monthly';
+    const isAmort=rec.frequency==='quarterly'||rec.frequency==='yearly';
+    // Q/Y: always amortized mesEq; monthly: actual or expected
+    const dispAmt=isAmort?fabs(mesEq||0):(isPaid&&actualAmt?fabs(actualAmt):(rec.amount>0?fabs(rec.amount):fabs(mesEq)));
+    const dispColor=isPaid?'var(--grn)':inPayMonth?'var(--txt)':'var(--mu)';
+    let statusIcon,statusText,clickAttr;
+    if(isAmort&&!inPayMonth){
+      const next=nextPaymentMonth(rec,yr,mo);
+      const nextStr=next?MO_NAMES[next.mo-1]+' '+next.yr:'—';
+      statusIcon='📅';
+      statusText='Ďalšia platba: '+nextStr;
+      clickAttr=`onclick="openRecurEdit('${rec.id}')" style="cursor:pointer"`;
+    } else if(isPaid){
+      statusIcon='✅';
+      const actNote=actualAmt&&isAmort?' · zaplatené '+fabs(actualAmt):'';
+      statusText='Zaplatené '+d+actNote+' · <span style="color:var(--acc2)">⧉ otvoriť</span>';
+      clickAttr=lastTx?`onclick="openDet('${lastTx.id}')" style="cursor:pointer"`:'';
+    } else {
+      statusIcon='⏳';
+      statusText='Čakáme'+(rec.dayOfMonth?' (~'+rec.dayOfMonth+'.)':'');
+      clickAttr=`onclick="recurManualMatch('${rec.id}',${yr},${mo})" style="cursor:pointer"`;
+    }
     html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:6px;margin-bottom:6px">
-      <span style="font-size:18px">${isPaid?'✅':'⏳'}</span>
-      <div style="flex:1;min-width:0">
+      <span style="font-size:18px;flex-shrink:0">${statusIcon}</span>
+      <div style="flex:1;min-width:0" ${clickAttr}>
         <div style="font-size:12px;font-weight:600">${rec.name}${cat?` <span style="color:${cat.c};font-size:9px">${cat.l}</span>`:''}</div>
-        <div style="font-size:10px;color:var(--mu)">${isPaid?'Zaplatené '+d:'Čakáme'+(rec.dayOfMonth?' (~'+rec.dayOfMonth+'.)':'')}</div>
+        <div style="font-size:10px;color:var(--mu)">${statusText}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <div style="font-family:var(--M);font-weight:700;font-size:13px;color:${isPaid?'var(--mu)':'var(--txt)'}">${fabs(rec.amount)} €</div>
-        ${isYearly?`<div style="font-size:9px;color:var(--mu)">${fabs(mesEq)} €/mes</div>`:''}
+        <div style="font-family:var(--M);font-weight:700;font-size:13px;color:${dispColor}">${dispAmt}</div>
+        ${isAmort&&actualAmt?`<div style="font-size:9px;color:var(--mu)">${fabs(actualAmt)} celkom</div>`:''}
       </div>
     </div>`;
   });
 
   // FLEXIBLE SECTION
-  html+=secHdr('📊 Flexible',fabs(flexTotal)+' / '+fabs(flexLimitTotal)+' €');
-  if(flexItems.length===0) html+=`<div style="color:var(--mu);font-size:11px;padding:8px 0">Nastav mesačné limity v Klasickom zobrazení.</div>`;
-  flexItems.sort((a,b)=>(b.spent/b.limit)-(a.spent/a.limit)).forEach(({cat,limit,spent})=>{
-    const pct=limit>0?Math.min(100,spent/limit*100):0;
-    const rawPct=limit>0?spent/limit*100:0;
+  const flexSubHdr=flexLimitTotal>0?fabs(flexTotal)+' / '+fabs(flexLimitTotal)+' €':fabs(flexTotal)+' €';
+  html+=secHdr('📊 Flexible',flexSubHdr);
+  if(flexItems.length===0) html+=`<div style="color:var(--mu);font-size:11px;padding:8px 0">Žiadne kategórie. Otvor kategóriu v Klasickom zobrazení a prirad ju sem.</div>`;
+  flexItems.sort((a,b)=>{
+    const pa=a.hasLimit?b.spent/b.limit-a.spent/a.limit:0;
+    return a.hasLimit&&b.hasLimit?pa:(a.hasLimit?-1:b.hasLimit?1:b.spent-a.spent);
+  }).forEach(({cat,limit,spent,hasLimit})=>{
+    const pct=hasLimit&&limit>0?Math.min(100,spent/limit*100):0;
+    const rawPct=hasLimit&&limit>0?spent/limit*100:0;
     const col=rawPct>=100?'#e05c5c':rawPct>=80?'#f0a040':cat.c;
-    html+=`<div style="margin-bottom:10px;cursor:pointer" onclick="openBudgetDrill('${cat.id}','${cat.l}','${bgMon}',false)">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px">
-        <span style="color:${cat.c};font-weight:600">■ ${cat.l}</span>
-        <span style="color:${rawPct>100?'var(--red)':'var(--txt)'};font-family:var(--M)">${fabs(spent)} <span style="color:var(--mu)">/ ${fabs(limit)} €</span>${rawPct>100?` <span style="color:var(--red);font-size:10px">+${fabs(spent-limit)}</span>`:''}</span>
+    const over=hasLimit&&rawPct>100?` <span style="color:var(--red);font-size:10px">+${fabs(spent-limit)}</span>`:'';
+    const limitPart=hasLimit
+      ?`<span style="color:var(--mu)"> / </span><input type="number" class="flex-lim-inp" value="${limit||''}" placeholder="—" min="0" step="10" onclick="event.stopPropagation()" onchange="saveFlexLimitInline('${cat.id}','monthly','flexible',this.value)" style="width:56px;font-size:11px;font-family:var(--M);background:transparent;border:none;border-bottom:1px dashed var(--mu);color:var(--mu);text-align:right;outline:none;padding:0">`
+      :`<span style="color:var(--acc2);cursor:pointer;font-size:10px" onclick="event.stopPropagation();saveFlexLimitInline('${cat.id}','monthly','flexible',prompt('Mesačný limit pre ${cat.l} (€):'))" title="Klikni pre nastavenie limitu"> + limit</span>`;
+    html+=`<div style="margin-bottom:10px" onclick="openBudgetDrill('${cat.id}','${cat.l}','${bgMon}',false)" style="cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:11px">
+        <span style="color:${cat.c};font-weight:600;cursor:pointer">■ ${cat.l}</span>
+        <span style="color:${rawPct>100?'var(--red)':'var(--txt)'};font-family:var(--M);display:flex;align-items:center;gap:2px">${fabs(spent)}${limitPart}${over}</span>
       </div>
-      <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden">
-        <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .3s"></div>
-      </div>
+      ${hasLimit?`<div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .3s"></div></div>`:`<div style="height:2px;background:var(--bd);border-radius:1px"></div>`}
     </div>`;
   });
 
   // IRREGULAR SECTION
   if(irregItems.length){
-    html+=secHdr('📅 Nepravidelné','ročný budget');
-    irregItems.forEach(({cat,limit,spent,mesEq})=>{
-      const pct=limit>0?Math.min(100,spent/limit*100):0;
-      const rawPct=limit>0?spent/limit*100:0;
+    const irregSpentTotal=irregItems.reduce((s,x)=>s+x.spent,0);
+    const irregLimitTotal=irregItems.reduce((s,x)=>s+(x.limit||0),0);
+    const irregSubHdr=irregLimitTotal>0?fabs(irregSpentTotal)+' / '+fabs(irregLimitTotal)+' ročne':fabs(irregSpentTotal)+' €';
+    html+=secHdr('📅 Nepravidelné',irregSubHdr);
+    irregItems.forEach(({cat,limit,spent,mesEq,hasLimit})=>{
+      const pct=hasLimit&&limit>0?Math.min(100,spent/limit*100):0;
+      const rawPct=hasLimit&&limit>0?spent/limit*100:0;
       const col=rawPct>=100?'#e05c5c':rawPct>=80?'#f0a040':cat.c;
-      html+=`<div style="margin-bottom:10px;cursor:pointer" onclick="openBudgetDrill('${cat.id}','${cat.l}','${yr}',true)">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px">
-          <span style="color:${cat.c};font-weight:600">■ ${cat.l}</span>
-          <span style="font-family:var(--M);color:var(--mu)">${fabs(spent)} / ${fabs(limit)} € ročne</span>
+      const limitPart=hasLimit
+        ?`<input type="number" class="flex-lim-inp" value="${limit||''}" placeholder="—" min="0" step="50" onclick="event.stopPropagation()" onchange="saveFlexLimitInline('${cat.id}','yearly','irregular',this.value)" style="width:64px;font-size:11px;font-family:var(--M);background:transparent;border:none;border-bottom:1px dashed var(--mu);color:var(--mu);text-align:right;outline:none;padding:0"> ročne`
+        :`<span style="color:var(--acc2);cursor:pointer;font-size:10px" onclick="event.stopPropagation();saveFlexLimitInline('${cat.id}','yearly','irregular',prompt('Ročný limit pre ${cat.l} (€):'))"> + limit</span>`;
+      html+=`<div style="margin-bottom:10px" onclick="openBudgetDrill('${cat.id}','${cat.l}','${yr}',true)" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:11px">
+          <span style="color:${cat.c};font-weight:600;cursor:pointer">■ ${cat.l}</span>
+          <span style="font-family:var(--M);color:var(--txt)">${fabs(spent)} ${limitPart}</span>
         </div>
-        <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${col};border-radius:3px"></div>
-        </div>
-        <div style="font-size:9px;color:var(--mu);margin-top:2px">mesačný ekvivalent: ${fabs(mesEq)} €</div>
+        ${hasLimit?`<div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${col};border-radius:3px"></div></div><div style="font-size:9px;color:var(--mu);margin-top:2px">≈ ${fabs(mesEq)}/mes</div>`:`<div style="height:2px;background:var(--bd);border-radius:1px"></div>`}
       </div>`;
     });
   }
 
+  // CHARTS
+  html+=`<div style="margin-top:20px">
+    <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;padding:10px 0 8px;border-bottom:1px solid var(--bd);margin-bottom:12px">📊 Trendy</div>
+    <canvas id="bg-chart-overview" height="160" style="width:100%;display:block;margin-bottom:16px"></canvas>
+    <canvas id="bg-chart-cats" height="130" style="width:100%;display:block"></canvas>
+  </div>`;
+
   grid.innerHTML=html;
+
+  // Render charts after DOM update
+  setTimeout(()=>renderBudgetCharts(yr,mo,flexItems,irregItems,fixedTotal),0);
+}
+
+function renderBudgetCharts(yr, mo, flexItems, irregItems, fixedTotal){
+  // --- Prepare last 6 months of data ---
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(yr,mo-1-i,1);
+    months.push({yr:d.getFullYear(),mo:d.getMonth()+1});
+  }
+  const flexCatIds=new Set(flexItems.map(x=>x.cat.id));
+  const irregCatIds=new Set(irregItems.map(x=>x.cat.id));
+  const fixedCatIds=new Set(recurDefs.filter(r=>r.active).flatMap(r=>r.category?[r.category]:[]));
+
+  const mdata=months.map(({yr:myr,mo:mmo})=>{
+    const mk=myr+'-'+String(mmo).padStart(2,'0');
+    const mtxs=TX.filter(t=>{
+      const d=eDate(t)||t.date; if(!d) return false;
+      return d.getFullYear()===myr&&d.getMonth()===mmo-1&&!isCCRepayment(t)&&!t.excluded&&!isSplatka(t);
+    });
+    const income=mtxs.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
+    let flexSpend=0,irregSpend=0,otherSpend=0;
+    mtxs.filter(t=>t.amount<0).forEach(t=>{
+      getTxCatAmounts(t).forEach(({category,amount})=>{
+        if(amount>=0) return;
+        const abs=Math.abs(amount);
+        if(flexCatIds.has(category)) flexSpend+=abs;
+        else if(irregCatIds.has(category)) irregSpend+=abs;
+        else otherSpend+=abs;
+      });
+    });
+    const fixed=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=mk)&&(!r.endMonth||r.endMonth>=mk))
+      .reduce((s,r)=>s+calcHistoricalMesEq(r,myr,mmo),0);
+    const label=MO_NAMES[mmo-1].slice(0,3)+' '+String(myr).slice(2);
+    return{label,income,fixed,flexSpend,irregSpend,otherSpend};
+  });
+
+  // --- Chart A: Stacked bar + income line ---
+  const cvA=document.getElementById('bg-chart-overview');
+  if(!cvA) return;
+  const cs=getComputedStyle(document.documentElement);
+  const clrFixed=cs.getPropertyValue('--red').trim()||'#e05c5c';
+  const clrFlex=cs.getPropertyValue('--acc').trim()||'#e8a838';
+  const clrIrreg='#7b9cbf';
+  const clrOther=cs.getPropertyValue('--mu').trim()||'#6a8399';
+  const clrInc=cs.getPropertyValue('--grn').trim()||'#4caf82';
+  const clrTxt=cs.getPropertyValue('--txt').trim()||'#d0dce8';
+  const clrBd=cs.getPropertyValue('--bd').trim()||'#2a3e52';
+
+  cvA.width=cvA.offsetWidth||cvA.parentElement?.offsetWidth||300;
+  const W=cvA.width, H=cvA.height;
+  const ctx=cvA.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  const padL=36,padR=8,padT=14,padB=30;
+  const chartW=W-padL-padR, chartH=H-padT-padB;
+  const n=mdata.length;
+  const barW=Math.floor(chartW/n*0.55);
+  const gap=Math.floor(chartW/n);
+
+  const maxVal=Math.max(...mdata.map(d=>Math.max(d.income,d.fixed+d.flexSpend+d.irregSpend+d.otherSpend)))*1.1||1;
+
+  const toY=v=>padT+chartH*(1-v/maxVal);
+  const toX=i=>padL+gap*i+gap/2;
+
+  // Grid lines
+  ctx.strokeStyle=clrBd; ctx.lineWidth=1;
+  [0.25,0.5,0.75,1].forEach(f=>{
+    const y=toY(maxVal*f);
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();
+    ctx.fillStyle=clrOther;ctx.font='9px sans-serif';ctx.textAlign='right';
+    ctx.fillText(Math.round(maxVal*f)+'€',padL-3,y+3);
+  });
+
+  // Bars
+  mdata.forEach((d,i)=>{
+    const x=toX(i)-barW/2;
+    let yBase=padT+chartH;
+    const segs=[
+      {v:d.otherSpend,c:clrOther+'aa'},
+      {v:d.irregSpend,c:clrIrreg+'cc'},
+      {v:d.flexSpend,c:clrFlex+'cc'},
+      {v:d.fixed,c:clrFixed+'cc'},
+    ];
+    segs.forEach(({v,c})=>{
+      if(!v) return;
+      const h=chartH*v/maxVal;
+      ctx.fillStyle=c;
+      ctx.fillRect(x,yBase-h,barW,h);
+      yBase-=h;
+    });
+  });
+
+  // Income line
+  ctx.beginPath();ctx.strokeStyle=clrInc;ctx.lineWidth=2;
+  mdata.forEach((d,i)=>{
+    const x=toX(i),y=toY(d.income);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  mdata.forEach((d,i)=>{
+    const x=toX(i),y=toY(d.income);
+    ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=clrInc;ctx.fill();
+  });
+
+  // X labels
+  ctx.fillStyle=clrTxt;ctx.font='9px sans-serif';ctx.textAlign='center';
+  mdata.forEach((d,i)=>ctx.fillText(d.label,toX(i),H-8));
+
+  // Legend
+  const leg=[['Fixné',clrFixed],['Flex',clrFlex],['Nepravid.',clrIrreg],['Iné',clrOther],['Príjmy',clrInc]];
+  let lx=padL;
+  ctx.font='9px sans-serif';ctx.textAlign='left';
+  leg.forEach(([lbl,c])=>{
+    ctx.fillStyle=c;ctx.fillRect(lx,3,8,7);
+    ctx.fillStyle=clrTxt;ctx.fillText(lbl,lx+10,10);
+    lx+=ctx.measureText(lbl).width+18;
+  });
+
+  // --- Chart B: Flex category 6M trend lines ---
+  const cvB=document.getElementById('bg-chart-cats');
+  if(!cvB||flexItems.length===0) return;
+  cvB.width=cvA.width;
+  const Wb=cvB.width, Hb=cvB.height;
+  const ctxB=cvB.getContext('2d');
+  ctxB.clearRect(0,0,Wb,Hb);
+
+  // Show spending per flex category across 6 months
+  const catSpends=months.map(({yr:myr,mo:mmo})=>{
+    const mtxs=TX.filter(t=>{
+      const d=eDate(t)||t.date; if(!d) return false;
+      return d.getFullYear()===myr&&d.getMonth()===mmo-1&&!isCCRepayment(t)&&!t.excluded;
+    });
+    const spend={};
+    mtxs.filter(t=>t.amount<0).forEach(t=>{
+      getTxCatAmounts(t).forEach(({category,amount})=>{
+        if(amount<0&&flexCatIds.has(category)) spend[category]=(spend[category]||0)+Math.abs(amount);
+      });
+    });
+    return spend;
+  });
+
+  const maxCat=Math.max(...flexItems.map(x=>Math.max(...catSpends.map(s=>s[x.cat.id]||0))))*1.1||1;
+  const pL=44,pR=8,pT=10,pB=22;
+  const cW=Wb-pL-pR, cH=Hb-pT-pB;
+  const gapB=Math.floor(cW/(n-1||1));
+
+  // Grid
+  ctxB.strokeStyle=clrBd;ctxB.lineWidth=1;
+  [0.5,1].forEach(f=>{
+    const y=pT+cH*(1-f);
+    ctxB.beginPath();ctxB.moveTo(pL,y);ctxB.lineTo(Wb-pR,y);ctxB.stroke();
+    ctxB.fillStyle=clrOther;ctxB.font='9px sans-serif';ctxB.textAlign='right';
+    ctxB.fillText(Math.round(maxCat*f)+'€',pL-2,y+3);
+  });
+
+  // Lines per flex category
+  flexItems.slice(0,6).forEach(({cat})=>{
+    ctxB.beginPath();ctxB.strokeStyle=cat.c;ctxB.lineWidth=1.5;
+    months.forEach((_,i)=>{
+      const x=n===1?pL+cW/2:pL+gapB*i;
+      const v=catSpends[i][cat.id]||0;
+      const y=pT+cH*(1-v/maxCat);
+      i===0?ctxB.moveTo(x,y):ctxB.lineTo(x,y);
+    });
+    ctxB.stroke();
+  });
+
+  // Dots
+  flexItems.slice(0,6).forEach(({cat})=>{
+    months.forEach((_,i)=>{
+      const x=n===1?pL+cW/2:pL+gapB*i;
+      const v=catSpends[i][cat.id]||0;
+      const y=pT+cH*(1-v/maxCat);
+      ctxB.beginPath();ctxB.arc(x,y,2.5,0,Math.PI*2);ctxB.fillStyle=cat.c;ctxB.fill();
+    });
+  });
+
+  // X labels
+  ctxB.fillStyle=clrTxt;ctxB.font='9px sans-serif';ctxB.textAlign='center';
+  months.forEach((m,i)=>{
+    const x=n===1?pL+cW/2:pL+gapB*i;
+    ctxB.fillText(MO_NAMES[m.mo-1].slice(0,3),x,Hb-6);
+  });
+
+  // Legend (category names)
+  let lxB=pL;ctxB.font='9px sans-serif';ctxB.textAlign='left';
+  flexItems.slice(0,6).forEach(({cat})=>{
+    ctxB.fillStyle=cat.c;ctxB.fillRect(lxB,1,8,7);
+    ctxB.fillStyle=clrTxt;ctxB.fillText(cat.l.slice(0,10),lxB+10,8);
+    lxB+=ctxB.measureText(cat.l.slice(0,10)).width+18;
+    if(lxB>Wb-60) return;
+  });
 }
 
 function renderBudget(){
@@ -3586,7 +3884,7 @@ function renderBudget(){
     if(bgViewSel) bgViewSel.style.display='none';
   } else {
     if(flexGrid) flexGrid.style.display='none';
-    if(classGrid) classGrid.style.display='block';
+    if(classGrid) classGrid.style.display='grid';
     if(flexSummary) flexSummary.style.display='none';
     if(bgViewSel) bgViewSel.style.display='';
   }
@@ -3720,11 +4018,13 @@ function openBudgetDrill(catId,catLabel,period,isYearly){
   const ltSel=document.getElementById('bdr-limit-type');
   const ltVal=document.getElementById('bdr-limit-val');
   const ltInfo=document.getElementById('bdr-limit-info');
+  const ltFlex=document.getElementById('bdr-flex-type');
   if(ltSel) ltSel.value=limitType;
-  if(ltVal) ltVal.value=existingLimit?existingLimit.amount:'';
+  if(ltFlex) ltFlex.value=existingLimit?.flexType||'flexible';
+  if(ltVal) ltVal.value=existingLimit&&existingLimit.amount?existingLimit.amount:'';
   if(ltInfo){
-    if(existingLimit) ltInfo.textContent=`Aktuálny limit: ${fabs(existingLimit.amount)} (${limitType==='monthly'?'mesačný':'ročný'})`;
-    else ltInfo.textContent='Žiadny limit — zadaj sumu a ulož';
+    if(existingLimit) ltInfo.textContent=existingLimit.amount?`Aktuálny limit: ${fabs(existingLimit.amount)} (${limitType==='monthly'?'mesačný':'ročný'})`:'Kategória sledovaná (bez limitu)';
+    else ltInfo.textContent='Žiadna sekcia — vyber sekciu a ulož';
   }
 
   document.getElementById('bdr-stats').innerHTML=`
@@ -3743,13 +4043,22 @@ function openBudgetDrill(catId,catLabel,period,isYearly){
 function saveDrillLimit(){
   if(!_drillCatId)return;
   const type=document.getElementById('bdr-limit-type')?.value||'monthly';
-  const amount=parseFloat(document.getElementById('bdr-limit-val')?.value)||0;
-  if(!amount){alert('Zadaj sumu');return;}
+  const flexType=document.getElementById('bdr-flex-type')?.value||'flexible';
+  const rawVal=document.getElementById('bdr-limit-val')?.value;
+  const amount=rawVal===''||rawVal===null?null:parseFloat(rawVal)||0;
   const existing=budgetLimits.findIndex(l=>l.catId===_drillCatId&&l.type===type);
-  if(existing>=0) budgetLimits[existing].amount=amount;
-  else budgetLimits.push({id:'bl_'+Math.random().toString(36).slice(2),catId:_drillCatId,type,amount});
+  if(existing>=0){budgetLimits[existing].amount=amount;budgetLimits[existing].flexType=flexType;}
+  else budgetLimits.push({id:'bl_'+Math.random().toString(36).slice(2),catId:_drillCatId,type,amount,flexType});
   const ltInfo=document.getElementById('bdr-limit-info');
-  if(ltInfo) ltInfo.textContent=`✓ Uložené: ${fabs(amount)} (${type==='monthly'?'mesačný':'ročný'})`;
+  if(ltInfo) ltInfo.textContent=amount?`✓ Uložené: ${fabs(amount)} (${type==='monthly'?'mesačný':'ročný'})`:'✓ Kategória zaradená (bez limitu)';
+  saveD(); renderBudget();
+}
+
+function saveFlexLimitInline(catId, type, flexType, val){
+  const amount=val===''||val===null?null:parseFloat(val)||0;
+  const existing=budgetLimits.findIndex(l=>l.catId===catId&&l.type===type);
+  if(existing>=0){budgetLimits[existing].amount=amount;budgetLimits[existing].flexType=flexType;}
+  else budgetLimits.push({id:'bl_'+Math.random().toString(36).slice(2),catId,type,amount:amount,flexType});
   saveD(); renderBudget();
 }
 
@@ -4913,6 +5222,15 @@ function openRecurEdit(id){
   document.getElementById('re-note').value=r?.note||'';
   const catSel=document.getElementById('re-cat');
   catSel.innerHTML='<option value="">— bez kategórie</option>'+getCatD().map(c=>`<option value="${c.id}"${r?.category===c.id?' selected':''}>${c.l}</option>`).join('');
+  const freqEl2=document.getElementById('re-freq');
+  const refWrap=document.getElementById('re-refmonth-wrap');
+  const refSel=document.getElementById('re-refmonth');
+  const updateRefVis=()=>{if(refWrap) refWrap.style.display=['quarterly','yearly'].includes(freqEl2?.value)?'block':'none';const lbl=document.getElementById('re-amt-lbl');if(lbl){const fl=freqEl2?.value;lbl.textContent=fl==='quarterly'?'Suma za kvartál (€)':fl==='yearly'?'Suma za rok (€)':fl==='weekly'?'Suma za týždeň (€)':'Suma za mesiac (€)';}};
+  if(freqEl2) freqEl2.addEventListener('change',updateRefVis);
+  updateRefVis();
+  if(refSel) refSel.value=r?.refMonth!==undefined?String(r.refMonth):'';
+  document.getElementById('re-start').value=r?.startMonth||'';
+  document.getElementById('re-end').value=r?.endMonth||'';
   document.getElementById('m-recur-edit').classList.add('on');
   setTimeout(()=>document.getElementById('re-name').focus(),80);
 }
@@ -4929,6 +5247,9 @@ function saveRecurEdit(){
     dayOfMonth:parseInt(document.getElementById('re-day').value)||null,
     category:document.getElementById('re-cat').value||null,
     note:document.getElementById('re-note').value||null,
+    refMonth:(()=>{const v=document.getElementById('re-refmonth')?.value;return(v!==''&&v!==null&&v!==undefined)?parseInt(v):undefined;})(),
+    startMonth:document.getElementById('re-start').value||undefined,
+    endMonth:document.getElementById('re-end').value||undefined,
     active:true
   };
   if(_editingRecurId){
@@ -4940,6 +5261,135 @@ function saveRecurEdit(){
   saveD(); cm('m-recur-edit'); renderRecurring(); renderBudget();
 }
 
+let _rmRecId=null, _rmYr=null, _rmMo=null;
+
+function recurManualMatch(recId, yr, mo){
+  const rec=recurDefs.find(r=>r.id===recId); if(!rec) return;
+  _rmRecId=recId; _rmYr=yr; _rmMo=mo;
+  // All expenses in that month (full month, no window restriction)
+  const from=new Date(yr,mo-1,1), to=new Date(yr,mo,0,23,59,59);
+  const cands=TX.filter(t=>{
+    if(t.amount>=0) return false;
+    const d=eDate(t)||t.date; return d&&d>=from&&d<=to;
+  }).sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
+  const pinKey='rec_pin_'+recId+'_'+yr+'_'+mo;
+  const curPin=localStorage.getItem(pinKey);
+  document.getElementById('rm-title').textContent='Priradiť: '+rec.name+' ('+yr+'-'+String(mo).padStart(2,'0')+')';
+  document.getElementById('rm-hint').textContent=cands.length+' výdavkových transakcií v tomto mesiaci';
+  const list=document.getElementById('rm-list');
+  list.innerHTML=cands.map(t=>{
+    const d=eDate(t)||t.date;
+    const mer=t.merchantOverride||t.merchant||t.description||'—';
+    const amt=fabs(Math.abs(t.amount));
+    const isPinned=t.id===curPin;
+    const cat=getCAT()[t.category]||{l:'Nezaradené',c:'var(--mu)'};
+    return`<div onclick="recurSetPin('${t.id}')" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--bd);cursor:pointer;background:${isPinned?'rgba(94,168,216,.1)':'transparent'};transition:background .1s" onmouseover="this.style.background='rgba(94,168,216,.07)'" onmouseout="this.style.background='${isPinned?'rgba(94,168,216,.1)':'transparent'}'">
+      <span style="font-size:14px">${isPinned?'✅':'⬜'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${mer}</div>
+        <div style="font-size:10px;color:var(--mu)">${fd(d)} · <span style="color:${cat.c}">${cat.l}</span></div>
+      </div>
+      <span style="font-family:var(--M);font-weight:700;font-size:13px;flex-shrink:0">−${amt} €</span>
+    </div>`;
+  }).join('') || '<div style="padding:20px;text-align:center;color:var(--mu)">Žiadne výdavky v tomto mesiaci</div>';
+  document.getElementById('m-recur-match').classList.add('on');
+}
+
+function recurSetPin(txId){
+  if(!_rmRecId) return;
+  const pinKey='rec_pin_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
+  const blockKey='rec_block_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
+  localStorage.setItem(pinKey, txId);
+  localStorage.removeItem(blockKey); // clear block if manually pinning
+  cm('m-recur-match');
+  renderRecurring(); renderBudget();
+}
+
+// Open match modal in "add" mode for weekly
+function recurAddTx(recId,yr,mo){
+  _rmRecId=recId; _rmYr=yr; _rmMo=mo;
+  _rmWeeklyAdd=true; // add mode vs replace mode
+  const rec=recurDefs.find(r=>r.id===recId); if(!rec) return;
+  const excl=getRecurExcl(recId,yr,mo);
+  const incl=new Set(getRecurIncl(recId,yr,mo));
+  const autoIds=new Set(findRecurTxAll(rec,yr,mo).map(t=>t.id));
+  const from=new Date(yr,mo-1,1),to=new Date(yr,mo,0,23,59,59);
+  const cands=TX.filter(t=>{
+    if(t.amount>=0) return false;
+    const d=eDate(t)||t.date; return d&&d>=from&&d<=to;
+  }).sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
+  document.getElementById('rm-title').textContent='Pridať platbu: '+rec.name+' ('+yr+'-'+String(mo).padStart(2,'0')+')';
+  document.getElementById('rm-hint').textContent='Klikni na transakciu pre pridanie do tohto mesiaca';
+  const list=document.getElementById('rm-list');
+  list.innerHTML=cands.map(t=>{
+    const d=eDate(t)||t.date;
+    const mer=t.merchantOverride||t.merchant||t.description||'—';
+    const isActive=(autoIds.has(t.id)&&!excl.has(t.id))||incl.has(t.id);
+    const cat=getCAT()[t.category]||{l:'Nezaradené',c:'var(--mu)'};
+    return`<div onclick="recurToggleWeeklyTx('${t.id}')" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--bd);cursor:pointer;background:${isActive?'rgba(94,168,216,.1)':'transparent'}" onmouseover="this.style.background='rgba(94,168,216,.07)'" onmouseout="this.style.background='${isActive?'rgba(94,168,216,.1)':'transparent'}'">
+      <span style="font-size:14px">${isActive?'✅':'⬜'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${mer}</div>
+        <div style="font-size:10px;color:var(--mu)">${fd(d)} · <span style="color:${cat.c}">${cat.l}</span></div>
+      </div>
+      <span style="font-family:var(--M);font-weight:700;font-size:13px;flex-shrink:0">−${fabs(Math.abs(t.amount))}</span>
+    </div>`;
+  }).join('') || '<div style="padding:20px;text-align:center;color:var(--mu)">Žiadne výdavky v tomto mesiaci</div>';
+  document.getElementById('m-recur-match').classList.add('on');
+}
+let _rmWeeklyAdd=false;
+
+function recurToggleWeeklyTx(txId){
+  if(!_rmRecId) return;
+  const rec=recurDefs.find(r=>r.id===_rmRecId); if(!rec) return;
+  const excl=getRecurExcl(_rmRecId,_rmYr,_rmMo);
+  const incl=getRecurIncl(_rmRecId,_rmYr,_rmMo);
+  const autoIds=new Set(findRecurTxAll(rec,_rmYr,_rmMo).map(t=>t.id));
+  const isInAuto=autoIds.has(txId);
+  const isExcluded=excl.has(txId);
+  const isIncluded=incl.includes(txId);
+  const isActive=(isInAuto&&!isExcluded)||isIncluded;
+  if(isActive){
+    // Remove it
+    if(isInAuto) excl.add(txId);
+    const newIncl=incl.filter(id=>id!==txId);
+    localStorage.setItem(_rExclKey(_rmRecId,_rmYr,_rmMo),JSON.stringify([...excl]));
+    localStorage.setItem(_rInclKey(_rmRecId,_rmYr,_rmMo),JSON.stringify(newIncl));
+  } else {
+    // Add it
+    excl.delete(txId);
+    if(!incl.includes(txId)) incl.push(txId);
+    localStorage.setItem(_rExclKey(_rmRecId,_rmYr,_rmMo),JSON.stringify([...excl]));
+    localStorage.setItem(_rInclKey(_rmRecId,_rmYr,_rmMo),JSON.stringify(incl));
+  }
+  // Refresh the modal list
+  recurAddTx(_rmRecId,_rmYr,_rmMo);
+  renderRecurring(); renderBudget();
+}
+
+function recurRestoreWeeklyAuto(recId,yr,mo){
+  // Clear all overrides and restore auto-matching
+  localStorage.removeItem(_rExclKey(recId,yr,mo));
+  localStorage.removeItem(_rInclKey(recId,yr,mo));
+  localStorage.removeItem('rec_block_'+recId+'_'+yr+'_'+mo);
+  renderRecurring(); renderBudget();
+}
+
+function recurUnblockMonth(recId,yr,mo){
+  // Remove block key (used for "paid in advance" unblock from inline button)
+  localStorage.removeItem('rec_block_'+recId+'_'+yr+'_'+mo);
+  renderRecurring(); renderBudget();
+}
+function recurClearPin(){
+  if(!_rmRecId) return;
+  const pinKey='rec_pin_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
+  const blockKey='rec_block_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
+  localStorage.removeItem(pinKey);
+  // Set block key so auto-match is also suppressed
+  localStorage.setItem(blockKey,'1');
+  cm('m-recur-match');
+  renderRecurring(); renderBudget();
+}
 function deleteRecur(id){
   if(!confirm('Zmazať túto pravidelná platbu?')) return;
   recurDefs=recurDefs.filter(r=>r.id!==id);
@@ -4959,88 +5409,261 @@ function initRecurMonSel(){
   sel.innerHTML=opts.join('');
 }
 
+// ===== RECURRING HELPERS =====
+
+function getPinnedTxsForRec(rec){
+  // Scan localStorage for all pinned txs for this rec definition
+  const txs=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(!k||!k.startsWith('rec_pin_'+rec.id+'_')) continue;
+    const txId=localStorage.getItem(k);
+    if(txId){const tx=TX.find(t=>t.id===txId);if(tx) txs.push(tx);}
+  }
+  return txs;
+}
+
+function getCurrentPeriodPaymentMonth(rec, yr, mo){
+  // Returns {yr, mo} of the payment month for the period containing (yr, mo)
+  const ref=getRefMonth(rec);
+  if(ref===undefined) return null;
+  const moIdx=mo-1;
+  if(rec.frequency==='yearly'){
+    if(moIdx>=ref) return {yr, mo:ref+1};
+    return {yr:yr-1, mo:ref+1};
+  }
+  if(rec.frequency==='quarterly'){
+    const offset=((moIdx-ref+12)%12)%3;
+    const payMoIdx=moIdx-offset;
+    if(payMoIdx<0) return {yr:yr-1, mo:payMoIdx+13};
+    return {yr, mo:payMoIdx+1};
+  }
+  return null;
+}
+
+function detectRefMonth(rec){
+  const kw=(rec.keyword||'').toLowerCase();
+  const months={};
+  TX.filter(t=>t.amount<0).forEach(t=>{
+    const mer=(t.merchantOverride||t.merchant||t.description||t.info||'').toLowerCase();
+    if(!kw||mer.includes(kw)){const d=eDate(t)||t.date;if(d) months[d.getMonth()]=(months[d.getMonth()]||0)+1;}
+  });
+  const entries=Object.entries(months).sort((a,b)=>b[1]-a[1]);
+  if(entries.length) return parseInt(entries[0][0]);
+  // Fallback: detect from manually pinned transactions
+  const pinned=getPinnedTxsForRec(rec);
+  if(pinned.length){
+    const pm={};
+    pinned.forEach(t=>{const d=eDate(t)||t.date;if(d) pm[d.getMonth()]=(pm[d.getMonth()]||0)+1;});
+    const pe=Object.entries(pm).sort((a,b)=>b[1]-a[1]);
+    if(pe.length) return parseInt(pe[0][0]);
+  }
+  return undefined;
+}
+function getRefMonth(rec){return rec.refMonth!==undefined?rec.refMonth:detectRefMonth(rec);}
+function isPaymentMonth(rec,yr,mo){
+  if(rec.frequency==='monthly'||rec.frequency==='weekly') return true;
+  const ref=getRefMonth(rec); if(ref===undefined) return true;
+  const moIdx=mo-1;
+  if(rec.frequency==='yearly') return moIdx===ref;
+  if(rec.frequency==='quarterly') return ((moIdx-ref+12)%12)%3===0;
+  return true;
+}
+function nextPaymentMonth(rec,yr,mo){
+  const ref=getRefMonth(rec); if(ref===undefined) return null;
+  const step=rec.frequency==='quarterly'?3:12;
+  for(let i=1;i<=step;i++){
+    const nm=mo-1+i; const nMo=nm%12; const nYr=yr+Math.floor(nm/12);
+    if(rec.frequency==='yearly'&&nMo===ref) return{yr:nYr,mo:nMo+1};
+    if(rec.frequency==='quarterly'&&((nMo-ref+12)%12)%3===0) return{yr:nYr,mo:nMo+1};
+  }
+  return null;
+}
+function findRecurTxAll(rec,yr,mo){
+  const from=new Date(yr,mo-1,1),to=new Date(yr,mo,0,23,59,59);
+  const kw=(rec.keyword||rec.name||'').toLowerCase();
+  return TX.filter(t=>{
+    if(t.amount>=0) return false;
+    const d=eDate(t)||t.date; if(!d||d<from||d>to) return false;
+    const mer=(t.merchantOverride||t.merchant||t.description||t.info||'').toLowerCase();
+    if(!mer.includes(kw)) return false;
+    if(rec.amount>0&&Math.abs(Math.abs(t.amount)-rec.amount)/rec.amount>0.35) return false;
+    return true;
+  }).sort((a,b)=>(eDate(a)||a.date)-(eDate(b)||b.date));
+}
+const MO_NAMES=['január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'];
+
+// Per-occurrence helpers for weekly recurring
+function _rExclKey(recId,yr,mo){return 'rec_excl_'+recId+'_'+yr+'_'+mo;}
+function _rInclKey(recId,yr,mo){return 'rec_incl_'+recId+'_'+yr+'_'+mo;}
+function getRecurExcl(recId,yr,mo){try{return new Set(JSON.parse(localStorage.getItem(_rExclKey(recId,yr,mo))||'[]'));}catch(e){return new Set();}}
+function getRecurIncl(recId,yr,mo){try{return JSON.parse(localStorage.getItem(_rInclKey(recId,yr,mo))||'[]');}catch(e){return[];}}
+
+function recurExclTx(recId,yr,mo,txId){
+  const s=getRecurExcl(recId,yr,mo);
+  s.add(txId);
+  localStorage.setItem(_rExclKey(recId,yr,mo),JSON.stringify([...s]));
+  renderRecurring();renderBudget();
+}
+function recurInclTx(recId,yr,mo,txId){
+  const s=getRecurIncl(recId,yr,mo);
+  if(!s.includes(txId)){s.push(txId);localStorage.setItem(_rInclKey(recId,yr,mo),JSON.stringify(s));}
+  renderRecurring();renderBudget();
+}
+function recurClearWeekly(recId,yr,mo){
+  localStorage.removeItem(_rExclKey(recId,yr,mo));
+  localStorage.removeItem(_rInclKey(recId,yr,mo));
+  localStorage.setItem('rec_block_'+recId+'_'+yr+'_'+mo,'1');
+  renderRecurring();renderBudget();
+}
+
+function calcHistoricalMesEq(rec, yr, mo){
+  // When amount is explicitly set → use it directly
+  if(rec.amount>0) return recMonthlyEq(rec);
+
+  // amount=0: for Q/Y use the pinned tx of the current period (exact, no averaging)
+  if(rec.frequency==='quarterly'||rec.frequency==='yearly'){
+    const div=rec.frequency==='quarterly'?3:12;
+    // If yr/mo known, look for pinned tx of this specific period first
+    if(yr&&mo){
+      const period=getCurrentPeriodPaymentMonth(rec,yr,mo);
+      if(period){
+        const txId=localStorage.getItem('rec_pin_'+rec.id+'_'+period.yr+'_'+period.mo);
+        const tx=txId?TX.find(t=>t.id===txId):null;
+        if(tx) return Math.abs(tx.amount)/div;
+      }
+    }
+    // Fallback: most recent pinned tx (for overview sections without yr/mo)
+    const pinned=getPinnedTxsForRec(rec);
+    if(pinned.length){
+      pinned.sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
+      return Math.abs(pinned[0].amount)/div;
+    }
+    return 0;
+  }
+
+  // monthly/weekly: keyword-based historical average
+  const kw=(rec.keyword||'').toLowerCase();
+  if(!kw) return 0;
+  const txs=TX.filter(t=>{
+    if(t.amount>=0) return false;
+    const mer=(t.merchantOverride||t.merchant||t.description||t.info||'').toLowerCase();
+    return mer.includes(kw);
+  });
+  if(!txs.length) return 0;
+  const byMonth={};
+  txs.forEach(t=>{const k=mKey(eDate(t)||t.date);byMonth[k]=(byMonth[k]||0)+Math.abs(t.amount);});
+  const vals=Object.values(byMonth);
+  return vals.reduce((s,v)=>s+v,0)/vals.length;
+}
+
 function renderRecurring(){
+  const selEl=document.getElementById('recur-mon-sel');
+  const savedVal=selEl?.value;
   initRecurMonSel();
-  const selVal=document.getElementById('recur-mon-sel')?.value;
-  if(!selVal) return;
+  if(savedVal&&selEl) selEl.value=savedVal;
+  const selVal=document.getElementById('recur-mon-sel')?.value; if(!selVal) return;
   const [yr,mo]=selVal.split('-').map(Number);
   const CAT=getCAT();
   const freqLbl={monthly:'mesačne',quarterly:'štvrťročne',yearly:'ročne',weekly:'týždenne'};
+  const statusEl=document.getElementById('recur-status'); if(!statusEl) return;
 
-  // Monthly status section
-  const statusEl=document.getElementById('recur-status');
-  if(statusEl&&recurDefs.length){
-    let paid=0, pending=0, totalMes=0;
-    const cards=recurDefs.filter(r=>r.active).map(rec=>{
-      // Check if this rec applies to the selected month/freq
-      let applies=true;
-      if(rec.frequency==='yearly'){
-        // Only applies in the anniversary month — but always show /mes eqv
-        applies=true; // always show in status
-      }
-      const matches=findRecurTx(rec,yr,mo);
-      const isPaid=matches.length>0;
-      const lastMatch=isPaid?matches.sort((a,b)=>b.date-a.date)[0]:null;
-      const mesEq=recMonthlyEq(rec);
-      totalMes+=mesEq;
-      if(isPaid) paid++; else pending++;
-      const cat=rec.category?CAT[rec.category]:null;
-      const paidDate=lastMatch?fd(eDate(lastMatch)||lastMatch.date):'';
-      const dayHint=rec.dayOfMonth?` (očakávané ~${rec.dayOfMonth}.)`:'' ;
-      const freqNote=rec.frequency!=='monthly'?`<span style="font-size:9px;color:var(--mu);margin-left:4px">${freqLbl[rec.frequency]||''} = ${fabs(mesEq)}/mes</span>`:'';
-      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--bd);cursor:pointer" onclick="openRecurEdit('${rec.id}')">
-        <span style="font-size:16px;flex-shrink:0">${isPaid?'✅':'⏳'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${rec.name}${freqNote}</div>
-          <div style="font-size:10px;color:var(--mu)">${isPaid?'Zaplatené '+paidDate:'Čakáme'+dayHint}</div>
-        </div>
-        ${cat?`<span style="font-size:10px;color:${cat.c};flex-shrink:0">${cat.l}</span>`:''}
-        <span style="font-family:var(--M);font-size:12px;font-weight:600;color:${isPaid?'var(--mu)':'var(--txt)'};flex-shrink:0">${fabs(rec.amount)} €</span>
-      </div>`;
-    }).join('');
-
-    statusEl.innerHTML=`<div style="border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:6px">
-      <div style="display:flex;gap:12px;padding:8px 12px;background:var(--s2);font-size:10px;color:var(--mu);flex-wrap:wrap">
-        <span>✅ Zaplatené: <strong style="color:var(--grn)">${paid}</strong></span>
-        <span>⏳ Čakáme: <strong style="color:var(--acc)">${pending}</strong></span>
-      </div>
-      ${cards}
-    </div>`;
-
-    // Footer
-    const footer=document.getElementById('recur-footer');
-    const totMes=document.getElementById('recur-total-mes');
-    const totDay=document.getElementById('recur-total-day');
-    if(footer){footer.style.display='block';}
-    if(totMes) totMes.textContent=fabs(totalMes)+' €/mes';
-    if(totDay) totDay.textContent=fabs(totalMes/30.44)+' €/deň · '+fabs(totalMes*12)+' €/rok';
-  } else if(statusEl){
-    statusEl.innerHTML=`<div class="empty-state" style="text-align:center;padding:20px;color:var(--mu)">Žiadne pravidelné platby. Pridaj prvú kliknutím na "+ Pridať".</div>`;
-    const footer=document.getElementById('recur-footer');
-    if(footer) footer.style.display='none';
+  if(!recurDefs.length){
+    statusEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--mu)">Žiadne pravidelné platby. Klikni "+ Pridať".</div>';
+    const footer=document.getElementById('recur-footer'); if(footer) footer.style.display='none';
+    const listEl=document.getElementById('recur-list'); if(listEl) listEl.innerHTML=''; return;
   }
 
-  // Definitions management list
-  const listEl=document.getElementById('recur-list');
-  if(!listEl) return;
-  if(!recurDefs.length){listEl.innerHTML='';return;}
-  listEl.innerHTML=`<div style="font-size:10px;color:var(--mu);margin-bottom:6px;font-weight:600;letter-spacing:.5px">VŠETKY DEFINÍCIE</div>`+
-    recurDefs.map(rec=>{
-      const cat=rec.category?CAT[rec.category]:null;
-      const mesEq=recMonthlyEq(rec);
-      return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:11px;font-weight:600">${rec.name}</div>
-          <div style="font-size:9px;color:var(--mu)">${rec.keyword||''}${rec.dayOfMonth?' · ~'+rec.dayOfMonth+'. každý mesiac':''}</div>
-        </div>
-        <span style="font-size:10px;color:var(--mu)">${freqLbl[rec.frequency]||rec.frequency}</span>
-        ${cat?`<span style="font-size:10px;color:${cat.c}">${cat.l}</span>`:''}
-        <span style="font-family:var(--M);font-size:11px;color:var(--red);font-weight:600">${fabs(rec.amount)} €</span>
-        ${rec.frequency!=='monthly'?`<span style="font-size:9px;color:var(--mu)">(${fabs(mesEq)}/mes)</span>`:''}
-        <button class="btn" style="padding:2px 7px;font-size:10px" onclick="openRecurEdit('${rec.id}')">✎</button>
-        <button class="btn danger" style="padding:2px 7px;font-size:10px" onclick="deleteRecur('${rec.id}')">✕</button>
-      </div>`;
-    }).join('');
+  let paid=0,pending=0,totalMes=0;
+  const curMonKey=String(yr)+'-'+String(mo).padStart(2,'0');
+  const cards=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=curMonKey)&&(!r.endMonth||r.endMonth>=curMonKey)).map(rec=>{
+    const mesEq=calcHistoricalMesEq(rec,yr,mo);
+    const cat=rec.category?CAT[rec.category]:null;
+    const catBadge=cat?`<span style="font-size:10px;color:${cat.c};flex-shrink:0;white-space:nowrap">${cat.l}</span>`:'';
+    const pinKey='rec_pin_'+rec.id+'_'+yr+'_'+mo;
+    const blockKey='rec_block_'+rec.id+'_'+yr+'_'+mo;
+    const isBlocked=!!localStorage.getItem(blockKey);
+    const pinnedId=localStorage.getItem(pinKey);
+    const pinnedTx=pinnedId?TX.find(t=>t.id===pinnedId):null;
+
+    // WEEKLY: per-occurrence management
+    if(rec.frequency==='weekly'){
+      const excl=getRecurExcl(rec.id,yr,mo);
+      const incl=getRecurIncl(rec.id,yr,mo);
+      if(isBlocked){
+        pending++;totalMes+=mesEq;
+        return`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);opacity:.7"><span style="font-size:16px">⏳</span><div style="flex:1"><div style="font-size:12px;font-weight:600">${rec.name} <span style="font-size:9px;color:var(--mu)">týžd.</span></div><div style="font-size:10px;color:var(--mu)">Bez priradenia</div></div>${catBadge}<button onclick="recurRestoreWeeklyAuto('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--mu);cursor:pointer" title="Obnoviť auto-matching">↺ obnoviť</button></div>`;
+      }
+      const autoMatches=findRecurTxAll(rec,yr,mo).filter(t=>!excl.has(t.id));
+      const inclTxs=incl.map(id=>TX.find(t=>t.id===id)).filter(Boolean).filter(t=>!autoMatches.find(m=>m.id===t.id));
+      const allShown=[...autoMatches,...inclTxs].sort((a,b)=>(eDate(a)||a.date)-(eDate(b)||b.date));
+      const actualSpend=allShown.reduce((s,t)=>s+Math.abs(t.amount),0);
+      const daysInMonth=new Date(yr,mo,0).getDate();
+      const expectedCount=Math.round(daysInMonth/7);
+      const gotCount=allShown.length;
+      totalMes+=actualSpend>0?actualSpend:mesEq;
+      if(gotCount>=expectedCount) paid++; else pending++;
+      const rows=allShown.map(t=>{
+        const isManual=inclTxs.find(m=>m.id===t.id);
+        return`<div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 46px;border-top:1px solid var(--bd);font-size:11px;color:var(--mu)">
+          <span style="flex:1;cursor:pointer" onclick="openDet('${t.id}')">${fd(eDate(t)||t.date)}: ${(t.merchantOverride||t.merchant||'—').slice(0,30)}${isManual?' <span style="font-size:9px;color:var(--acc2)">ručne</span>':''}</span>
+          <span style="font-family:var(--M);color:var(--txt)">−${fabs(Math.abs(t.amount))}</span>
+          <button onclick="recurExclTx('${rec.id}',${yr},${mo},'${t.id}')" style="font-size:10px;padding:0 5px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--red);cursor:pointer;flex-shrink:0" title="Odstrániť z tohto mesiaca">✕</button>
+        </div>`;
+      }).join('');
+      const addBtn=`<button onclick="recurAddTx('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--acc2);cursor:pointer;flex-shrink:0">+ pridať</button>`;
+      const clearBtn=`<button onclick="recurClearWeekly('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--mu);cursor:pointer;flex-shrink:0">✕ vyčistiť</button>`;
+      return`<div style="border-bottom:1px solid var(--bd)"><div style="display:flex;align-items:center;gap:7px;padding:8px 12px"><span style="font-size:16px;flex-shrink:0">${gotCount>=expectedCount?'✅':'⏳'}</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${rec.name} <span style="font-size:9px;color:var(--mu);font-weight:400">týžd. · ${fabs(mesEq)}/mes</span></div><div style="font-size:10px;color:var(--mu)">${gotCount}/${expectedCount} platieb · ${fabs(actualSpend)} minutých</div></div>${catBadge}${addBtn}${clearBtn}<span style="font-family:var(--M);font-weight:700;font-size:12px;flex-shrink:0">${fabs(actualSpend>0?actualSpend:rec.amount)}</span></div>${rows}</div>`;
+    }
+
+    // OFF-MONTH for quarterly/yearly — same visual as active, but 📅 status
+    if(!isPaymentMonth(rec,yr,mo)){
+      totalMes+=mesEq;
+      const next=nextPaymentMonth(rec,yr,mo);
+      const nextStr=next?MO_NAMES[next.mo-1]+' '+next.yr:'—';
+      const mesEqLabel=mesEq>0?fabs(mesEq):'<span style="color:var(--acc);font-size:9px">⚠ nastav sumu</span>';
+      const pinBtnOff=`<button onclick="recurManualMatch('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--mu);cursor:pointer;flex-shrink:0">↩ priradiť</button>`;
+      return`<div style="display:flex;align-items:center;gap:7px;padding:8px 12px;border-bottom:1px solid var(--bd)"><span style="font-size:16px;flex-shrink:0">📅</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">${rec.name} <span style="font-size:9px;color:var(--mu);font-weight:400">${freqLbl[rec.frequency]||''}</span></div><div style="font-size:10px;color:var(--mu)">Ďalšia platba: ${nextStr}</div></div>${catBadge}${pinBtnOff}<span style="font-family:var(--M);font-size:12px;font-weight:600;flex-shrink:0;min-width:48px;text-align:right;color:var(--mu)">${mesEqLabel}</span></div>`;
+    }
+
+    // ACTIVE payment month (monthly + correct Q/Y month)
+    const autoMatches=isBlocked?[]:findRecurTx(rec,yr,mo);
+    const matchTx=pinnedTx||(!isBlocked&&autoMatches.length>0?autoMatches[0]:null);
+    const isPaid=!isBlocked&&!!matchTx;
+    const actualAmt=matchTx?Math.abs(matchTx.amount):null;
+    const isAmortized=rec.frequency==='quarterly'||rec.frequency==='yearly';
+    // Q/Y: always amortized (amount/period) regardless of payment month
+    // Monthly: paid→actual, pending→rec.amount
+    const pendingAmt=rec.amount>0?rec.amount:mesEq;
+    if(isAmortized) totalMes+=mesEq;
+    else totalMes+=isPaid&&actualAmt?actualAmt:pendingAmt;
+    if(isPaid) paid++; else pending++;
+    const d=matchTx?fd(eDate(matchTx)||matchTx.date):'';
+    const pinNote=pinnedTx?' · ručne':'';
+    // For Q/Y: show amortized on right, actual payment as clickable button
+    const displayAmt=isAmortized?fabs(mesEq):(isPaid&&actualAmt?fabs(actualAmt):fabs(rec.amount>0?rec.amount:mesEq));
+    const freqNote=isAmortized?` <span style="font-size:9px;color:var(--mu)">${freqLbl[rec.frequency]||''}</span>`:'';
+    const paidSubNote=isPaid&&actualAmt&&isAmortized?` · zaplatené ${fabs(actualAmt)}`:'';
+    const txBtn=matchTx?`<button onclick="event.stopPropagation();openDet('${matchTx.id}')" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--acc2);cursor:pointer;flex-shrink:0;white-space:nowrap">⧉ ${fabs(actualAmt)}</button>`:'';
+    const pinBtn=isBlocked
+      ?`<button onclick="recurUnblockMonth('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--mu);cursor:pointer;flex-shrink:0" title="Zrušiť vopred zaplatené">↺</button>`
+      :`<button onclick="recurManualMatch('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--mu);cursor:pointer;flex-shrink:0">${isPaid?'↻':'↩ priradiť'}</button>`;
+    return`<div style="display:flex;align-items:center;gap:7px;padding:8px 12px;border-bottom:1px solid var(--bd)"><span style="font-size:16px;flex-shrink:0;cursor:${matchTx?'pointer':'default'}" onclick="${matchTx?`openDet('${matchTx.id}')`:''}">${isPaid?'✅':'⏳'}</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${rec.name}${freqNote}</div><div style="font-size:10px;color:var(--mu)">${isPaid?'Zaplatené '+d+pinNote+paidSubNote:(isBlocked?'🔒 Zaplatené vopred':'Čakáme'+(rec.dayOfMonth?' (~'+rec.dayOfMonth+'.)':''))}</div></div>${catBadge}${txBtn}${pinBtn}<span style="font-family:var(--M);font-size:12px;font-weight:600;flex-shrink:0;min-width:48px;text-align:right;color:var(--txt)">${displayAmt}</span></div>`;
+  }).join('');
+
+  statusEl.innerHTML=`<div style="border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:6px"><div style="display:flex;gap:12px;padding:8px 12px;background:var(--s2);font-size:10px;color:var(--mu);flex-wrap:wrap"><span>✅ Zaplatené: <strong style="color:var(--grn)">${paid}</strong></span><span>⏳ Čakáme: <strong style="color:var(--acc)">${pending}</strong></span></div>${cards}</div>`;
+  const footer=document.getElementById('recur-footer'); const totMes=document.getElementById('recur-total-mes'); const totDay=document.getElementById('recur-total-day');
+  if(footer) footer.style.display='block';
+  const fmt=n=>Math.abs(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+  if(totMes) totMes.textContent=fmt(totalMes)+' €/mes';
+  if(totDay) totDay.textContent=fmt(totalMes/30.44)+' €/deň · '+fmt(totalMes*12)+' €/rok';
+  const listEl=document.getElementById('recur-list'); if(!listEl) return;
+  listEl.innerHTML=`<div style="font-size:10px;color:var(--mu);margin-bottom:6px;font-weight:600;letter-spacing:.5px">VŠETKY DEFINÍCIE</div>`+recurDefs.map(rec=>{
+    const cat=rec.category?CAT[rec.category]:null; const mesEq=calcHistoricalMesEq(rec);
+    const ref=getRefMonth(rec);
+    const refNote=(rec.frequency==='quarterly'||rec.frequency==='yearly')&&ref!==undefined?' · ref: '+MO_NAMES[ref]:'';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);flex-wrap:wrap"><div style="flex:1;min-width:120px"><div style="font-size:11px;font-weight:600">${rec.name}</div><div style="font-size:9px;color:var(--mu)">${rec.keyword||''}${rec.dayOfMonth?' · ~'+rec.dayOfMonth+'. každý mesiac':''}${refNote}</div></div><span style="font-size:10px;color:var(--mu)">${{monthly:'mes.',quarterly:'štvrťr.',yearly:'ročne',weekly:'týžd.'}[rec.frequency]||''}</span>${cat?`<span style="font-size:10px;color:${cat.c}">${cat.l}</span>`:''}<span style="font-family:var(--M);font-size:11px;color:var(--red);font-weight:600">${fabs(rec.amount)}</span>${rec.frequency!=='monthly'?`<span style="font-size:9px;color:var(--mu)">(${fabs(mesEq)}/mes)</span>`:''}<button class="btn" style="padding:2px 7px;font-size:10px" onclick="openRecurEdit('${rec.id}')">✎</button><button class="btn danger" style="padding:2px 7px;font-size:10px" onclick="deleteRecur('${rec.id}')">✕</button></div>`;
+  }).join('');
 }
 
 function normMerchant(s){
