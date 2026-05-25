@@ -119,10 +119,10 @@ select{background:var(--s2);border:1px solid var(--bd);color:var(--txt);padding:
 select:focus{border-color:var(--acc)}
 input[type=date]{background:var(--s2);border:1px solid var(--bd);color:var(--txt);padding:5px 7px;border-radius:4px;font-family:var(--M);font-size:11px;cursor:pointer;outline:none;width:110px}
 input[type=date]:focus{border-color:var(--acc)}
-input[type=date]::-webkit-calendar-picker-indicator{filter:invert(60%) sepia(10%) saturate(300%) hue-rotate(180deg);cursor:pointer;opacity:.7}
-body.light input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.5}
-body.light input[type=date]{color-scheme:light}
-body:not(.light) input[type=date]{color-scheme:dark}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=month]::-webkit-calendar-picker-indicator{filter:invert(60%) sepia(10%) saturate(300%) hue-rotate(180deg);cursor:pointer;opacity:.7}
+body.light input[type=date]::-webkit-calendar-picker-indicator,body.light input[type=month]::-webkit-calendar-picker-indicator{filter:invert(20%);opacity:.6}
+body.light input[type=date],body.light input[type=month]{color-scheme:light}
+body:not(.light) input[type=date],body:not(.light) input[type=month]{color-scheme:dark}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 .imp-btn{width:100%;padding:12px;background:var(--acc);color:#111;border:none;font-family:var(--H);font-size:14px;cursor:pointer;border-radius:6px;transition:all .15s}
 .imp-btn:disabled{background:var(--bd);color:var(--mu);cursor:not-allowed}
@@ -921,7 +921,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <input type="text" class="mi" id="re-name" placeholder="napr. Netflix, UPC Internet...">
     <div class="ml">Kľúčové slovo (pre matching transakcií)</div>
     <input type="text" class="mi" id="re-kw" placeholder="napr. netflix, upc, slovensky telekom...">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0">
       <div>
         <div class="ml" id="re-amt-lbl">Suma (€)</div>
         <input type="number" class="mi" id="re-amt" placeholder="0.00" step="0.01" min="0">
@@ -958,12 +958,12 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div>
-        <div class="ml">Platí od (voliteľné)</div>
-        <input type="month" class="mi" id="re-start" style="color-scheme:dark">
+        <div class="ml">Platí od</div>
+        <input type="month" class="mi" id="re-start">
       </div>
       <div>
-        <div class="ml">Platí do (voliteľné)</div>
-        <input type="month" class="mi" id="re-end" style="color-scheme:dark">
+        <div class="ml">Platí do</div>
+        <input type="month" class="mi" id="re-end">
       </div>
     </div>
     <div class="ml">Poznámka (voliteľné)</div>
@@ -3504,7 +3504,10 @@ function renderFlexBudget(){
 
   // --- FIXED: from recurDefs ---
   const bgMonKey=String(yr)+'-'+String(mo).padStart(2,'0');
-  const fixedItems=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=bgMonKey)&&(!r.endMonth||r.endMonth>=bgMonKey)).map(rec=>{
+  const fixedItems=recurDefs.filter(r=>r.active
+    &&(!r.startMonth||r.startMonth<=bgMonKey)
+    &&(!r.endMonth||r.endMonth>=bgMonKey)
+  ).map(rec=>{
     const inPayMonth=isPaymentMonth(rec,yr,mo);
     const blockKey='rec_block_'+rec.id+'_'+yr+'_'+mo;
     const isBlocked=!!localStorage.getItem(blockKey);
@@ -3515,7 +3518,7 @@ function renderFlexBudget(){
     const matchTx=pinnedTx||(autoMatches.length>0?autoMatches[0]:null);
     const isPaid=inPayMonth&&!isBlocked&&!!matchTx;
     const actualAmt=matchTx?Math.abs(matchTx.amount):null;
-    const mesEq=calcHistoricalMesEq(rec,yr,mo);
+    const mesEq=calcHistoricalMesEq(rec);
     const cat=rec.category?CAT[rec.category]:null;
     return{rec,isPaid,inPayMonth,lastTx:matchTx,mesEq,actualAmt,cat};
   });
@@ -3529,50 +3532,60 @@ function renderFlexBudget(){
 
   // --- FLEXIBLE: budgetLimits with type flexible (monthly) ---
   const catd=getCatD().filter(c=>c.id!=='sporenie');
+  // Exclude from flex spending any tx already matched as a fixed recurring item
+  const fixedTxIds=new Set(fixedItems.map(x=>x.lastTx?.id).filter(Boolean));
   const bc={};
-  txs.filter(t=>t.amount<0).forEach(t=>{
+  txs.filter(t=>t.amount<0&&!fixedTxIds.has(t.id)).forEach(t=>{
     getTxCatAmounts(t).forEach(({category,amount})=>{
       if(amount<0) bc[category||'__none']=(bc[category||'__none']||0)+Math.abs(amount);
     });
   });
-  const flexItems=budgetLimits.filter(l=>(l.type==='monthly'||l.type==='flexible')&&l.flexType!=='irregular').map(l=>{
+  const flexItems=budgetLimits.filter(l=>l.type==='monthly'&&l.flexType!=='irregular').map(l=>{
     const cat=catd.find(c=>c.id===l.catId);
     if(!cat) return null;
     const spent=bc[l.catId]||0;
-    const limit=l.amount||0;
-    return{cat,limit,spent,hasLimit:!!l.amount};
+    return{cat,limit:l.amount,spent};
   }).filter(Boolean);
   const flexTotal=flexItems.reduce((s,x)=>s+x.spent,0);
-  const flexLimitTotal=flexItems.reduce((s,x)=>s+(x.limit||0),0);
+  const flexLimitTotal=flexItems.reduce((s,x)=>s+x.limit,0);
 
-  // --- IRREGULAR: yearly or flexType=irregular ---
+  // --- IRREGULAR: yearly budgets ---
   const irregItems=budgetLimits.filter(l=>l.type==='yearly'||l.flexType==='irregular').map(l=>{
     const cat=catd.find(c=>c.id===l.catId);
     if(!cat) return null;
     const yearlySpent=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&t.amount<0&&!isCCRepayment(t)&&!t.excluded)
       .reduce((s,t)=>s+getTxCatAmounts(t).filter(({category,amount})=>category===l.catId&&amount<0).reduce((ss,{amount})=>ss+Math.abs(amount),0),0);
-    const limit=l.amount||0;
-    return{cat,limit,spent:yearlySpent,mesEq:limit?limit/12:0,hasLimit:!!l.amount};
+    return{cat,limit:l.amount,spent:yearlySpent,mesEq:l.amount/12};
   }).filter(Boolean);
 
   const totalBudgeted=fixedTotal+flexLimitTotal;
-  const remainder=monthInc-fixedTotal-flexTotal;
+  // Irregular: sum current-month spending for irreg categories
+  const irregMonthSpent=irregItems.reduce((s,x)=>{
+    const mspent=txs.filter(t=>t.amount<0).reduce((ss,t)=>ss+getTxCatAmounts(t)
+      .filter(({category,amount})=>category===x.cat.id&&amount<0)
+      .reduce((sss,{amount})=>sss+Math.abs(amount),0),0);
+    return s+mspent;
+  },0);
+  const remainder=monthInc-fixedTotal-flexTotal-irregMonthSpent;
 
   // --- Summary bar ---
   const bar=document.getElementById('bg-flex-bar');
   if(bar){
-    const chip=(label,val,cls)=>`<div style="display:flex;flex-direction:column;align-items:center;padding:6px 14px;border-right:1px solid var(--bd)">
-      <div style="font-size:9px;color:var(--mu);letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px">${label}</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--M);color:${cls}">${val}</div>
+    const chip=(label,val,cls)=>`<div style="display:flex;flex-direction:column;align-items:center;padding:6px 10px;border-right:1px solid var(--bd)">
+      <div style="font-size:9px;color:var(--mu);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;white-space:nowrap">${label}</div>
+      <div style="font-size:13px;font-weight:700;font-family:var(--M);color:${cls};white-space:nowrap">${val}</div>
     </div>`;
+    const savingsRate=monthInc>0?Math.round((1-(fixedTotal+flexTotal)/monthInc)*100):0;
     bar.innerHTML=
       chip('Príjmy','+'+fabs(monthInc),'var(--grn)')+
-      `<div style="padding:6px 8px;color:var(--mu);font-size:16px;display:flex;align-items:center">−</div>`+
-      chip('Fixné',fabs(fixedTotal),'var(--red)')+
-      `<div style="padding:6px 8px;color:var(--mu);font-size:16px;display:flex;align-items:center">−</div>`+
-      chip('Flexible',fabs(flexTotal),'var(--acc)')+
-      `<div style="padding:6px 8px;color:var(--mu);font-size:16px;display:flex;align-items:center">=</div>`+
-      chip('Zostatok',fabs(Math.abs(remainder)),remainder>=0?'var(--grn)':'var(--red)');
+      `<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">−</div>`+
+      chip('Fixné',fabs(fixedTotal),'#e05c5c')+
+      `<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">−</div>`+
+      chip('Flexible',fabs(flexTotal),'#4a9fd4')+
+      (irregMonthSpent>0?`<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">−</div>`+chip('Nepravid.',fabs(irregMonthSpent),'#50c8a0'):'')+
+      `<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">=</div>`+
+      chip('Zostatok',fabs(Math.abs(remainder)),remainder>=0?'var(--grn)':'var(--red)')+
+      (monthInc>0?`<div style="display:flex;flex-direction:column;align-items:center;padding:6px 10px"><div style="font-size:9px;color:var(--mu);text-transform:uppercase;margin-bottom:2px">Úspora</div><div style="font-size:13px;font-weight:700;font-family:var(--M);color:${savingsRate>=20?'var(--grn)':savingsRate>=10?'var(--acc)':'var(--red)'}">${savingsRate}%</div></div>`:'');
   }
 
   // --- Render sections ---
@@ -3620,85 +3633,144 @@ function renderFlexBudget(){
   });
 
   // FLEXIBLE SECTION
-  const flexSubHdr=flexLimitTotal>0?fabs(flexTotal)+' / '+fabs(flexLimitTotal)+' €':fabs(flexTotal)+' €';
-  html+=secHdr('📊 Flexible',flexSubHdr);
-  if(flexItems.length===0) html+=`<div style="color:var(--mu);font-size:11px;padding:8px 0">Žiadne kategórie. Otvor kategóriu v Klasickom zobrazení a prirad ju sem.</div>`;
-  flexItems.sort((a,b)=>{
-    const pa=a.hasLimit?b.spent/b.limit-a.spent/a.limit:0;
-    return a.hasLimit&&b.hasLimit?pa:(a.hasLimit?-1:b.hasLimit?1:b.spent-a.spent);
-  }).forEach(({cat,limit,spent,hasLimit})=>{
-    const pct=hasLimit&&limit>0?Math.min(100,spent/limit*100):0;
-    const rawPct=hasLimit&&limit>0?spent/limit*100:0;
+  html+=secHdr('📊 Flexible',fabs(flexTotal)+' / '+fabs(flexLimitTotal)+' €');
+  if(flexItems.length===0) html+=`<div style="color:var(--mu);font-size:11px;padding:8px 0">Nastav mesačné limity v Klasickom zobrazení.</div>`;
+  flexItems.sort((a,b)=>(b.spent/b.limit)-(a.spent/a.limit)).forEach(({cat,limit,spent})=>{
+    const pct=limit>0?Math.min(100,spent/limit*100):0;
+    const rawPct=limit>0?spent/limit*100:0;
     const col=rawPct>=100?'#e05c5c':rawPct>=80?'#f0a040':cat.c;
-    const over=hasLimit&&rawPct>100?` <span style="color:var(--red);font-size:10px">+${fabs(spent-limit)}</span>`:'';
-    const limitPart=hasLimit
-      ?`<span style="color:var(--mu)"> / </span><input type="number" class="flex-lim-inp" value="${limit||''}" placeholder="—" min="0" step="10" onclick="event.stopPropagation()" onchange="saveFlexLimitInline('${cat.id}','monthly','flexible',this.value)" style="width:56px;font-size:11px;font-family:var(--M);background:transparent;border:none;border-bottom:1px dashed var(--mu);color:var(--mu);text-align:right;outline:none;padding:0">`
-      :`<span style="color:var(--acc2);cursor:pointer;font-size:10px" onclick="event.stopPropagation();saveFlexLimitInline('${cat.id}','monthly','flexible',prompt('Mesačný limit pre ${cat.l} (€):'))" title="Klikni pre nastavenie limitu"> + limit</span>`;
-    html+=`<div style="margin-bottom:10px" onclick="openBudgetDrill('${cat.id}','${cat.l}','${bgMon}',false)" style="cursor:pointer">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:11px">
-        <span style="color:${cat.c};font-weight:600;cursor:pointer">■ ${cat.l}</span>
-        <span style="color:${rawPct>100?'var(--red)':'var(--txt)'};font-family:var(--M);display:flex;align-items:center;gap:2px">${fabs(spent)}${limitPart}${over}</span>
+    html+=`<div style="margin-bottom:10px;cursor:pointer" onclick="openBudgetDrill('${cat.id}','${cat.l}','${bgMon}',false)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px">
+        <span style="color:${cat.c};font-weight:600">■ ${cat.l}</span>
+        <span style="color:${rawPct>100?'var(--red)':'var(--txt)'};font-family:var(--M)">${fabs(spent)} <span style="color:var(--mu)">/ ${fabs(limit)}</span>${rawPct>100?` <span style="color:var(--red);font-size:10px">+${fabs(spent-limit)}</span>`:''}</span>
       </div>
-      ${hasLimit?`<div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .3s"></div></div>`:`<div style="height:2px;background:var(--bd);border-radius:1px"></div>`}
+      <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .3s"></div>
+      </div>
     </div>`;
   });
 
   // IRREGULAR SECTION
   if(irregItems.length){
-    const irregSpentTotal=irregItems.reduce((s,x)=>s+x.spent,0);
-    const irregLimitTotal=irregItems.reduce((s,x)=>s+(x.limit||0),0);
-    const irregSubHdr=irregLimitTotal>0?fabs(irregSpentTotal)+' / '+fabs(irregLimitTotal)+' ročne':fabs(irregSpentTotal)+' €';
-    html+=secHdr('📅 Nepravidelné',irregSubHdr);
-    irregItems.forEach(({cat,limit,spent,mesEq,hasLimit})=>{
-      const pct=hasLimit&&limit>0?Math.min(100,spent/limit*100):0;
-      const rawPct=hasLimit&&limit>0?spent/limit*100:0;
+    html+=secHdr('📅 Nepravidelné','ročný budget');
+    irregItems.forEach(({cat,limit,spent,mesEq})=>{
+      const pct=limit>0?Math.min(100,spent/limit*100):0;
+      const rawPct=limit>0?spent/limit*100:0;
       const col=rawPct>=100?'#e05c5c':rawPct>=80?'#f0a040':cat.c;
-      const limitPart=hasLimit
-        ?`<input type="number" class="flex-lim-inp" value="${limit||''}" placeholder="—" min="0" step="50" onclick="event.stopPropagation()" onchange="saveFlexLimitInline('${cat.id}','yearly','irregular',this.value)" style="width:64px;font-size:11px;font-family:var(--M);background:transparent;border:none;border-bottom:1px dashed var(--mu);color:var(--mu);text-align:right;outline:none;padding:0"> ročne`
-        :`<span style="color:var(--acc2);cursor:pointer;font-size:10px" onclick="event.stopPropagation();saveFlexLimitInline('${cat.id}','yearly','irregular',prompt('Ročný limit pre ${cat.l} (€):'))"> + limit</span>`;
-      html+=`<div style="margin-bottom:10px" onclick="openBudgetDrill('${cat.id}','${cat.l}','${yr}',true)" style="cursor:pointer">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:11px">
-          <span style="color:${cat.c};font-weight:600;cursor:pointer">■ ${cat.l}</span>
-          <span style="font-family:var(--M);color:var(--txt)">${fabs(spent)} ${limitPart}</span>
+      html+=`<div style="margin-bottom:10px;cursor:pointer" onclick="openBudgetDrill('${cat.id}','${cat.l}','${yr}',true)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px">
+          <span style="color:${cat.c};font-weight:600">■ ${cat.l}</span>
+          <span style="font-family:var(--M);color:var(--mu)">${fabs(spent)} / ${fabs(limit)} ročne</span>
         </div>
-        ${hasLimit?`<div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${col};border-radius:3px"></div></div><div style="font-size:9px;color:var(--mu);margin-top:2px">≈ ${fabs(mesEq)}/mes</div>`:`<div style="height:2px;background:var(--bd);border-radius:1px"></div>`}
+        <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:3px"></div>
+        </div>
+        <div style="font-size:9px;color:var(--mu);margin-top:2px">mesačný ekvivalent: ${fabs(mesEq)}</div>
       </div>`;
     });
   }
 
-  // CHARTS
-  html+=`<div style="margin-top:20px">
-    <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;padding:10px 0 8px;border-bottom:1px solid var(--bd);margin-bottom:12px">📊 Trendy</div>
-    <canvas id="bg-chart-overview" height="160" style="width:100%;display:block;margin-bottom:16px"></canvas>
-    <canvas id="bg-chart-cats" height="130" style="width:100%;display:block"></canvas>
+  // CHARTS section
+  html+=`<div style="margin-top:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 10px;border-bottom:1px solid var(--bd);margin-bottom:12px">
+      <span style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;text-transform:uppercase">📊 Trendy</span>
+      <div style="display:flex;gap:4px" id="bg-chart-filters">
+        <button onclick="setBgChartFilter(3,this)" class="btn" style="font-size:10px;padding:3px 8px">3M</button>
+        <button onclick="setBgChartFilter(6,this)" class="btn" style="font-size:10px;padding:3px 8px">6M</button>
+        <button onclick="setBgChartFilter(12,this)" class="btn" style="font-size:10px;padding:3px 8px">1R</button>
+        <button onclick="setBgChartFilter(0,this)" class="btn" style="font-size:10px;padding:3px 8px">Všetko</button>
+      </div>
+    </div>
+    <div style="position:relative">
+      <canvas id="bg-chart-overview" height="170" style="width:100%;display:block;margin-bottom:4px"></canvas>
+      <div id="bg-chart-tooltip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:6px;padding:8px 10px;font-size:11px;pointer-events:none;z-index:10;min-width:130px;box-shadow:0 4px 12px #0006"></div>
+    </div>
+    <div id="bg-chart-legend-a" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;font-size:10px;padding:4px 0"></div>
+    <canvas id="bg-chart-cats" height="140" style="width:100%;display:block;margin-bottom:4px"></canvas>
+    <div id="bg-chart-legend-b" style="display:flex;flex-wrap:wrap;gap:8px;font-size:10px;padding:4px 0"></div>
   </div>`;
 
   grid.innerHTML=html;
 
-  // Render charts after DOM update
-  setTimeout(()=>renderBudgetCharts(yr,mo,flexItems,irregItems,fixedTotal),0);
+  // Set default filter active state
+  const filterBtns=document.querySelectorAll('#bg-chart-filters button');
+  filterBtns.forEach(b=>b.style.background='');
+  if(filterBtns[1]) { filterBtns[1].style.background='var(--acc)'; filterBtns[1].style.color='#111'; }
+
+  setTimeout(()=>renderBudgetCharts(yr,mo,6,flexItems,irregItems,fixedTotal),0);
 }
 
-function renderBudgetCharts(yr, mo, flexItems, irregItems, fixedTotal){
-  // --- Prepare last 6 months of data ---
-  const months=[];
-  for(let i=5;i>=0;i--){
-    const d=new Date(yr,mo-1-i,1);
-    months.push({yr:d.getFullYear(),mo:d.getMonth()+1});
+let _bgChartN=6, _bgChartYr, _bgChartMo, _bgChartFlex, _bgChartIrreg, _bgChartFixed;
+function setBgChartFilter(n, btn){
+  _bgChartN=n;
+  document.querySelectorAll('#bg-chart-filters button').forEach(b=>{b.style.background='';b.style.color='';});
+  btn.style.background='var(--acc)'; btn.style.color='#111';
+  renderBudgetCharts(_bgChartYr,_bgChartMo,n,_bgChartFlex,_bgChartIrreg,_bgChartFixed);
+}
+
+function renderBudgetCharts(yr, mo, numMonths, flexItems, irregItems, fixedTotal){
+  _bgChartYr=yr; _bgChartMo=mo; _bgChartFlex=flexItems; _bgChartIrreg=irregItems; _bgChartFixed=fixedTotal;
+  const cs=getComputedStyle(document.documentElement);
+  const isDark=!document.body.classList.contains('light');
+
+  // Colors
+  const CLR={
+    fixed:   '#e05c5c',
+    flex:    '#4a9fd4',
+    irreg:   '#50c8a0',
+    other:   isDark?'#4a6070':'#9ab0c0',
+    income:  '#5dd48a',
+    txt:     cs.getPropertyValue('--txt').trim()||'#d0dce8',
+    mu:      cs.getPropertyValue('--mu').trim()||'#6a8399',
+    bd:      cs.getPropertyValue('--bd').trim()||'#2a3e52',
+    bg:      cs.getPropertyValue('--s2').trim()||'#1a2c3a',
+  };
+
+  // Prepare months
+  const allMonths=[];
+  const seen=new Set();
+  TX.forEach(t=>{const d=eDate(t)||t.date;if(!d)return;const k=d.getFullYear()+'-'+(d.getMonth()+1);seen.add(k);});
+  seen.forEach(k=>{const[y,m]=k.split('-').map(Number);allMonths.push({yr:y,mo:m});});
+  allMonths.sort((a,b)=>a.yr!==b.yr?a.yr-b.yr:a.mo-b.mo);
+
+  let months;
+  if(!numMonths||numMonths===0){
+    months=allMonths;
+  } else {
+    // Last numMonths ending at yr/mo
+    const endIdx=allMonths.findIndex(m=>m.yr===yr&&m.mo===mo);
+    const end=endIdx>=0?endIdx:allMonths.length-1;
+    months=allMonths.slice(Math.max(0,end-numMonths+1),end+1);
+    // Fill forward if needed
+    if(months.length<numMonths){
+      const arr=[];
+      for(let i=numMonths-1;i>=0;i--){
+        const d=new Date(yr,mo-1-i,1);
+        arr.push({yr:d.getFullYear(),mo:d.getMonth()+1});
+      }
+      months=arr;
+    }
   }
+
   const flexCatIds=new Set(flexItems.map(x=>x.cat.id));
   const irregCatIds=new Set(irregItems.map(x=>x.cat.id));
-  const fixedCatIds=new Set(recurDefs.filter(r=>r.active).flatMap(r=>r.category?[r.category]:[]));
 
+  // Compute per-month data
   const mdata=months.map(({yr:myr,mo:mmo})=>{
     const mk=myr+'-'+String(mmo).padStart(2,'0');
     const mtxs=TX.filter(t=>{
       const d=eDate(t)||t.date; if(!d) return false;
       return d.getFullYear()===myr&&d.getMonth()===mmo-1&&!isCCRepayment(t)&&!t.excluded&&!isSplatka(t);
     });
-    const income=mtxs.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
+    const income=mtxs.filter(t=>t.amount>0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
     let flexSpend=0,irregSpend=0,otherSpend=0;
-    mtxs.filter(t=>t.amount<0).forEach(t=>{
+    const fixedRecs=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=mk)&&(!r.endMonth||r.endMonth>=mk));
+    const fixedMesEq=fixedRecs.reduce((s,r)=>s+calcHistoricalMesEq(r,myr,mmo),0);
+    const fixedTxIdsM=new Set(fixedRecs.map(r=>{
+      const pinKey='rec_pin_'+r.id+'_'+myr+'_'+mmo;
+      return localStorage.getItem(pinKey);
+    }).filter(Boolean));
+    mtxs.filter(t=>t.amount<0&&!fixedTxIdsM.has(t.id)).forEach(t=>{
       getTxCatAmounts(t).forEach(({category,amount})=>{
         if(amount>=0) return;
         const abs=Math.abs(amount);
@@ -3707,168 +3779,199 @@ function renderBudgetCharts(yr, mo, flexItems, irregItems, fixedTotal){
         else otherSpend+=abs;
       });
     });
-    const fixed=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=mk)&&(!r.endMonth||r.endMonth>=mk))
-      .reduce((s,r)=>s+calcHistoricalMesEq(r,myr,mmo),0);
-    const label=MO_NAMES[mmo-1].slice(0,3)+' '+String(myr).slice(2);
-    return{label,income,fixed,flexSpend,irregSpend,otherSpend};
+    const lbl=MO_NAMES[mmo-1].slice(0,3)+' '+String(myr).slice(2);
+    return{label:lbl,income,fixed:fixedMesEq,flexSpend,irregSpend,otherSpend};
   });
 
-  // --- Chart A: Stacked bar + income line ---
-  const cvA=document.getElementById('bg-chart-overview');
-  if(!cvA) return;
-  const cs=getComputedStyle(document.documentElement);
-  const clrFixed=cs.getPropertyValue('--red').trim()||'#e05c5c';
-  const clrFlex=cs.getPropertyValue('--acc').trim()||'#e8a838';
-  const clrIrreg='#7b9cbf';
-  const clrOther=cs.getPropertyValue('--mu').trim()||'#6a8399';
-  const clrInc=cs.getPropertyValue('--grn').trim()||'#4caf82';
-  const clrTxt=cs.getPropertyValue('--txt').trim()||'#d0dce8';
-  const clrBd=cs.getPropertyValue('--bd').trim()||'#2a3e52';
-
-  cvA.width=cvA.offsetWidth||cvA.parentElement?.offsetWidth||300;
+  // ── CHART A: Stacked bar + income line ───────────────────────────
+  const cvA=document.getElementById('bg-chart-overview'); if(!cvA) return;
+  cvA.width=cvA.offsetWidth||cvA.parentElement?.offsetWidth||340;
   const W=cvA.width, H=cvA.height;
   const ctx=cvA.getContext('2d');
   ctx.clearRect(0,0,W,H);
 
-  const padL=36,padR=8,padT=14,padB=30;
-  const chartW=W-padL-padR, chartH=H-padT-padB;
+  const pL=42,pR=10,pT=16,pB=28;
+  const cW=W-pL-pR, cH=H-pT-pB;
   const n=mdata.length;
-  const barW=Math.floor(chartW/n*0.55);
-  const gap=Math.floor(chartW/n);
+  const barW=Math.max(8,Math.floor(cW/n*0.55));
+  const step=cW/n;
+  const toX=i=>pL+step*i+step/2;
 
-  const maxVal=Math.max(...mdata.map(d=>Math.max(d.income,d.fixed+d.flexSpend+d.irregSpend+d.otherSpend)))*1.1||1;
-
-  const toY=v=>padT+chartH*(1-v/maxVal);
-  const toX=i=>padL+gap*i+gap/2;
+  const maxVal=Math.max(...mdata.map(d=>Math.max(d.income,d.fixed+d.flexSpend+d.irregSpend+d.otherSpend)))*1.12||100;
+  const toY=v=>pT+cH*(1-Math.min(v/maxVal,1));
 
   // Grid lines
-  ctx.strokeStyle=clrBd; ctx.lineWidth=1;
-  [0.25,0.5,0.75,1].forEach(f=>{
-    const y=toY(maxVal*f);
-    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();
-    ctx.fillStyle=clrOther;ctx.font='9px sans-serif';ctx.textAlign='right';
-    ctx.fillText(Math.round(maxVal*f)+'€',padL-3,y+3);
-  });
+  const gridTicks=4;
+  for(let g=1;g<=gridTicks;g++){
+    const v=maxVal*g/gridTicks, y=toY(v);
+    ctx.strokeStyle=CLR.bd; ctx.lineWidth=.5;
+    ctx.beginPath(); ctx.moveTo(pL,y); ctx.lineTo(W-pR,y); ctx.stroke();
+    ctx.fillStyle=CLR.mu; ctx.font='9px sans-serif'; ctx.textAlign='right';
+    ctx.fillText(v>=1000?Math.round(v/100)/10+'k':Math.round(v)+'€',pL-3,y+3);
+  }
 
-  // Bars
-  mdata.forEach((d,i)=>{
+  // Stacked bars
+  const barSegs=[
+    {key:'otherSpend',c:CLR.other},
+    {key:'irregSpend',c:CLR.irreg},
+    {key:'flexSpend', c:CLR.flex},
+    {key:'fixed',     c:CLR.fixed},
+  ];
+  // Store bar positions for tooltip
+  const barHitmap=mdata.map((d,i)=>{
     const x=toX(i)-barW/2;
-    let yBase=padT+chartH;
-    const segs=[
-      {v:d.otherSpend,c:clrOther+'aa'},
-      {v:d.irregSpend,c:clrIrreg+'cc'},
-      {v:d.flexSpend,c:clrFlex+'cc'},
-      {v:d.fixed,c:clrFixed+'cc'},
-    ];
-    segs.forEach(({v,c})=>{
-      if(!v) return;
-      const h=chartH*v/maxVal;
+    let yBase=pT+cH;
+    const segs={};
+    barSegs.forEach(({key,c})=>{
+      const v=d[key]||0; if(!v) return;
+      const h=cH*v/maxVal;
       ctx.fillStyle=c;
       ctx.fillRect(x,yBase-h,barW,h);
+      segs[key]={y:yBase-h,h,v};
       yBase-=h;
     });
+    return{x,barW,d,segs};
   });
 
   // Income line
-  ctx.beginPath();ctx.strokeStyle=clrInc;ctx.lineWidth=2;
-  mdata.forEach((d,i)=>{
-    const x=toX(i),y=toY(d.income);
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  });
+  ctx.beginPath(); ctx.strokeStyle=CLR.income; ctx.lineWidth=2;
+  mdata.forEach((d,i)=>{ const x=toX(i),y=toY(d.income); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
   ctx.stroke();
   mdata.forEach((d,i)=>{
     const x=toX(i),y=toY(d.income);
-    ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=clrInc;ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,3.5,0,Math.PI*2); ctx.fillStyle=CLR.income; ctx.fill();
   });
 
   // X labels
-  ctx.fillStyle=clrTxt;ctx.font='9px sans-serif';ctx.textAlign='center';
-  mdata.forEach((d,i)=>ctx.fillText(d.label,toX(i),H-8));
+  ctx.fillStyle=CLR.mu; ctx.font='9px sans-serif'; ctx.textAlign='center';
+  mdata.forEach((d,i)=>{ if(n<=12||i%Math.ceil(n/8)===0) ctx.fillText(d.label,toX(i),H-8); });
 
-  // Legend
-  const leg=[['Fixné',clrFixed],['Flex',clrFlex],['Nepravid.',clrIrreg],['Iné',clrOther],['Príjmy',clrInc]];
-  let lx=padL;
-  ctx.font='9px sans-serif';ctx.textAlign='left';
-  leg.forEach(([lbl,c])=>{
-    ctx.fillStyle=c;ctx.fillRect(lx,3,8,7);
-    ctx.fillStyle=clrTxt;ctx.fillText(lbl,lx+10,10);
-    lx+=ctx.measureText(lbl).width+18;
-  });
+  // Legend A
+  const legA=document.getElementById('bg-chart-legend-a');
+  if(legA) legA.innerHTML=[
+    [CLR.fixed,'Fixné'],
+    [CLR.flex,'Flexible'],
+    [CLR.irreg,'Nepravidelné'],
+    [CLR.other,'Iné výdavky'],
+    [CLR.income,'Príjmy'],
+  ].map(([c,l])=>`<span style="display:flex;align-items:center;gap:4px;color:var(--mu)"><span style="width:10px;height:10px;border-radius:2px;background:${c};flex-shrink:0;display:inline-block"></span>${l}</span>`).join('');
 
-  // --- Chart B: Flex category 6M trend lines ---
-  const cvB=document.getElementById('bg-chart-cats');
-  if(!cvB||flexItems.length===0) return;
+  // Click/touch tooltip for chart A
+  const tooltip=document.getElementById('bg-chart-tooltip');
+  const showTooltip=(e)=>{
+    const rect=cvA.getBoundingClientRect();
+    const cx=(e.clientX??e.touches?.[0]?.clientX)-rect.left;
+    // Find closest bar
+    let best=null,bestDist=999;
+    barHitmap.forEach((hit,i)=>{
+      const dist=Math.abs(cx-toX(i));
+      if(dist<bestDist){bestDist=dist;best={hit,i};}
+    });
+    if(!best||bestDist>step/2+barW) return;
+    const {d}=best.hit;
+    const total=d.fixed+d.flexSpend+d.irregSpend+d.otherSpend;
+    tooltip.style.display='block';
+    tooltip.innerHTML=`<div style="font-weight:700;margin-bottom:5px;color:var(--txt)">${d.label}</div>`+
+      `<div style="display:flex;justify-content:space-between;gap:12px;color:${CLR.income}"><span>Príjmy</span><span>+${fabs(d.income)}</span></div>`+
+      `<div style="display:flex;justify-content:space-between;gap:12px;color:${CLR.fixed}"><span>Fixné</span><span>${fabs(d.fixed)}</span></div>`+
+      `<div style="display:flex;justify-content:space-between;gap:12px;color:${CLR.flex}"><span>Flexible</span><span>${fabs(d.flexSpend)}</span></div>`+
+      `<div style="display:flex;justify-content:space-between;gap:12px;color:${CLR.irreg}"><span>Nepravid.</span><span>${fabs(d.irregSpend)}</span></div>`+
+      (d.otherSpend?`<div style="display:flex;justify-content:space-between;gap:12px;color:${CLR.other}"><span>Iné</span><span>${fabs(d.otherSpend)}</span></div>`:'') +
+      `<div style="border-top:1px solid var(--bd);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;gap:12px;color:var(--txt)"><span>Celkom výd.</span><span>${fabs(total)}</span></div>`;
+    // Position
+    const tipW=150;
+    const bx=best.hit.x+cvA.offsetLeft;
+    const left=bx+barW+6;
+    tooltip.style.left=(left+tipW>cvA.offsetWidth?bx-tipW-6:left)+'px';
+    tooltip.style.top=(pT)+'px';
+  };
+  cvA.onclick=showTooltip;
+  cvA.ontouchstart=showTooltip;
+  document.addEventListener('click',(e)=>{if(e.target!==cvA)tooltip.style.display='none';},{once:false,capture:false});
+
+  // ── CHART B: Flex categories trend ───────────────────────────────
+  const cvB=document.getElementById('bg-chart-cats'); if(!cvB) return;
   cvB.width=cvA.width;
   const Wb=cvB.width, Hb=cvB.height;
   const ctxB=cvB.getContext('2d');
   ctxB.clearRect(0,0,Wb,Hb);
 
-  // Show spending per flex category across 6 months
+  if(!flexItems.length){ ctxB.fillStyle=CLR.mu; ctxB.font='11px sans-serif'; ctxB.textAlign='center'; ctxB.fillText('Žiadne flex kategórie',Wb/2,Hb/2); return; }
+
   const catSpends=months.map(({yr:myr,mo:mmo})=>{
-    const mtxs=TX.filter(t=>{
-      const d=eDate(t)||t.date; if(!d) return false;
-      return d.getFullYear()===myr&&d.getMonth()===mmo-1&&!isCCRepayment(t)&&!t.excluded;
+    const fixedTxIdsM2=new Set(recurDefs.filter(r=>r.active).map(r=>localStorage.getItem('rec_pin_'+r.id+'_'+myr+'_'+mmo)).filter(Boolean));
+    const mtxs=TX.filter(t=>{const d=eDate(t)||t.date;if(!d)return false;return d.getFullYear()===myr&&d.getMonth()===mmo-1&&!isCCRepayment(t)&&!t.excluded;});
+    const s={};
+    mtxs.filter(t=>t.amount<0&&!fixedTxIdsM2.has(t.id)).forEach(t=>{
+      getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0&&flexCatIds.has(category))s[category]=(s[category]||0)+Math.abs(amount);});
     });
-    const spend={};
-    mtxs.filter(t=>t.amount<0).forEach(t=>{
-      getTxCatAmounts(t).forEach(({category,amount})=>{
-        if(amount<0&&flexCatIds.has(category)) spend[category]=(spend[category]||0)+Math.abs(amount);
-      });
-    });
-    return spend;
+    return s;
   });
 
-  const maxCat=Math.max(...flexItems.map(x=>Math.max(...catSpends.map(s=>s[x.cat.id]||0))))*1.1||1;
-  const pL=44,pR=8,pT=10,pB=22;
-  const cW=Wb-pL-pR, cH=Hb-pT-pB;
-  const gapB=Math.floor(cW/(n-1||1));
+  const pLb=42,pRb=10,pTb=12,pBb=24;
+  const cWb=Wb-pLb-pRb, cHb=Hb-pTb-pBb;
+  const nb=months.length;
+  const stepB=nb>1?cWb/(nb-1):cWb;
+  const toXb=i=>pLb+(nb>1?stepB*i:cWb/2);
+
+  const maxCat=Math.max(...flexItems.map(x=>Math.max(...catSpends.map(s=>s[x.cat.id]||0))))*1.15||1;
+  const toYb=v=>pTb+cHb*(1-Math.min(v/maxCat,1));
 
   // Grid
-  ctxB.strokeStyle=clrBd;ctxB.lineWidth=1;
-  [0.5,1].forEach(f=>{
-    const y=pT+cH*(1-f);
-    ctxB.beginPath();ctxB.moveTo(pL,y);ctxB.lineTo(Wb-pR,y);ctxB.stroke();
-    ctxB.fillStyle=clrOther;ctxB.font='9px sans-serif';ctxB.textAlign='right';
-    ctxB.fillText(Math.round(maxCat*f)+'€',pL-2,y+3);
+  [.5,1].forEach(f=>{
+    const y=toYb(maxCat*f);
+    ctxB.strokeStyle=CLR.bd; ctxB.lineWidth=.5;
+    ctxB.beginPath(); ctxB.moveTo(pLb,y); ctxB.lineTo(Wb-pRb,y); ctxB.stroke();
+    ctxB.fillStyle=CLR.mu; ctxB.font='9px sans-serif'; ctxB.textAlign='right';
+    ctxB.fillText(maxCat*f>=1000?Math.round(maxCat*f/100)/10+'k':Math.round(maxCat*f)+'€',pLb-2,y+3);
   });
 
-  // Lines per flex category
-  flexItems.slice(0,6).forEach(({cat})=>{
-    ctxB.beginPath();ctxB.strokeStyle=cat.c;ctxB.lineWidth=1.5;
-    months.forEach((_,i)=>{
-      const x=n===1?pL+cW/2:pL+gapB*i;
-      const v=catSpends[i][cat.id]||0;
-      const y=pT+cH*(1-v/maxCat);
-      i===0?ctxB.moveTo(x,y):ctxB.lineTo(x,y);
-    });
+  // Store line hit data for tooltip B
+  const lineHitmapB=flexItems.slice(0,8).map(({cat,limit})=>{
+    const pts=catSpends.map((s,i)=>({x:toXb(i),y:toYb(s[cat.id]||0),v:s[cat.id]||0}));
+    ctxB.beginPath(); ctxB.strokeStyle=cat.c; ctxB.lineWidth=2;
+    pts.forEach((p,i)=>i===0?ctxB.moveTo(p.x,p.y):ctxB.lineTo(p.x,p.y));
     ctxB.stroke();
-  });
-
-  // Dots
-  flexItems.slice(0,6).forEach(({cat})=>{
-    months.forEach((_,i)=>{
-      const x=n===1?pL+cW/2:pL+gapB*i;
-      const v=catSpends[i][cat.id]||0;
-      const y=pT+cH*(1-v/maxCat);
-      ctxB.beginPath();ctxB.arc(x,y,2.5,0,Math.PI*2);ctxB.fillStyle=cat.c;ctxB.fill();
-    });
+    pts.forEach(p=>{ctxB.beginPath();ctxB.arc(p.x,p.y,3,0,Math.PI*2);ctxB.fillStyle=cat.c;ctxB.fill();});
+    // Limit line (dashed)
+    if(limit){
+      const ly=toYb(limit);
+      ctxB.save(); ctxB.setLineDash([3,3]); ctxB.strokeStyle=cat.c+'66'; ctxB.lineWidth=1;
+      ctxB.beginPath(); ctxB.moveTo(pLb,ly); ctxB.lineTo(Wb-pRb,ly); ctxB.stroke(); ctxB.restore();
+    }
+    return{cat,limit,pts};
   });
 
   // X labels
-  ctxB.fillStyle=clrTxt;ctxB.font='9px sans-serif';ctxB.textAlign='center';
-  months.forEach((m,i)=>{
-    const x=n===1?pL+cW/2:pL+gapB*i;
-    ctxB.fillText(MO_NAMES[m.mo-1].slice(0,3),x,Hb-6);
-  });
+  ctxB.fillStyle=CLR.mu; ctxB.font='9px sans-serif'; ctxB.textAlign='center';
+  months.forEach((m,i)=>{ if(nb<=12||i%Math.ceil(nb/8)===0) ctxB.fillText(MO_NAMES[m.mo-1].slice(0,3),toXb(i),Hb-6); });
 
-  // Legend (category names)
-  let lxB=pL;ctxB.font='9px sans-serif';ctxB.textAlign='left';
-  flexItems.slice(0,6).forEach(({cat})=>{
-    ctxB.fillStyle=cat.c;ctxB.fillRect(lxB,1,8,7);
-    ctxB.fillStyle=clrTxt;ctxB.fillText(cat.l.slice(0,10),lxB+10,8);
-    lxB+=ctxB.measureText(cat.l.slice(0,10)).width+18;
-    if(lxB>Wb-60) return;
-  });
+  // Legend B
+  const legB=document.getElementById('bg-chart-legend-b');
+  if(legB) legB.innerHTML=flexItems.slice(0,8).map(({cat})=>`<span style="display:flex;align-items:center;gap:4px;color:var(--mu)"><span style="width:10px;height:2px;border-radius:1px;background:${cat.c};display:inline-block"></span><span style="color:${cat.c}">${cat.l}</span></span>`).join('');
+
+  // Tooltip for chart B
+  cvB.onclick=(e)=>{
+    const rect=cvB.getBoundingClientRect();
+    const cx=e.clientX-rect.left;
+    // Find closest month
+    let bestI=0,bestD=9999;
+    months.forEach((_,i)=>{const d=Math.abs(cx-toXb(i));if(d<bestD){bestD=d;bestI=i;}});
+    if(bestD>stepB/2+12) return;
+    const tip=document.getElementById('bg-chart-tooltip');
+    if(!tip) return;
+    tip.style.display='block';
+    const lbl=mdata[bestI]?.label||months[bestI].mo+'/'+months[bestI].yr;
+    tip.innerHTML=`<div style="font-weight:700;margin-bottom:5px;color:var(--txt)">${lbl} — Flex</div>`+
+      lineHitmapB.map(({cat,limit,pts})=>{
+        const v=pts[bestI]?.v||0;
+        const over=limit&&v>limit?` <span style="color:var(--red)">+${fabs(v-limit)}</span>`:'';
+        return `<div style="display:flex;justify-content:space-between;gap:10px;color:${cat.c}"><span>${cat.l}</span><span>${fabs(v)}${over}</span></div>`;
+      }).join('');
+    const left=toXb(bestI)+cvB.offsetLeft+8;
+    tip.style.left=(left+160>cvB.offsetWidth?toXb(bestI)+cvB.offsetLeft-168:left)+'px';
+    tip.style.top='10px';
+  };
 }
 
 function renderBudget(){
@@ -4021,7 +4124,7 @@ function openBudgetDrill(catId,catLabel,period,isYearly){
   const ltFlex=document.getElementById('bdr-flex-type');
   if(ltSel) ltSel.value=limitType;
   if(ltFlex) ltFlex.value=existingLimit?.flexType||'flexible';
-  if(ltVal) ltVal.value=existingLimit&&existingLimit.amount?existingLimit.amount:'';
+  if(ltVal) ltVal.value=existingLimit?.amount||'';
   if(ltInfo){
     if(existingLimit) ltInfo.textContent=existingLimit.amount?`Aktuálny limit: ${fabs(existingLimit.amount)} (${limitType==='monthly'?'mesačný':'ročný'})`:'Kategória sledovaná (bez limitu)';
     else ltInfo.textContent='Žiadna sekcia — vyber sekciu a ulož';
@@ -4058,7 +4161,7 @@ function saveFlexLimitInline(catId, type, flexType, val){
   const amount=val===''||val===null?null:parseFloat(val)||0;
   const existing=budgetLimits.findIndex(l=>l.catId===catId&&l.type===type);
   if(existing>=0){budgetLimits[existing].amount=amount;budgetLimits[existing].flexType=flexType;}
-  else budgetLimits.push({id:'bl_'+Math.random().toString(36).slice(2),catId,type,amount:amount,flexType});
+  else budgetLimits.push({id:'bl_'+Math.random().toString(36).slice(2),catId,type,amount,flexType});
   saveD(); renderBudget();
 }
 
@@ -5375,11 +5478,6 @@ function recurRestoreWeeklyAuto(recId,yr,mo){
   renderRecurring(); renderBudget();
 }
 
-function recurUnblockMonth(recId,yr,mo){
-  // Remove block key (used for "paid in advance" unblock from inline button)
-  localStorage.removeItem('rec_block_'+recId+'_'+yr+'_'+mo);
-  renderRecurring(); renderBudget();
-}
 function recurClearPin(){
   if(!_rmRecId) return;
   const pinKey='rec_pin_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
@@ -5411,36 +5509,6 @@ function initRecurMonSel(){
 
 // ===== RECURRING HELPERS =====
 
-function getPinnedTxsForRec(rec){
-  // Scan localStorage for all pinned txs for this rec definition
-  const txs=[];
-  for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);
-    if(!k||!k.startsWith('rec_pin_'+rec.id+'_')) continue;
-    const txId=localStorage.getItem(k);
-    if(txId){const tx=TX.find(t=>t.id===txId);if(tx) txs.push(tx);}
-  }
-  return txs;
-}
-
-function getCurrentPeriodPaymentMonth(rec, yr, mo){
-  // Returns {yr, mo} of the payment month for the period containing (yr, mo)
-  const ref=getRefMonth(rec);
-  if(ref===undefined) return null;
-  const moIdx=mo-1;
-  if(rec.frequency==='yearly'){
-    if(moIdx>=ref) return {yr, mo:ref+1};
-    return {yr:yr-1, mo:ref+1};
-  }
-  if(rec.frequency==='quarterly'){
-    const offset=((moIdx-ref+12)%12)%3;
-    const payMoIdx=moIdx-offset;
-    if(payMoIdx<0) return {yr:yr-1, mo:payMoIdx+13};
-    return {yr, mo:payMoIdx+1};
-  }
-  return null;
-}
-
 function detectRefMonth(rec){
   const kw=(rec.keyword||'').toLowerCase();
   const months={};
@@ -5449,16 +5517,7 @@ function detectRefMonth(rec){
     if(!kw||mer.includes(kw)){const d=eDate(t)||t.date;if(d) months[d.getMonth()]=(months[d.getMonth()]||0)+1;}
   });
   const entries=Object.entries(months).sort((a,b)=>b[1]-a[1]);
-  if(entries.length) return parseInt(entries[0][0]);
-  // Fallback: detect from manually pinned transactions
-  const pinned=getPinnedTxsForRec(rec);
-  if(pinned.length){
-    const pm={};
-    pinned.forEach(t=>{const d=eDate(t)||t.date;if(d) pm[d.getMonth()]=(pm[d.getMonth()]||0)+1;});
-    const pe=Object.entries(pm).sort((a,b)=>b[1]-a[1]);
-    if(pe.length) return parseInt(pe[0][0]);
-  }
-  return undefined;
+  return entries.length?parseInt(entries[0][0]):undefined;
 }
 function getRefMonth(rec){return rec.refMonth!==undefined?rec.refMonth:detectRefMonth(rec);}
 function isPaymentMonth(rec,yr,mo){
@@ -5517,32 +5576,12 @@ function recurClearWeekly(recId,yr,mo){
   renderRecurring();renderBudget();
 }
 
-function calcHistoricalMesEq(rec, yr, mo){
-  // When amount is explicitly set → use it directly
+function calcHistoricalMesEq(rec){
+  // When amount is explicitly set → use it directly (reliable, user-defined)
+  // Historical average only for amount=0 (variable/unknown costs)
   if(rec.amount>0) return recMonthlyEq(rec);
 
-  // amount=0: for Q/Y use the pinned tx of the current period (exact, no averaging)
-  if(rec.frequency==='quarterly'||rec.frequency==='yearly'){
-    const div=rec.frequency==='quarterly'?3:12;
-    // If yr/mo known, look for pinned tx of this specific period first
-    if(yr&&mo){
-      const period=getCurrentPeriodPaymentMonth(rec,yr,mo);
-      if(period){
-        const txId=localStorage.getItem('rec_pin_'+rec.id+'_'+period.yr+'_'+period.mo);
-        const tx=txId?TX.find(t=>t.id===txId):null;
-        if(tx) return Math.abs(tx.amount)/div;
-      }
-    }
-    // Fallback: most recent pinned tx (for overview sections without yr/mo)
-    const pinned=getPinnedTxsForRec(rec);
-    if(pinned.length){
-      pinned.sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
-      return Math.abs(pinned[0].amount)/div;
-    }
-    return 0;
-  }
-
-  // monthly/weekly: keyword-based historical average
+  // amount=0: estimate from historical transactions
   const kw=(rec.keyword||'').toLowerCase();
   if(!kw) return 0;
   const txs=TX.filter(t=>{
@@ -5551,10 +5590,29 @@ function calcHistoricalMesEq(rec, yr, mo){
     return mer.includes(kw);
   });
   if(!txs.length) return 0;
-  const byMonth={};
-  txs.forEach(t=>{const k=mKey(eDate(t)||t.date);byMonth[k]=(byMonth[k]||0)+Math.abs(t.amount);});
-  const vals=Object.values(byMonth);
-  return vals.reduce((s,v)=>s+v,0)/vals.length;
+  if(rec.frequency==='monthly'||rec.frequency==='weekly'){
+    const byMonth={};
+    txs.forEach(t=>{const k=mKey(eDate(t)||t.date);byMonth[k]=(byMonth[k]||0)+Math.abs(t.amount);});
+    const vals=Object.values(byMonth);
+    return vals.reduce((s,v)=>s+v,0)/vals.length;
+  }
+  if(rec.frequency==='quarterly'){
+    const byQ={};
+    txs.forEach(t=>{
+      const d=eDate(t)||t.date; if(!d) return;
+      const q=d.getFullYear()+'-Q'+Math.ceil((d.getMonth()+1)/3);
+      byQ[q]=(byQ[q]||0)+Math.abs(t.amount);
+    });
+    const vals=Object.values(byQ);
+    return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length/3:0;
+  }
+  if(rec.frequency==='yearly'){
+    const byY={};
+    txs.forEach(t=>{const d=eDate(t)||t.date;if(!d) return;byY[d.getFullYear()]=(byY[d.getFullYear()]||0)+Math.abs(t.amount);});
+    const vals=Object.values(byY);
+    return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length/12:0;
+  }
+  return 0;
 }
 
 function renderRecurring(){
@@ -5576,8 +5634,11 @@ function renderRecurring(){
 
   let paid=0,pending=0,totalMes=0;
   const curMonKey=String(yr)+'-'+String(mo).padStart(2,'0');
-  const cards=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=curMonKey)&&(!r.endMonth||r.endMonth>=curMonKey)).map(rec=>{
-    const mesEq=calcHistoricalMesEq(rec,yr,mo);
+  const cards=recurDefs.filter(r=>r.active
+    &&(!r.startMonth||r.startMonth<=curMonKey)
+    &&(!r.endMonth||r.endMonth>=curMonKey)
+  ).map(rec=>{
+    const mesEq=calcHistoricalMesEq(rec); // historical avg, falls back to rec.amount/period
     const cat=rec.category?CAT[rec.category]:null;
     const catBadge=cat?`<span style="font-size:10px;color:${cat.c};flex-shrink:0;white-space:nowrap">${cat.l}</span>`:'';
     const pinKey='rec_pin_'+rec.id+'_'+yr+'_'+mo;
@@ -5645,10 +5706,8 @@ function renderRecurring(){
     const freqNote=isAmortized?` <span style="font-size:9px;color:var(--mu)">${freqLbl[rec.frequency]||''}</span>`:'';
     const paidSubNote=isPaid&&actualAmt&&isAmortized?` · zaplatené ${fabs(actualAmt)}`:'';
     const txBtn=matchTx?`<button onclick="event.stopPropagation();openDet('${matchTx.id}')" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--acc2);cursor:pointer;flex-shrink:0;white-space:nowrap">⧉ ${fabs(actualAmt)}</button>`:'';
-    const pinBtn=isBlocked
-      ?`<button onclick="recurUnblockMonth('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--mu);cursor:pointer;flex-shrink:0" title="Zrušiť vopred zaplatené">↺</button>`
-      :`<button onclick="recurManualMatch('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--mu);cursor:pointer;flex-shrink:0">${isPaid?'↻':'↩ priradiť'}</button>`;
-    return`<div style="display:flex;align-items:center;gap:7px;padding:8px 12px;border-bottom:1px solid var(--bd)"><span style="font-size:16px;flex-shrink:0;cursor:${matchTx?'pointer':'default'}" onclick="${matchTx?`openDet('${matchTx.id}')`:''}">${isPaid?'✅':'⏳'}</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${rec.name}${freqNote}</div><div style="font-size:10px;color:var(--mu)">${isPaid?'Zaplatené '+d+pinNote+paidSubNote:(isBlocked?'🔒 Zaplatené vopred':'Čakáme'+(rec.dayOfMonth?' (~'+rec.dayOfMonth+'.)':''))}</div></div>${catBadge}${txBtn}${pinBtn}<span style="font-family:var(--M);font-size:12px;font-weight:600;flex-shrink:0;min-width:48px;text-align:right;color:var(--txt)">${displayAmt}</span></div>`;
+    const pinBtn=`<button onclick="recurManualMatch('${rec.id}',${yr},${mo})" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid var(--bd);border-radius:3px;color:var(--mu);cursor:pointer;flex-shrink:0">${isPaid?'↻':'↩ priradiť'}</button>`;
+    return`<div style="display:flex;align-items:center;gap:7px;padding:8px 12px;border-bottom:1px solid var(--bd)"><span style="font-size:16px;flex-shrink:0;cursor:${matchTx?'pointer':'default'}" onclick="${matchTx?`openDet('${matchTx.id}')`:''}">${isPaid?'✅':'⏳'}</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${rec.name}${freqNote}</div><div style="font-size:10px;color:var(--mu)">${isPaid?'Zaplatené '+d+pinNote+paidSubNote:(isBlocked?'Bez priradenia':'Čakáme'+(rec.dayOfMonth?' (~'+rec.dayOfMonth+'.)':''))}</div></div>${catBadge}${txBtn}${pinBtn}<span style="font-family:var(--M);font-size:12px;font-weight:600;flex-shrink:0;min-width:48px;text-align:right;color:var(--txt)">${displayAmt}</span></div>`;
   }).join('');
 
   statusEl.innerHTML=`<div style="border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:6px"><div style="display:flex;gap:12px;padding:8px 12px;background:var(--s2);font-size:10px;color:var(--mu);flex-wrap:wrap"><span>✅ Zaplatené: <strong style="color:var(--grn)">${paid}</strong></span><span>⏳ Čakáme: <strong style="color:var(--acc)">${pending}</strong></span></div>${cards}</div>`;
@@ -5662,7 +5721,17 @@ function renderRecurring(){
     const cat=rec.category?CAT[rec.category]:null; const mesEq=calcHistoricalMesEq(rec);
     const ref=getRefMonth(rec);
     const refNote=(rec.frequency==='quarterly'||rec.frequency==='yearly')&&ref!==undefined?' · ref: '+MO_NAMES[ref]:'';
-    return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);flex-wrap:wrap"><div style="flex:1;min-width:120px"><div style="font-size:11px;font-weight:600">${rec.name}</div><div style="font-size:9px;color:var(--mu)">${rec.keyword||''}${rec.dayOfMonth?' · ~'+rec.dayOfMonth+'. každý mesiac':''}${refNote}</div></div><span style="font-size:10px;color:var(--mu)">${{monthly:'mes.',quarterly:'štvrťr.',yearly:'ročne',weekly:'týžd.'}[rec.frequency]||''}</span>${cat?`<span style="font-size:10px;color:${cat.c}">${cat.l}</span>`:''}<span style="font-family:var(--M);font-size:11px;color:var(--red);font-weight:600">${fabs(rec.amount)}</span>${rec.frequency!=='monthly'?`<span style="font-size:9px;color:var(--mu)">(${fabs(mesEq)}/mes)</span>`:''}<button class="btn" style="padding:2px 7px;font-size:10px" onclick="openRecurEdit('${rec.id}')">✎</button><button class="btn danger" style="padding:2px 7px;font-size:10px" onclick="deleteRecur('${rec.id}')">✕</button></div>`;
+    // Status badge based on startMonth/endMonth vs current yr/mo
+    const curMK=String(yr)+'-'+String(mo).padStart(2,'0');
+    const isExpired=rec.endMonth&&rec.endMonth<curMK;
+    const isFuture=rec.startMonth&&rec.startMonth>curMK;
+    const statusBadge=isExpired
+      ?`<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#e05c5c22;color:#e05c5c;border:1px solid #e05c5c55;flex-shrink:0">skončená</span>`
+      :isFuture
+      ?`<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--s2);color:var(--mu);border:1px solid var(--bd);flex-shrink:0">od ${rec.startMonth}</span>`
+      :'';
+    const rowOpacity=isExpired||isFuture?'opacity:.5;':'';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);flex-wrap:wrap;${rowOpacity}"><div style="flex:1;min-width:120px"><div style="font-size:11px;font-weight:600">${rec.name}</div><div style="font-size:9px;color:var(--mu)">${rec.keyword||''}${rec.dayOfMonth?' · ~'+rec.dayOfMonth+'. každý mesiac':''}${refNote}${rec.startMonth||rec.endMonth?' · '+[rec.startMonth?'od '+rec.startMonth:'',rec.endMonth?'do '+rec.endMonth:''].filter(Boolean).join(' '):''}</div></div>${statusBadge}<span style="font-size:10px;color:var(--mu)">${{monthly:'mes.',quarterly:'štvrťr.',yearly:'ročne',weekly:'týžd.'}[rec.frequency]||''}</span>${cat?`<span style="font-size:10px;color:${cat.c}">${cat.l}</span>`:''}<span style="font-family:var(--M);font-size:11px;color:${isExpired?'var(--mu)':'var(--red)'};font-weight:600">${fabs(rec.amount)}</span>${rec.frequency!=='monthly'?`<span style="font-size:9px;color:var(--mu)">(${fabs(mesEq)}/mes)</span>`:''}<button class="btn" style="padding:2px 7px;font-size:10px" onclick="openRecurEdit('${rec.id}')">✎</button><button class="btn danger" style="padding:2px 7px;font-size:10px" onclick="deleteRecur('${rec.id}')">✕</button></div>`;
   }).join('');
 }
 
