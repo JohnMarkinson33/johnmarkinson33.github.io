@@ -498,6 +498,9 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <option value="u">🔵 Neoverené</option>
       <option value="x">⊘ Vylúčené</option>
     </select>
+    <select id="f-tag" onchange="renderTx()" style="flex:1;min-width:120px">
+      <option value="">Všetky tagy</option>
+    </select>
     <!-- Date range picker -->
     <div style="position:relative;flex:1;min-width:130px">
       <button id="f-date-btn" onclick="toggleDatePicker(event)"
@@ -646,14 +649,22 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <div style="font-family:var(--H);font-size:20px;margin-bottom:4px">Analýza výdavkov</div>
     <div style="color:var(--mu);font-size:11px">Klikni na kategóriu v tabuľke pre detail transakcií</div>
   </div>
+  <div style="margin-bottom:10px">
+    <span style="font-size:10px;color:var(--mu);font-weight:600;letter-spacing:.5px">VYLÚČIŤ TAGY Z VÝPOČTU:</span>
+    <span id="an-excl-tags" style="display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:8px;vertical-align:middle"></span>
+    <span style="font-size:10px;color:var(--mu);margin-left:4px">(klikni na tag pre vylúčenie)</span>
+  </div>
   <div class="an-tabs">
     <button class="an-tab on" onclick="setAnView('monthly',this)">Mesačný prehľad</button>
     <button class="an-tab" onclick="setAnView('yearly',this)">Ročný prehľad</button>
+    <button class="an-tab" onclick="setAnView('tags',this)">🏷 Tagy</button>
   </div>
   <div class="cs">
     <div class="pivot-nav" id="pivot-nav"></div>
     <div class="pivot-wrap"><table class="pivot" id="pivot-tbl"></table></div>
   </div>
+  <!-- TAG REPORT -->
+  <div id="an-tag-report" style="display:none"></div>
   <!-- DRILL DOWN -->
   <div class="cs" id="an-drill" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -1042,6 +1053,17 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <input type="date" class="mi" id="md-date" oninput="document.getElementById('md-date-flag').style.display='inline';autoSaveDet()">
       <div class="ml">Poznámka</div>
       <input type="text" class="mi" id="md-note" placeholder="Vlastná poznámka..." oninput="autoSaveDet()">
+      <div class="ml" style="margin-top:8px">Tagy</div>
+      <div style="position:relative">
+        <div id="md-tags-wrap" style="background:var(--s2);border:1px solid var(--bd);border-radius:5px;padding:5px 7px;min-height:32px;cursor:text;display:flex;flex-wrap:wrap;align-items:center;gap:4px" onclick="document.getElementById('md-tag-inp').focus()">
+          <span id="md-tags-chips" style="display:contents"></span>
+          <input type="text" id="md-tag-inp" placeholder="+ pridaj tag..." autocomplete="off"
+            style="border:none;background:transparent;color:var(--txt);font-size:11px;outline:none;padding:2px 2px;min-width:90px;flex:1"
+            oninput="tagAC(this)" onkeydown="tagKD(event)" onfocus="tagAC(this)" onblur="setTimeout(()=>document.getElementById('md-tag-ac').style.display='none',200)">
+          <button onmousedown="event.preventDefault();tagAddFromInput()" style="border:none;background:transparent;color:var(--acc2);font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0" title="Pridaj tag">+</button>
+        </div>
+        <div id="md-tag-ac" style="display:none;position:absolute;left:0;right:0;top:100%;background:var(--s1);border:1px solid var(--bd);border-top:none;border-radius:0 0 5px 5px;z-index:50;max-height:120px;overflow-y:auto"></div>
+      </div>
       <div style="margin-bottom:10px">
         <button id="md-excl-btn" onclick="toggleExcluded()" style="font-size:11px;padding:5px 12px;border-radius:5px;border:1px solid var(--bd);background:transparent;color:var(--mu);cursor:pointer;width:100%;text-align:left" title="Vylúči transakciu zo všetkých analýz, grafov a štatistík">⊘ Vylúčiť z analýz</button>
       </div>
@@ -1824,10 +1846,10 @@ function go(nm) {
     const setV=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
     setV('tx-q',txFilters.q); setV('f-src',txFilters.src); setV('f-cat',txFilters.cat);
     setV('f-mon',txFilters.mon); setV('f-typ',txFilters.typ);
-    renderTx();
+    updateTagFilter(); renderTx();
   }
   if (nm==='rules') renderRules();
-  if (nm==='analyza') renderPivot();
+  if (nm==='analyza'){renderExclTagChips(); renderPivot();}
   if (nm==='budget') renderBudget();
   if (nm==='prehlady') initPrehlady();
 }
@@ -2045,7 +2067,7 @@ function drawInteractiveBars(canvasId,tooltipId,period,txsAll,col,height,getVal)
 }
 
 function rTimeChart(){
-  const expTx=TX.filter(t=>t.amount<0&&t.date&&!isCCRepayment(t)&&!t.excluded);
+  const expTx=TX.filter(t=>t.amount<0&&t.date&&!isCCRepayment(t)&&!t.excluded&&!(t.tags||[]).some(tag=>excludedTags.has(tag)));
   drawInteractiveBars('c-time','c-time-tip',period,expTx,'#5ea8d8',160,t=>Math.abs(t.amount));
 }
 
@@ -2423,6 +2445,203 @@ function updateDateLabel(){
   }
 }
 
+// ==================== TAGS ====================
+let excludedTags = new Set();
+
+function getAllTags(){
+  const s=new Set();
+  TX.forEach(t=>(t.tags||[]).forEach(tag=>s.add(tag)));
+  return s;
+}
+
+function renderMdTags(tx){
+  const chips=document.getElementById('md-tags-chips');
+  const inp=document.getElementById('md-tag-inp');
+  if(!chips||!inp) return;
+  chips.innerHTML=(tx.tags||[]).map(tag=>
+    `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--acc)22;border:1px solid var(--acc)55;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:600;color:var(--acc2)">
+      🏷 ${tag}
+      <span onmousedown="event.preventDefault();removeTag('${tag.replace(/'/g,"\\'")}');event.stopPropagation()" style="cursor:pointer;color:var(--mu);margin-left:2px;font-size:12px;line-height:1">×</span>
+    </span>`
+  ).join('');
+  inp.value='';
+  updateTagFilter();
+  renderExclTagChips();
+}
+
+function addTag(tag){
+  // uses detId global — always refers to currently open transaction
+  tag=(tag||'').trim();
+  if(!tag||!detId) return;
+  const tx=TX.find(t=>t.id===detId); if(!tx) return;
+  if(!tx.tags) tx.tags=[];
+  if(tx.tags.includes(tag)) return;
+  tx.tags.push(tag);
+  saveD();
+  renderMdTags(tx);
+}
+
+function removeTag(tag){
+  if(!detId) return;
+  const tx=TX.find(t=>t.id===detId); if(!tx||!tx.tags) return;
+  tx.tags=tx.tags.filter(t=>t!==tag);
+  if(!tx.tags.length) delete tx.tags;
+  saveD();
+  renderMdTags(tx);
+  excludedTags.delete(tag);
+  renderExclTagChips();
+}
+
+function tagAddFromInput(){
+  const inp=document.getElementById('md-tag-inp'); if(!inp) return;
+  const val=inp.value.trim();
+  if(val){addTag(val); inp.value=''; document.getElementById('md-tag-ac').style.display='none';}
+  inp.focus();
+}
+
+function tagAC(inp){
+  const val=(inp.value||'').trim();
+  const ac=document.getElementById('md-tag-ac'); if(!ac) return;
+  const tx=detId?TX.find(t=>t.id===detId):null;
+  const existing=new Set(tx?.tags||[]);
+  const valL=val.toLowerCase();
+  const all=[...getAllTags()].filter(t=>!existing.has(t)&&(!val||t.toLowerCase().includes(valL)));
+  const opts=val&&!existing.has(val)?[...new Set([val,...all])].slice(0,8):all.slice(0,8);
+  if(!opts.length){ac.style.display='none';return;}
+  ac.style.display='block';
+  ac.innerHTML=opts.map(t=>{
+    const isNew=!getAllTags().has(t);
+    return`<div onmousedown="event.preventDefault();addTag('${t.replace(/'/g,"\\'")}');document.getElementById('md-tag-ac').style.display='none'"
+      style="padding:6px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--bd)"
+      onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+      🏷 ${t}${isNew?` <span style="color:var(--mu);font-size:9px">nový</span>`:''}
+    </div>`;
+  }).join('');
+}
+
+function tagKD(e){
+  if(e.key==='Enter'){
+    e.preventDefault(); e.stopPropagation();
+    tagAddFromInput();
+  } else if(e.key===','){
+    e.preventDefault();
+    tagAddFromInput();
+  } else if(e.key==='Escape'){
+    document.getElementById('md-tag-ac').style.display='none';
+  }
+}
+
+function updateTagFilter(){
+  const sel=document.getElementById('f-tag'); if(!sel) return;
+  const cur=sel.value;
+  const tags=[...getAllTags()].sort();
+  sel.innerHTML='<option value="">Všetky tagy</option>'+
+    tags.map(t=>`<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('');
+}
+
+function renderExclTagChips(){
+  const el=document.getElementById('an-excl-tags'); if(!el) return;
+  const allTags=[...getAllTags()].sort();
+  el.innerHTML=allTags.map(tag=>{
+    const active=excludedTags.has(tag);
+    return `<span onclick="toggleExclTag('${tag.replace(/'/g,"\\'")}',this)" style="cursor:pointer;font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid ${active?'var(--red)':'var(--bd)'};background:${active?'rgba(224,92,92,.15)':'transparent'};color:${active?'var(--red)':'var(--mu)'};text-decoration:${active?'line-through':'none'}" title="${active?'Zahrnuté v analýze':'Klikni pre vylúčenie z výpočtu'}">🏷 ${tag}</span>`;
+  }).join('');
+}
+
+function toggleExclTag(tag){
+  if(excludedTags.has(tag)) excludedTags.delete(tag);
+  else excludedTags.add(tag);
+  renderExclTagChips();
+  renderPivot();
+}
+
+// ── Tag Report ────────────────────────────────────────────────────
+let _activeTagReport = null;
+
+function renderTagReport(){
+  const wrap=document.getElementById('an-tag-report'); if(!wrap) return;
+  document.getElementById('an-drill').style.display='none';
+  wrap.style.display='block';
+
+  const allTags=[...getAllTags()].sort();
+  if(!allTags.length){
+    wrap.innerHTML='<div style="color:var(--mu);padding:30px;text-align:center;font-size:12px">Žiadne tagy. Pridaj ich v detaile transakcií.</div>';
+    return;
+  }
+  if(!_activeTagReport||!allTags.includes(_activeTagReport)) _activeTagReport=allTags[0];
+
+  const selectorHtml='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+
+    allTags.map(tag=>{
+      const active=tag===_activeTagReport;
+      return`<button onclick="_activeTagReport='${tag.replace(/'/g,"\\'")}';renderTagReport()" style="font-size:11px;padding:4px 12px;border-radius:12px;border:1px solid ${active?'var(--acc2)':'var(--bd)'};background:${active?'var(--acc)22':'transparent'};color:${active?'var(--acc2)':'var(--mu)'};cursor:pointer;font-weight:${active?'700':'400'}">🏷 ${tag}</button>`;
+    }).join('')+'</div>';
+
+  const tag=_activeTagReport;
+  const txs=TX.filter(t=>(t.tags||[]).includes(tag)&&!isCCRepayment(t)&&!t.excluded)
+    .sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
+  const spent=txs.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
+  const income=txs.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
+  const net=income-spent;
+
+  const catBreak={};
+  txs.filter(t=>t.amount<0).forEach(t=>{
+    getTxCatAmounts(t).forEach(({category,amount})=>{
+      if(amount<0){const cid=category||'__none';catBreak[cid]=(catBreak[cid]||0)+Math.abs(amount);}
+    });
+  });
+  const catRows=Object.entries(catBreak).sort((a,b)=>b[1]-a[1]).map(([cid,amt])=>{
+    const c=CAT[cid]; const pct=spent>0?Math.round(amt/spent*100):0;
+    return`<div style="margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
+        <span style="color:${c?.c||'var(--mu)'};font-weight:600">${c?.l||'Nezaradené'}</span>
+        <span style="font-family:var(--M)">${fabs(amt)} <span style="color:var(--mu)">(${pct}%)</span></span>
+      </div>
+      <div style="height:5px;background:var(--s2);border-radius:3px"><div style="height:100%;width:${pct}%;background:${c?.c||'var(--mu)'};border-radius:3px"></div></div>
+    </div>`;
+  }).join('');
+
+  const dates=txs.map(t=>eDate(t)||t.date).filter(Boolean).sort((a,b)=>a-b);
+  const dateRange=dates.length?fd(dates[0])+' – '+fd(dates[dates.length-1]):'';
+
+  const byMonth={};
+  txs.forEach(t=>{const k=mKey(eDate(t)||t.date);if(k)(byMonth[k]=byMonth[k]||[]).push(t);});
+  const txListHtml=Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,mtxs])=>
+    `<div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.5px;padding:8px 0 4px;border-bottom:1px solid var(--bd);margin-bottom:4px">${m}</div>`+
+    mtxs.map(t=>{
+      const cat=t.category?CAT[t.category]:null; const neg=t.amount<0;
+      return`<div onclick="openDet('${t.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)22;cursor:pointer">
+        <div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.merchantOverride||t.merchant||'—'}</div>
+        ${t.noteOverride?'<div style="font-size:9px;color:var(--mu)">'+t.noteOverride+'</div>':''}</div>
+        ${cat?`<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:${cat.c}22;color:${cat.c};flex-shrink:0">${cat.l}</span>`:''}
+        <span style="font-family:var(--M);font-size:12px;font-weight:700;color:${neg?'var(--red)':'var(--grn)'};flex-shrink:0">${neg?'−':'+'}${fabs(Math.abs(t.amount))}</span>
+      </div>`;
+    }).join('')
+  ).join('');
+
+  const isExcl=excludedTags.has(tag);
+  wrap.innerHTML=selectorHtml+`<div class="cs">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--acc2);margin-bottom:3px">🏷 ${tag}</div>
+        <div style="font-size:10px;color:var(--mu)">${txs.length} transakcií · ${dateRange}</div>
+      </div>
+      <button onclick="toggleExclTag('${tag.replace(/'/g,"\\'")}');renderTagReport()" style="font-size:11px;padding:5px 12px;border-radius:5px;border:1px solid ${isExcl?'var(--red)':'var(--bd)'};background:${isExcl?'rgba(224,92,92,.1)':'transparent'};color:${isExcl?'var(--red)':'var(--mu)'};cursor:pointer">
+        ${isExcl?'✓ Vylúčený (klikni pre zahrnutie)':'⊘ Vylúčiť z prepočtu'}
+      </button>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px">
+      ${spent?`<div><div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Výdavky</div><div style="font-size:18px;font-weight:700;font-family:var(--M);color:var(--red)">−${fabs(spent)}</div></div>`:''}
+      ${income?`<div><div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Príjmy</div><div style="font-size:18px;font-weight:700;font-family:var(--M);color:var(--grn)">+${fabs(income)}</div></div>`:''}
+      ${spent||income?`<div><div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Bilancia</div><div style="font-size:18px;font-weight:700;font-family:var(--M);color:${net>=0?'var(--grn)':'var(--red)'}">${net>=0?'+':'−'}${fabs(Math.abs(net))}</div></div>`:''}
+    </div>
+    ${catRows?`<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Kategórie</div>${catRows}</div>`:''}
+    <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Transakcie</div>
+    ${txListHtml||'<div style="color:var(--mu);font-size:11px;padding:10px 0">Žiadne transakcie</div>'}
+  </div>`;
+}
+
+
+
 function renderTx(){
   if(!TX.length){
     document.getElementById('tx-hd').innerHTML='';
@@ -2435,6 +2654,7 @@ function renderTx(){
   const cat=document.getElementById('f-cat')?.value||'';
   const mon=document.getElementById('f-mon')?.value||'';
   const typ=document.getElementById('f-typ')?.value||'';
+  const tag_f=document.getElementById('f-tag')?.value||'';
 
   const txFrom=document.getElementById('f-from')?.value||'';
   const txTo=document.getElementById('f-to')?.value||'';
@@ -2451,6 +2671,7 @@ function renderTx(){
     if(txFrom){const d=eDate(t);if(!d||d<new Date(txFrom))return false;}
     if(txTo){const d=eDate(t);if(!d||d>new Date(txTo+'T23:59:59'))return false;}
     if(q){const s=((t.merchantOverride||t.merchant||'')+(t.description||'')+(t.place||'')+(t.iban||'')+(t.info||'')).toLowerCase();if(!s.includes(q.toLowerCase()))return false;}
+    if(tag_f&&!(t.tags||[]).includes(tag_f))return false;
     return true;
   }).sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
   document.getElementById('txcnt').textContent=fTx.length+' txn';
@@ -2481,7 +2702,8 @@ function renderTxPage(){
         const tags=(tx.shared?.people?.length?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(100,160,255,.18);color:var(--acc2);margin-left:5px;vertical-align:middle;letter-spacing:.3px">÷ zdieľaná</span>`:'')
           +(isDebtLink(tx)?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(91,193,124,.18);color:var(--grn);margin-left:5px;vertical-align:middle;letter-spacing:.3px">↩ vrátka</span>`:'')
           +(tx.excluded?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(180,80,80,.18);color:var(--red);margin-left:5px;vertical-align:middle;letter-spacing:.3px">⊘ vylúčená</span>`:'');
-        return`<td><div class="tm">${d}${tags}</div>${s?`<div class="ts">${s}</div>`:''}</td>`;
+        const txTagBadges=(tx.tags||[]).map(tag=>`<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:10px;background:var(--acc)22;color:var(--acc2);margin-left:4px;vertical-align:middle;border:1px solid var(--acc)44">🏷 ${tag}</span>`).join('');
+        return`<td><div class="tm">${d}${tags}${txTagBadges}</div>${s?`<div class="ts">${s}</div>`:''}</td>`;
       }
       if(col.id==='recipient')return`<td class="ts">${tx.merchant||'—'}</td>`;
       if(col.id==='info')return`<td class="ts">${tx.info||'—'}</td>`;
@@ -2635,6 +2857,7 @@ function openDet(id){
   }
   document.getElementById('md-mer').value=tx.merchantOverride||'';
   document.getElementById('md-note').value=tx.noteOverride||'';
+  renderMdTags(tx);  // tags chips
   // isSplatka — only relevant for credit card
   const splatkaRow=document.getElementById('md-splatka-row');
   const splatkaChk=document.getElementById('md-splatka');
@@ -4183,7 +4406,20 @@ function setAnView(v, btn){
   anView=v;
   document.querySelectorAll('.an-tab').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
-  renderPivot();
+  const tagRep=document.getElementById('an-tag-report');
+  const pivotCs=document.querySelector('#pg-analyza .cs');
+  const chartsEl=document.getElementById('an-charts');
+  if(v==='tags'){
+    if(pivotCs) pivotCs.style.display='none';
+    if(chartsEl) chartsEl.style.display='none';
+    document.getElementById('an-drill').style.display='none';
+    renderTagReport();
+  } else {
+    if(tagRep) tagRep.style.display='none';
+    if(pivotCs) pivotCs.style.display='';
+    if(chartsEl) chartsEl.style.display='';
+    renderPivot();
+  }
 }
 
 function renderPivot(){
@@ -4216,7 +4452,7 @@ function renderMonthlyPivot(){
     <button class="cy-arr" onclick="pivotNextMonth()">›</button>
     <span style="color:var(--mu);font-size:10px;margin-left:6px">klikni na riadok pre detail</span>`;
 
-  const mTx=TX.filter(t=>t.date&&eDate(t).getFullYear()===anYear&&eDate(t).getMonth()===anMonth&&!isCCRepayment(t)&&!t.excluded);
+  const mTx=TX.filter(t=>t.date&&eDate(t).getFullYear()===anYear&&eDate(t).getMonth()===anMonth&&!isCCRepayment(t)&&!t.excluded&&!(t.tags||[]).some(tag=>excludedTags.has(tag)));
   const catd=getCatD();
   const weeks=getWeeks(anYear,anMonth);
   const W=weeks.length;
@@ -4230,7 +4466,7 @@ function renderMonthlyPivot(){
     expTotals[c.id]=0; incTotals[c.id]=0;
   });
   mTx.forEach(tx=>{
-    const wi=weeks.findIndex(w=>{const d=eDate(tx);return d&&d>=w.s&&d<=w.e;});
+    const wi=weeks.findIndex(w=>{const d=eDate(tx);if(!d)return false;const dk=localDateKey(d);return dk>=localDateKey(w.s)&&dk<=localDateKey(w.e);});
     if(wi<0)return;
     getTxCatAmounts(tx).forEach(({category,amount})=>{
       const cid=category; if(!cid)return;
@@ -4472,6 +4708,7 @@ function drillCat(catId,catLabel,scope){
     const fullAmt=Math.abs(tx.amount);
     const splitNote=isSplit&&Math.abs(Math.abs(amt)-fullAmt)>0.01
       ? '<span style="font-size:9px;color:var(--mu);margin-left:4px">(z '+fabs(fullAmt)+')</span>' : '';
+    const tagBadges=(tx.tags||[]).map(t=>`<span style="display:inline-block;font-size:9px;padding:1px 4px;border-radius:8px;background:var(--acc)22;color:var(--acc2);border:1px solid var(--acc)44;margin-left:3px">🏷 ${t}</span>`).join('');
     const staticShare=tx.shared?.people?.length
       ? Math.max(0,fullAmt-tx.shared.people.reduce((s,p)=>s+(p.amount||0),0)) : null;
     const shareNote=!isSplit&&staticShare!==null&&Math.abs(staticShare-fullAmt)>0.01
@@ -4486,12 +4723,12 @@ function drillCat(catId,catLabel,scope){
     const retRows=rets.map(r=>{
       const rd=eDate(r.tx);const ds=rd?rd.getDate()+'.'+(rd.getMonth()+1)+'.':'';
       const rsrc=r.tx.source==='account'?'účet':'karta';
-      return '<tr style="cursor:pointer;opacity:.85" onclick="openDet(\'' +r.tx.id+ '\')">'+
-        '<td class="td">'+ds+'</td>'+
-        '<td class="tm">'+(r.tx.merchantOverride||r.tx.merchant||r.tx.description||'platba')+' <span style="font-size:9px;color:var(--grn)">↩ vrátka</span></td>'+
+      return '<tr style="cursor:pointer" onclick="openDet(\'' +r.tx.id+ '\')">'+
+        '<td class="td" style="color:var(--grn);font-size:10px;padding-left:18px">↳ '+ds+'</td>'+
+        '<td class="tm" style="font-size:10px;color:var(--grn);padding-left:12px;border-left:2px solid rgba(91,193,124,.3)">'+(r.tx.merchantOverride||r.tx.merchant||r.tx.description||'platba')+'</td>'+
         '<td class="ts">'+(r.tx.info||r.tx.description||r.tx.place||'—')+'</td>'+
         '<td><span class="src '+r.tx.source+'">'+rsrc+'</span></td>'+
-        '<td class="ta pos">+ '+fabs(r.linkAmt)+'</td></tr>';
+        '<td class="ta pos">+'+fabs(r.linkAmt)+'</td></tr>';
     }).join('');
     const icons=(isSplit?'<span style="font-size:9px;color:var(--acc2);margin-left:3px">✂</span>':'')+
       (tx.shared?.people?.length?'<span style="font-size:9px;color:var(--acc2);margin-left:3px">÷</span>':'');
@@ -4511,7 +4748,7 @@ function drillCat(catId,catLabel,scope){
     }).join(''):'';
     const expRow='<tr style="cursor:pointer" onclick="openDet(\'' +tx.id+ '\')">'+
       '<td class="td">'+fd(eDate(tx)||tx.date)+'</td>'+
-      '<td class="tm" style="max-width:180px">'+(tx.merchantOverride||tx.merchant||'—')+icons+'</td>'+
+      '<td class="tm" style="max-width:180px">'+(tx.merchantOverride||tx.merchant||'—')+icons+tagBadges+'</td>'+
       '<td class="ts">'+(tx.info||tx.description||tx.place||'—')+'</td>'+
       '<td><span class="src '+tx.source+'">'+(tx.source==='account'?'účet':'karta')+'</span></td>'+
       '<td class="ta '+(isPos?'pos':'neg')+'">'+(isPos?'+':'-')+' '+fabs(amt)+splitNote+shareNote+effectiveNote+'</td></tr>';
@@ -4570,7 +4807,7 @@ function renderAnCharts(){
   }
   // expTx: ALL transactions — positive ones in expense categories act as refunds (reduce expense)
   // Exclude isSplatka (credit card repayments) — they are internal transfers, not income
-  const expTx=TX.filter(t=>t.date&&!isCCRepayment(t)&&!t.excluded);
+  const expTx=TX.filter(t=>t.date&&!isCCRepayment(t)&&!t.excluded&&!(t.tags||[]).some(tag=>excludedTags.has(tag)));
   const incTx=TX.filter(t=>t.amount>0&&t.date&&!isCCRepayment(t)&&!t.excluded);
   renderAnPie(expTx,'an-pie','an-pie-tip','výdavky');
   renderAnPie(incTx,'an-pie-inc','an-pie-inc-tip','príjmy',true);
@@ -6020,18 +6257,22 @@ function _refreshLinkedSection(tx){
         const expDate=eDate(tx);
         const rangeStart=expDate?new Date(expDate.getFullYear(),expDate.getMonth()-2,1):null;
         const rangeEnd=expDate?new Date(expDate.getFullYear(),expDate.getMonth()+3,0):null;
-        // Show income txs with available (remaining) amount > 0
+        // Show all recent income txs (incl. already linked ones — user may need to add partial)
+        const alreadyLinkedToThisDebt=new Set(TX.flatMap(t=>getDebtLinks(t).filter(l=>l.expTxId===tx.id&&l.personName===p.name).map(()=>t.id)));
         const recentIncome=TX.filter(t=>{
           if(t.amount<=0) return false;
-          if(!rangeStart) return txMyAmount(t)>0.01;
-          const d=eDate(t); return d&&d>=rangeStart&&d<=rangeEnd&&txMyAmount(t)>0.01;
-        }).sort((a,b)=>(eDate(b)||0)-(eDate(a)||0)).slice(0,40);
+          if(alreadyLinkedToThisDebt.has(t.id)) return false; // already assigned to THIS debt+person
+          if(!rangeStart) return true;
+          const d=eDate(t); return d&&d>=rangeStart&&d<=rangeEnd;
+        }).sort((a,b)=>(eDate(b)||0)-(eDate(a)||0)).slice(0,50);
         const incOpts=recentIncome.map(t=>{
           const d=eDate(t);const ds=d?d.getDate()+'.'+(d.getMonth()+1)+'.':'';
           const desc=(t.merchantOverride||t.merchant||t.description||'—').slice(0,25);
           const avail=txMyAmount(t);
-          const availStr=Math.abs(avail-t.amount)>0.01?' (k dispoz.: '+fabs(avail)+')':'';
-          return`<option value="${t.id}">${desc} · ${ds} · ${fabs(t.amount)}${availStr}</option>`;
+          const alreadyUsed=Math.abs(avail-t.amount)>0.01;
+          const availStr=alreadyUsed?' (voľné: '+fabs(avail)+')':'';
+          const usedMark=alreadyUsed?'⚠ ':'';
+          return`<option value="${t.id}">${usedMark}${desc} · ${ds} · ${fabs(t.amount)}${availStr}</option>`;
         }).join('');
         html+=unlinked.map(p=>`
           <div style="display:flex;align-items:center;gap:6px;padding:5px 0;font-size:11px;border-top:1px solid var(--bd)">
@@ -6072,6 +6313,11 @@ function linkIncomeTxFromExpense(expTxId, personName, sel){
   const linkAmt=p?.amount?Math.min(p.amount,avail):avail;
   incTx.debtLinks=[...existing,{expTxId,personName,amount:linkAmt}];
   delete incTx.debtLink;
+  // Auto-clear category — a debtLink return shouldn't have its own category
+  if(incTx.category&&!incTx.categoryLocked){
+    incTx.category=undefined;
+    incTx.categoryLocked=false;
+  }
   _returnMap=null;
   saveD();
   const expTxObj=TX.find(t=>t.id===expTxId);
