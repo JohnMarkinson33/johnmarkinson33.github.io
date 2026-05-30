@@ -2707,23 +2707,19 @@ function renderTagReport(){
       }).join('')}
     </div>`:'';
 
-  // ── Timeline bar chart ────────────────────────────────────────
-  const maxSpent=Math.max(...groupKeys.map(k=>groups[k].spent),1);
-  const barW=Math.max(18,Math.min(48,Math.floor(280/groupKeys.length)));
-  const chartHtml=groupKeys.length>1?`
-    <div style="background:var(--s2);border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid var(--bd)">
-      <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Výdavky v čase</div>
-      <div style="display:flex;align-items:flex-end;gap:3px;height:80px;overflow-x:auto;padding-bottom:4px">
-        ${groupKeys.map(k=>{
-          const g=groups[k]; const h=Math.max(2,Math.round(g.spent/maxSpent*72));
-          const col=g.spent===maxSpent?'var(--red)':'var(--acc)';
-          return`<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:${barW}px" title="${g.label}: ${fabs(g.spent)}">
-            <div style="height:${h}px;width:${barW-3}px;background:${col};border-radius:2px 2px 0 0;opacity:.8"></div>
-            <div style="font-size:8px;color:var(--mu);margin-top:3px;transform:rotate(-30deg);white-space:nowrap;transform-origin:top center">${g.label}</div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`:'';
+  // ── Charts (canvas) ──────────────────────────────────────────
+  const chartHtml=`<div style="display:grid;grid-template-columns:${catEntries.length?'1fr 1fr':'1fr'};gap:12px;margin-bottom:14px">
+    ${catEntries.length?`<div style="background:var(--s2);border-radius:10px;padding:14px;border:1px solid var(--bd);position:relative">
+      <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Podiel kategórií</div>
+      <canvas id="tr-pie-cv" height="160" style="width:100%;display:block"></canvas>
+      <div id="tr-pie-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:6px 10px;font-size:11px;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 8px #0006"></div>
+    </div>`:''}
+    ${groupKeys.length>1?`<div style="background:var(--s2);border-radius:10px;padding:14px;border:1px solid var(--bd);position:relative">
+      <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Výdavky v čase</div>
+      <canvas id="tr-bar-cv" height="150" style="width:100%;display:block"></canvas>
+      <div id="tr-bar-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:6px 10px;font-size:11px;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 8px #0006"></div>
+    </div>`:''}
+  </div>`;
 
   // ── Transactions grouped ──────────────────────────────────────
   const txGroupHtml=`
@@ -2754,10 +2750,156 @@ function renderTagReport(){
       }).join('')}
     </div>`;
 
-  wrap.innerHTML=selectorHtml+headerHtml+catHtml+chartHtml+txGroupHtml;
+  wrap.innerHTML=selectorHtml+headerHtml+chartHtml+catHtml+txGroupHtml;
+  setTimeout(()=>renderTagCharts(catEntries,groupKeys,groups,spent,CAT),0);
   } catch(e) { wrap.innerHTML='<div style="padding:20px;color:var(--red);font-size:11px">Chyba: '+e.message+'</div>'; console.error('TagReport error:',e); }
 }
 
+
+function renderTagCharts(catEntries, groupKeys, groups, totalSpent, CAT){
+  const cs=getComputedStyle(document.documentElement);
+  const clrMu=cs.getPropertyValue('--mu').trim()||'#6a8399';
+  const clrTxt=cs.getPropertyValue('--txt').trim()||'#d0dce8';
+  const clrBd=cs.getPropertyValue('--bd').trim()||'#2a3e52';
+  const clrS1=cs.getPropertyValue('--s1').trim()||'#111e28';
+
+  // ── PIE CHART ───────────────────────────────────────────────
+  const pieCv=document.getElementById('tr-pie-cv');
+  const pieTip=document.getElementById('tr-pie-tip');
+  if(pieCv&&catEntries.length){
+    pieCv.width=pieCv.offsetWidth||pieCv.parentElement?.offsetWidth||280;
+    const pw=pieCv.width, ph=pieCv.height;
+    const cx=pw/2, cy=ph/2, R=Math.min(pw,ph)/2-10, r=R*0.55;
+    const pctx=pieCv.getContext('2d');
+    const total=catEntries.reduce((s,[,v])=>s+v,0)||1;
+
+    // Precompute arcs
+    const arcs=[]; let angle=-Math.PI/2;
+    catEntries.forEach(([cid,amt])=>{
+      const sweep=amt/total*Math.PI*2;
+      arcs.push({cid,amt,start:angle,end:angle+sweep,c:CAT[cid]?.c||clrMu,l:CAT[cid]?.l||'Nezaradené'});
+      angle+=sweep;
+    });
+
+    function drawPie(hovIdx){
+      pctx.clearRect(0,0,pw,ph);
+      arcs.forEach((a,i)=>{
+        const isHov=i===hovIdx;
+        pctx.beginPath(); pctx.moveTo(cx,cy);
+        pctx.arc(cx,cy,isHov?R+4:R,a.start,a.end);
+        pctx.closePath();
+        pctx.fillStyle=a.c+(isHov?'':'cc');
+        pctx.fill();
+        if(isHov){pctx.strokeStyle='var(--s2)';pctx.lineWidth=2;pctx.stroke();}
+      });
+      // Donut hole
+      pctx.beginPath(); pctx.arc(cx,cy,r,0,Math.PI*2);
+      pctx.fillStyle=cs.getPropertyValue('--s2').trim()||'#1a2c3a'; pctx.fill();
+      // Center text
+      if(hovIdx<0){
+        pctx.fillStyle=clrTxt; pctx.font=`bold 13px sans-serif`; pctx.textAlign='center';
+        pctx.fillText(fabs(totalSpent),cx,cy-4);
+        pctx.font=`9px sans-serif`; pctx.fillStyle=clrMu;
+        pctx.fillText('výdavky',cx,cy+10);
+      }
+    }
+    drawPie(-1);
+
+    function hitPie(e){
+      const rect=pieCv.getBoundingClientRect();
+      const ex=(e.clientX||e.touches?.[0]?.clientX)-rect.left;
+      const ey=(e.clientY||e.touches?.[0]?.clientY)-rect.top;
+      const dx=ex-cx, dy=ey-cy, dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<r||dist>R+6) return -1;
+      let a=Math.atan2(dy,dx); if(a<-Math.PI/2) a+=Math.PI*2;
+      return arcs.findIndex(arc=>a>=arc.start&&a<arc.end);
+    }
+
+    makePinnable(pieCv,{
+      tipEl:pieTip,
+      redrawFn:drawPie,
+      hitFn:hitPie,
+      tipFn:i=>{if(i<0)return null;const a=arcs[i];const pct=Math.round(a.amt/total*100);return`<span style="color:${a.c}">■</span> <b>${a.l}</b><br>−${fabs(a.amt)} (${pct}%)`;},
+      positionFn:(e,rect)=>{const x=(e.clientX||e.touches?.[0]?.clientX)-rect.left;return{left:x>pw/2?x-160:x+12,top:20};},
+      borderColorFn:i=>arcs[i]?.c
+    });
+  }
+
+  // ── BAR CHART ────────────────────────────────────────────────
+  const barCv=document.getElementById('tr-bar-cv');
+  const barTip=document.getElementById('tr-bar-tip');
+  if(barCv&&groupKeys.length>1){
+    barCv.width=barCv.offsetWidth||barCv.parentElement?.offsetWidth||280;
+    const bw=barCv.width, bh=barCv.height;
+    const bctx=barCv.getContext('2d');
+    const pL=8,pR=8,pT=10,pB=30;
+    const cW=bw-pL-pR, cH=bh-pT-pB;
+    const n=groupKeys.length;
+    const maxSpent=Math.max(...groupKeys.map(k=>groups[k].spent),1);
+    const barW=Math.max(6,Math.floor(cW/n*0.65));
+    const step=cW/n;
+    const toX=i=>pL+step*i+step/2;
+    const toY=v=>pT+cH*(1-v/maxSpent);
+    const clrBar=cs.getPropertyValue('--acc').trim()||'#5ea8d8';
+    const clrRed=cs.getPropertyValue('--red').trim()||'#e05c5c';
+
+    function drawBars(hovIdx){
+      bctx.clearRect(0,0,bw,bh);
+      // Grid
+      [0.25,0.5,0.75,1].forEach(f=>{
+        const y=toY(maxSpent*f);
+        bctx.strokeStyle=clrBd; bctx.lineWidth=.5;
+        bctx.beginPath(); bctx.moveTo(pL,y); bctx.lineTo(bw-pR,y); bctx.stroke();
+        bctx.fillStyle=clrMu; bctx.font='8px sans-serif'; bctx.textAlign='left';
+        const v=maxSpent*f; bctx.fillText(v>=1000?Math.round(v/100)/10+'k€':Math.round(v)+'€',pL,y-2);
+      });
+      // Bars
+      groupKeys.forEach((k,i)=>{
+        const g=groups[k]; const h=Math.max(2,cH*g.spent/maxSpent);
+        const x=toX(i)-barW/2, y=toY(g.spent);
+        const isHov=i===hovIdx;
+        bctx.fillStyle=isHov?clrRed:clrBar+(isHov?'':'bb');
+        bctx.beginPath();
+        bctx.roundRect?bctx.roundRect(x,y,barW,h,2):bctx.rect(x,y,barW,h);
+        bctx.fill();
+      });
+      // X labels (smart step)
+      const labelStep=Math.ceil(n/8);
+      bctx.fillStyle=clrMu; bctx.font='8px sans-serif'; bctx.textAlign='center';
+      groupKeys.forEach((k,i)=>{if(i%labelStep===0)bctx.fillText(groups[k].label,toX(i),bh-8);});
+    }
+    drawBars(-1);
+
+    function hitBar(e){
+      const rect=barCv.getBoundingClientRect();
+      const ex=(e.clientX||e.touches?.[0]?.clientX)-rect.left;
+      let best=-1,bestD=step/2+4;
+      groupKeys.forEach((_,i)=>{const d=Math.abs(ex-toX(i));if(d<bestD){bestD=d;best=i;}});
+      return best;
+    }
+
+    makePinnable(barCv,{
+      tipEl:barTip,
+      redrawFn:drawBars,
+      hitFn:hitBar,
+      tipFn:i=>{
+        if(i<0)return null;
+        const g=groups[groupKeys[i]];
+        const catBreakLocal={};
+        g.txs.filter(t=>t.amount<0).forEach(t=>{
+          getTxCatAmounts(t).forEach(({category,amount})=>{
+            if(amount<0){const cid=category||'__none';catBreakLocal[cid]=(catBreakLocal[cid]||0)+Math.abs(amount);}
+          });
+        });
+        const top=Object.entries(catBreakLocal).sort((a,b)=>b[1]-a[1]).slice(0,3)
+          .map(([cid,v])=>`<span style="color:${CAT[cid]?.c||clrMu}">■</span> ${CAT[cid]?.l||'Nezar.'} ${fabs(v)}`).join('<br>');
+        return`<b>${g.label}</b><br>−${fabs(g.spent)}${g.income?'<br>+'+fabs(g.income)+' príjem':''}${top?'<br><span style="color:'+clrMu+'">─────</span><br>'+top:''}`;
+      },
+      positionFn:(e,rect)=>{const x=(e.clientX||e.touches?.[0]?.clientX)-rect.left;return{left:x>bw/2?x-175:x+12,top:8};},
+      borderColorFn:()=>clrBar
+    });
+  }
+}
 
 function renderTx(){
   if(!TX.length){
