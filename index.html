@@ -332,7 +332,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v69</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('import')">↑ Import</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -774,6 +774,10 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <button class="pb on" id="bg-mode-flex" onclick="setBgMode('flex',this)" style="padding:5px 12px;font-size:11px">Flex</button>
       <button class="pb" id="bg-mode-classic" onclick="setBgMode('classic',this)" style="padding:5px 12px;font-size:11px">Klasický</button>
     </div>
+    <div class="pb-row" id="bg-flex-view-toggle" style="margin:0;gap:3px" title="Plán = limity a očakávané fixné · Reálne = skutočne minuté">
+      <button class="pb on" id="bg-fv-actual" onclick="setBgFlexView('actual',this)" style="padding:5px 12px;font-size:11px">Reálne</button>
+      <button class="pb" id="bg-fv-planned" onclick="setBgFlexView('planned',this)" style="padding:5px 12px;font-size:11px">Plán</button>
+    </div>
     <select id="bg-view" onchange="renderBudget()" style="min-width:100px;display:none">
       <option value="monthly">Mesačný</option>
       <option value="yearly">Ročný</option>
@@ -1134,7 +1138,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <button class="mc" onclick="cm('m-rule-edit')">✕</button>
     <div class="mt">Upraviť pravidlo</div>
     <div class="ml">Kľúčové slovo</div>
-    <input type="text" class="mi" id="re-kw" placeholder="napr. netflix">
+    <input type="text" class="mi" id="rule-kw" placeholder="napr. netflix">
     <div class="ml">Pole</div>
     <select class="mi" id="re-field">
       <option value="any">kdekoľvek</option>
@@ -1156,7 +1160,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <input type="number" class="mi" id="re-amt-val" placeholder="€" style="margin-bottom:0;display:none;flex:1" min="0" step="0.01">
     </div>
     <div class="ml">Kategória</div>
-    <select class="mi" id="re-cat"></select>
+    <select class="mi" id="rule-cat"></select>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px 10px;background:var(--s2);border-radius:5px">
       <input type="checkbox" id="re-splatka" style="width:15px;height:15px;accent-color:var(--grn);flex-shrink:0">
       <label for="re-splatka" style="font-size:12px;cursor:pointer">Splátka kreditnej karty</label>
@@ -1322,7 +1326,12 @@ function dTx(t) { return {...t, date: t.date ? new Date(t.date) : null, dateProc
 
 async function loadAll() {
   const tx = await Store.get('tx');
-  if (tx && tx.length) { TX = tx.map(dTx); document.getElementById('txc').textContent = TX.length + ' transakcií'; }
+  if (tx && tx.length) {
+    TX = tx.map(dTx);
+    // One-time migration: legacy singular debtLink -> debtLinks array
+    TX.forEach(t=>{ if(t.debtLink && !t.debtLinks){ t.debtLinks=[t.debtLink]; delete t.debtLink; } });
+    document.getElementById('txc').textContent = TX.length + ' transakcií';
+  }
   const del = await Store.get('deleted');
   if (del && del.length) deletedTX = del.map(dTx);
   const editLogRaw=await Store.get('editlog');
@@ -1845,19 +1854,24 @@ function go(nm) {
   document.getElementById('pg-'+nm).classList.add('on');
   const btn=document.querySelector(`.nb[onclick="go('${nm}')"]`);
   if(btn)btn.classList.add('on');
-  if (nm==='dashboard') rDash();
-  if (nm==='transactions') {
-    updateFilters();
-    // Restore persisted filters
-    const setV=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
-    setV('tx-q',txFilters.q); setV('f-src',txFilters.src); setV('f-cat',txFilters.cat);
-    setV('f-mon',txFilters.mon); setV('f-typ',txFilters.typ);
-    updateTagFilter(); renderTx();
+  try{
+    if (nm==='dashboard') rDash();
+    if (nm==='transactions') {
+      updateFilters();
+      const setV=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+      setV('tx-q',txFilters.q); setV('f-src',txFilters.src); setV('f-cat',txFilters.cat);
+      setV('f-mon',txFilters.mon); setV('f-typ',txFilters.typ);
+      updateTagFilter(); renderTx();
+    }
+    if (nm==='rules') renderRules();
+    if (nm==='analyza'){renderExclTagChips(); renderPivot();}
+    if (nm==='budget') renderBudget();
+    if (nm==='prehlady') initPrehlady();
+  }catch(e){
+    console.error('go('+nm+')',e);
+    const pg=document.getElementById('pg-'+nm);
+    if(pg) pg.insertAdjacentHTML('beforeend','<div style="color:var(--red);font-size:12px;padding:20px;text-align:center">⚠ Chyba pri otvorení: '+(e&&e.message||e)+'</div>');
   }
-  if (nm==='rules') renderRules();
-  if (nm==='analyza'){renderExclTagChips(); renderPivot();}
-  if (nm==='budget') renderBudget();
-  if (nm==='prehlady') initPrehlady();
 }
 
 // ==================== FORMAT ====================
@@ -3612,24 +3626,24 @@ let _editRuleId=null;
 function openRuleEdit(id){
   const r=rules.find(x=>x.id===id);if(!r)return;
   _editRuleId=id;
-  document.getElementById('re-kw').value=r.keyword||'';
+  document.getElementById('rule-kw').value=r.keyword||'';
   document.getElementById('re-field').value=r.field||'any';
   document.getElementById('re-amt-op').value=r.amtOp||'';
   const amtVal=document.getElementById('re-amt-val');
   amtVal.value=r.amtVal||'';
   amtVal.style.display=r.amtOp?'':'none';
-  document.getElementById('re-cat').innerHTML='<option value="">— bez kategórie</option>'+getCatD().map(c=>`<option value="${c.id}"${c.id===r.category?' selected':''}>${c.l}</option>`).join('');
+  document.getElementById('rule-cat').innerHTML='<option value="">— bez kategórie</option>'+getCatD().map(c=>`<option value="${c.id}"${c.id===r.category?' selected':''}>${c.l}</option>`).join('');
   document.getElementById('re-splatka').checked=!!r.isSplatka;
   document.getElementById('m-rule-edit').classList.add('on');
-  setTimeout(()=>document.getElementById('re-kw').focus(),80);
+  setTimeout(()=>document.getElementById('rule-kw').focus(),80);
 }
 function saveRuleEdit(){
   const r=rules.find(x=>x.id===_editRuleId);if(!r)return;
-  const kw=(document.getElementById('re-kw').value||'').trim().toLowerCase();
+  const kw=(document.getElementById('rule-kw').value||'').trim().toLowerCase();
   if(!kw){alert('Zadaj kľúčové slovo');return;}
   r.keyword=kw;
   r.field=document.getElementById('re-field').value;
-  r.category=document.getElementById('re-cat').value;
+  r.category=document.getElementById('rule-cat').value;
   const amtOp=document.getElementById('re-amt-op').value;
   r.amtOp=amtOp||undefined;
   r.amtVal=amtOp?parseFloat(document.getElementById('re-amt-val').value)||undefined:undefined;
@@ -3965,6 +3979,7 @@ function sparklineSVG(vals,color,w=60,h=24){
 // ===================== FLEX BUDGET =====================
 
 let bgMode='flex'; // 'flex' | 'classic'
+let bgFlexView='actual'; // 'actual' | 'planned' — summary bar mode
 
 function setBgMode(mode,btn){
   bgMode=mode;
@@ -3972,9 +3987,24 @@ function setBgMode(mode,btn){
   btn.classList.add('on');
   renderBudget();
 }
+function setBgFlexView(v,btn){
+  bgFlexView=v;
+  document.querySelectorAll('#bg-fv-actual,#bg-fv-planned').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderFlexBudget();
+}
 
 function renderFlexBudget(){
-  const bgMon=document.getElementById('bg-mon')?.value; if(!bgMon) return;
+  const bgMon=document.getElementById('bg-mon')?.value;
+  if(!bgMon){
+    const g=document.getElementById('bg-flex-grid');
+    const n=(typeof TX!=="undefined")?TX.length:0;
+    const proto=(location.protocol||'');
+    const hostHint=(proto==='content:'||proto==='file:')?'<br><br><span style="color:var(--red)">⚠ Appka beží z '+proto+' — localStorage nemusí byť dostupný. Nahraj súbor na HTTPS (Netlify Drop / GitHub Pages) a otvor cez https://…</span>':'';
+    if(g) g.innerHTML='<div style="color:var(--mu);font-size:12px;padding:24px 8px;text-align:center;line-height:1.7">Žiadne dáta pre Budget.<br><span style="font-size:10px">načítaných transakcií: '+n+'</span>'+(n>0?'<br>(transakcie sú, ale chýba mesiac — daj vedieť)':'<br>Naimportuj transakcie v záložke Import.')+hostHint+'</div>';
+    const bar=document.getElementById('bg-flex-bar'); if(bar) bar.innerHTML='';
+    return;
+  }
   const [yr,mo]=bgMon.split('-').map(Number);
   const now=new Date();
   const isCurrentMonth=bgMon===mKey(now);
@@ -4048,6 +4078,13 @@ function renderFlexBudget(){
       .reduce((sss,{amount})=>sss+Math.abs(amount),0),0);
     return s+mspent;
   },0);
+  // Planned vs Actual totals for the summary bar (consistent per mode)
+  const plannedFixed=fixedItems.reduce((s,x)=>{
+    const isAm=x.rec.frequency==='quarterly'||x.rec.frequency==='yearly';
+    return s+(isAm?x.mesEq:(x.rec.amount>0?x.rec.amount:x.mesEq));
+  },0);
+  const actualFixed=fixedItems.reduce((s,x)=>s+(x.isPaid&&x.actualAmt?x.actualAmt:0),0);
+  const plannedIrreg=irregItems.reduce((s,x)=>s+(x.mesEq||0),0);
   const remainder=monthInc-fixedTotal-flexTotal-irregMonthSpent;
 
   // --- Summary bar ---
@@ -4057,16 +4094,22 @@ function renderFlexBudget(){
       <div style="font-size:9px;color:var(--mu);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;white-space:nowrap">${label}</div>
       <div style="font-size:13px;font-weight:700;font-family:var(--M);color:${cls};white-space:nowrap">${val}</div>
     </div>`;
-    const savingsRate=monthInc>0?Math.round((1-(fixedTotal+flexTotal)/monthInc)*100):0;
+    const planned=bgFlexView==='planned';
+    // Consistent per mode: Plán = expected fixed + flexible LIMITS + irregular mesEq · Reálne = paid fixed + spent flexible + spent irregular
+    const fFix=planned?plannedFixed:actualFixed;
+    const fFlex=planned?flexLimitTotal:flexTotal;
+    const fIrr=planned?plannedIrreg:irregMonthSpent;
+    const fRem=monthInc-fFix-fFlex-fIrr;
+    const savingsRate=monthInc>0?Math.round((1-(fFix+fFlex+fIrr)/monthInc)*100):0;
+    const op=t=>`<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">${t}</div>`;
     bar.innerHTML=
-      chip('Príjmy','+'+fabs(monthInc),'var(--grn)')+
-      `<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">−</div>`+
-      chip('Fixné',fabs(fixedTotal),'#e05c5c')+
-      `<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">−</div>`+
-      chip('Flexible',fabs(flexTotal),'#4a9fd4')+
-      (irregMonthSpent>0?`<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">−</div>`+chip('Nepravid.',fabs(irregMonthSpent),'#50c8a0'):'')+
-      `<div style="padding:4px 5px;color:var(--mu);font-size:14px;display:flex;align-items:center">=</div>`+
-      chip('Zostatok',fabs(Math.abs(remainder)),remainder>=0?'var(--grn)':'var(--red)')+
+      `<div style="width:100%;text-align:center;font-size:9px;color:var(--mu);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">${planned?'Plánovaný rozpočet (limity + očakávané)':'Reálny stav (skutočne minuté)'}</div>`+
+      chip('Príjmy','+'+fabs(monthInc),'var(--grn)')+op('−')+
+      chip(planned?'Fixné (plán)':'Fixné',fabs(fFix),'#e05c5c')+op('−')+
+      chip(planned?'Flexible (limit)':'Flexible',fabs(fFlex),'#4a9fd4')+
+      (fIrr>0?op('−')+chip('Nepravid.',fabs(fIrr),'#50c8a0'):'')+
+      op('=')+
+      chip('Zostatok',fabs(Math.abs(fRem)),fRem>=0?'var(--grn)':'var(--red)')+
       (monthInc>0?`<div style="display:flex;flex-direction:column;align-items:center;padding:6px 10px"><div style="font-size:9px;color:var(--mu);text-transform:uppercase;margin-bottom:2px">Úspora</div><div style="font-size:13px;font-weight:700;font-family:var(--M);color:${savingsRate>=20?'var(--grn)':savingsRate>=10?'var(--acc)':'var(--red)'}">${savingsRate}%</div></div>`:'');
   }
 
@@ -4456,24 +4499,63 @@ function renderBudgetCharts(yr, mo, numMonths, flexItems, irregItems, fixedTotal
   };
 }
 
+function ensureBudgetMonths(){
+  // Populate bg-mon / bg-yr from TX if empty (decoupled from Transactions tab visit)
+  const bgMon=document.getElementById('bg-mon');
+  if(bgMon && bgMon.options.length===0){
+    const months=[...new Set(TX.map(t=>mKey(eDate(t))).filter(Boolean))].sort().reverse();
+    bgMon.innerHTML=months.map(m=>`<option value="${m}">${m}</option>`).join('');
+    if(months.length) bgMon.value=months[0];
+  }
+  const bgYr=document.getElementById('bg-yr');
+  if(bgYr && bgYr.options.length===0){
+    const years=[...new Set(TX.map(t=>t.date?.getFullYear()).filter(Boolean))].sort().reverse();
+    bgYr.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+    if(years.length) bgYr.value=years[0];
+  }
+}
 function renderBudget(){
+  try{ _renderBudgetCore(); }
+  catch(e){
+    console.error('renderBudget',e);
+    const g=document.getElementById('bg-flex-grid');
+    const cg=document.getElementById('bg-grid');
+    const target=g||cg;
+    if(target){ target.style.display='block';
+      target.innerHTML='<div style="color:var(--red);font-size:12px;padding:24px;text-align:center;line-height:1.7">⚠ Chyba pri vykreslení Budgetu:<br><b>'+(e&&e.message||e)+'</b><br><span style="color:var(--mu);font-size:10px">transakcií: '+(typeof TX!=="undefined"?TX.length:"?")+'</span></div>';
+    }
+  }
+}
+function _renderBudgetCore(){
+  ensureBudgetMonths();
   // Flex vs Classic mode
   const flexGrid=document.getElementById('bg-flex-grid');
   const classGrid=document.getElementById('bg-grid');
   const flexSummary=document.getElementById('bg-flex-summary');
   const bgViewSel=document.getElementById('bg-view');
+  const fvToggle=document.getElementById('bg-flex-view-toggle');
   if(bgMode==='flex'){
     if(flexGrid) flexGrid.style.display='block';
     if(classGrid) classGrid.style.display='none';
     if(flexSummary) flexSummary.style.display='block';
     if(bgViewSel) bgViewSel.style.display='none';
+    if(fvToggle) fvToggle.style.display='flex';
   } else {
     if(flexGrid) flexGrid.style.display='none';
     if(classGrid) classGrid.style.display='grid';
     if(flexSummary) flexSummary.style.display='none';
     if(bgViewSel) bgViewSel.style.display='';
+    if(fvToggle) fvToggle.style.display='none';
   }
-  if(bgMode==='flex'){renderFlexBudget();return;}
+  if(bgMode==='flex'){
+    try{ renderFlexBudget(); }
+    catch(e){
+      console.error('renderFlexBudget',e);
+      const g=document.getElementById('bg-flex-grid');
+      if(g) g.innerHTML='<div style="color:var(--red);font-size:11px;padding:20px;text-align:center">Chyba pri vykreslení Flex budgetu: '+(e.message||e)+'</div>';
+    }
+    return;
+  }
 
   const view=document.getElementById('bg-view')?.value||'monthly';
   const bgMon=document.getElementById('bg-mon');
@@ -4844,12 +4926,16 @@ function renderYearlyPivot(){
   const expMoTotals=Array(12).fill(0),incMoTotals=Array(12).fill(0);
   catd.forEach(c=>{expMatrix[c.id]=Array(12).fill(0);incMatrix[c.id]=Array(12).fill(0);expTotals[c.id]=0;incTotals[c.id]=0;});
   yTx.forEach(tx=>{
-    const mo=eDate(tx)?.getMonth();const cid=tx.category;if(mo==null||!cid)return;
-    if(tx.amount<0){
-      if(expMatrix[cid]!==undefined){expMatrix[cid][mo]+=Math.abs(tx.amount);expTotals[cid]+=Math.abs(tx.amount);expMoTotals[mo]+=Math.abs(tx.amount);}
-    } else {
-      if(incMatrix[cid]!==undefined){incMatrix[cid][mo]+=tx.amount;incTotals[cid]+=tx.amount;incMoTotals[mo]+=tx.amount;}
-    }
+    const mo=eDate(tx)?.getMonth();if(mo==null)return;
+    // Use getTxCatAmounts → respects splits + myShare (shared/debtLink), consistent with weekly pivot
+    getTxCatAmounts(tx).forEach(({category,amount})=>{
+      const cid=category; if(!cid)return;
+      if(amount<0){
+        if(expMatrix[cid]!==undefined){expMatrix[cid][mo]+=Math.abs(amount);expTotals[cid]+=Math.abs(amount);expMoTotals[mo]+=Math.abs(amount);}
+      } else {
+        if(incMatrix[cid]!==undefined){incMatrix[cid][mo]+=amount;incTotals[cid]+=amount;incMoTotals[mo]+=amount;}
+      }
+    });
   });
 
   // Second pass: attribute debtLink income to the expense's category
@@ -5655,15 +5741,22 @@ function updateBadges(){
 
 // ==================== PREHĽADY ====================
 function initPrehlady(){
-  const months=[...new Set(TX.map(t=>mKey(eDate(t))).filter(Boolean))].sort().reverse();
-  const opts=months.map(m=>`<option value="${m}">${m}</option>`).join('');
-  const ca=document.getElementById('cmp-a');
-  const cb=document.getElementById('cmp-b');
-  if(ca){ca.innerHTML=opts;if(months.length>0)ca.value=months[0];}
-  if(cb){cb.innerHTML=opts;if(months.length>1)cb.value=months[1];}
-  renderComparison();
-  renderSavings();
-  initRecurMonSel(); renderRecurring();
+  try{
+    const months=[...new Set(TX.map(t=>{const d=eDate(t);return d?mKey(d):null;}).filter(Boolean))].sort().reverse();
+    const opts=months.map(m=>`<option value="${m}">${m}</option>`).join('');
+    const ca=document.getElementById('cmp-a');
+    const cb=document.getElementById('cmp-b');
+    if(ca){ca.innerHTML=opts;if(months.length>0)ca.value=months[0];}
+    if(cb){cb.innerHTML=opts;if(months.length>1)cb.value=months[1];}
+  }catch(e){console.error('initPrehlady setup',e);}
+  // Each section isolated: one failing part must not blank the whole tab
+  try{renderComparison();}catch(e){console.error('renderComparison',e);}
+  try{renderSavings();}catch(e){console.error('renderSavings',e);}
+  try{initRecurMonSel(); renderRecurring();}catch(e){
+    console.error('renderRecurring',e);
+    const rl=document.getElementById('recur-status');
+    if(rl) rl.innerHTML='<div style="color:var(--red);font-size:11px;padding:12px">Chyba pravidelných platieb: '+(e.message||e)+'</div>';
+  }
 }
 
 // COMPARISON
