@@ -183,9 +183,11 @@ canvas{display:block;width:100%;max-width:100%}
 .tbl tr:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .tbl tr:last-child td{border-bottom:none}
 .td{color:var(--mu);font-size:10px;white-space:nowrap}
-.tm{font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.tm{font-weight:500;font-size:12px;display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-width:0}.tm-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:40px;flex-shrink:1}
 .ts{color:var(--mu);font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ta{font-weight:600;text-align:right;white-space:nowrap;font-size:12px}
+.cr{position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize;z-index:2;user-select:none;-webkit-user-select:none}
+.cr:hover,.cr:active{background:var(--acc)55}
 .ta.pos{color:var(--grn)}.ta.neg{color:var(--red)}
 .src{font-size:9px;padding:2px 6px;border-radius:2px;font-weight:700;letter-spacing:.5px}
 .src.account{background:rgba(96,200,240,.13);color:var(--acc3)}
@@ -552,6 +554,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <button class="icon-b" onclick="openColCfg()" title="Stĺpce">⚙</button>
     <button class="icon-b" onclick="openDeletedModal()" title="Zmazané transakcie" style="color:var(--mu)">🗑</button>
     <button class="icon-b" onclick="openEditedModal()" title="História úprav" style="color:var(--mu)">📝</button>
+    <button class="icon-b" id="bulk-mode-btn" onclick="toggleBulkMode()" title="Hromadná editácia" style="color:var(--mu)">☑</button>
     <button class="icon-b" onclick="openCatEditModal()" title="Nová kategória" style="color:var(--acc)">＋🏷</button>
     <span style="color:var(--mu);font-size:10px;margin-left:4px" id="txcnt"></span>
   </div>
@@ -1064,6 +1067,10 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <input type="date" class="mi" id="md-date" oninput="document.getElementById('md-date-flag').style.display='inline';autoSaveDet()">
       <div class="ml">Poznámka</div>
       <input type="text" class="mi" id="md-note" placeholder="Vlastná poznámka..." oninput="autoSaveDet()">
+      <div id="md-iban-name-wrap" style="display:none">
+        <div class="ml" style="margin-top:8px">👤 Meno kontaktu <span id="md-iban-label" style="font-size:9px;color:var(--mu)"></span></div>
+        <input type="text" class="mi" id="md-iban-name" placeholder="Meno / firma (platí pre všetky txn s týmto IBAN)..." oninput="saveIbanNameFromDet()">
+      </div>
       <div class="ml" style="margin-top:8px">Tagy</div>
       <div style="position:relative">
         <div id="md-tags-wrap" style="background:var(--s2);border:1px solid var(--bd);border-radius:5px;padding:5px 7px;min-height:32px;cursor:text;display:flex;flex-wrap:wrap;align-items:center;gap:4px" onclick="document.getElementById('md-tag-inp').focus()">
@@ -1351,6 +1358,8 @@ async function loadAll() {
     (savedBuiltin || []).forEach(c => BUILTIN_CATS.push(c));
   }
   visCols = (await Store.get('cols')) || ['date','main','place','source','cat','amount'];
+  colWidths = (await Store.get('colWidths')) || {};
+  ibanNames = (await Store.get('ibanNames')) || {};
   const dhArr = await Store.get('dethidden');
   if (dhArr) detFieldsHidden = new Set(dhArr);
   const ccl = await Store.get('cclim');
@@ -1360,6 +1369,11 @@ async function loadAll() {
 
 // ==================== STATE ====================
 let TX=[], deletedTX=[], editLog=[], budgets={}, budgetLimits=[], openingBalance=0, rules=[], customCats=[], visCols=['date','main','place','source','cat','amount'];
+let colWidths={};  // persisted column widths for resizing
+let ibanNames={};  // {iban: displayName} global contact book
+let _crCol=null,_crX=0,_crW=0; // column resize state
+let bulkMode=false, bulkSelected=new Set(); // bulk select mode
+let _cpBulkMode=false; // cat picker called from bulk action bar
 let recurDefs=[];
 let detFieldsHidden = new Set(); // field labels to hide in detail modal
 let pend = {account:[], credit_card:[]}, period = 'month', txPage = 1, txPgSize = 30, txLoadedCount = 0, fTx = [], detId = null;
@@ -1739,6 +1753,116 @@ function cycDate(tx) { return tx.source==='credit_card' && tx.dateProcParsed ? t
 function localDateKey(d){ return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:''; }
 
 // Identify credit card repayment from main account — exclude from expenses
+// ── BULK SELECTION MODE ─────────────────────────────────────────────────────
+function toggleBulkMode(){
+  bulkMode=!bulkMode; bulkSelected.clear();
+  const bar=document.getElementById('bulk-bar');
+  bar.style.display=bulkMode?'flex':'none';
+  const btn=document.getElementById('bulk-mode-btn');
+  if(btn){btn.style.color=bulkMode?'var(--acc2)':'var(--mu)';btn.style.background=bulkMode?'var(--acc)22':'';}
+  const _btr=document.getElementById('bulk-tag-picker'); if(_btr) _btr.style.display='none';
+  renderTxPage();
+  if(bulkMode) _updateBulkBar();
+}
+
+function _bulkToggle(id){
+  if(bulkSelected.has(id)) bulkSelected.delete(id); else bulkSelected.add(id);
+  const row=document.querySelector(`#tx-bd tr[data-txid="${id}"]`);
+  if(row){
+    const cb=row.querySelector('input[type=checkbox]'); if(cb) cb.checked=bulkSelected.has(id);
+    row.style.outline=bulkSelected.has(id)?'2px solid var(--acc)':'';
+    row.style.outlineOffset=bulkSelected.has(id)?'-2px':'';
+  }
+  _updateBulkBar();
+}
+
+function _updateBulkBar(){
+  const n=bulkSelected.size;
+  const cnt=document.getElementById('bulk-count');
+  if(cnt) cnt.textContent=n===0?'0 vybraných':n===1?'1 vybraná':n<5?`${n} vybrané`:`${n} vybraných`;
+  const dis=n===0;
+  ['bulk-apply-cat','bulk-tag-btn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.opacity=dis?'.4':'1';});
+}
+
+function bulkSelectAll(){
+  const visible=document.querySelectorAll('#tx-bd tr[data-txid]');
+  const allVis=[...visible].map(r=>r.dataset.txid);
+  const allIn=allVis.every(id=>bulkSelected.has(id));
+  allVis.forEach(id=>allIn?bulkSelected.delete(id):bulkSelected.add(id));
+  renderTxPage(); _updateBulkBar();
+}
+
+function bulkApplyCat(){
+  if(!bulkSelected.size) return;
+  _cpBulkMode=true;
+  renderCPList();
+  // Use setTimeout so click event propagates first, THEN picker appears
+  setTimeout(()=>{
+    const p=document.getElementById('cat-picker');
+    p.style.cssText+='display:block;transform:translate(-50%,-50%);top:50%;left:50%';
+  },10);
+}
+
+function _toggleBulkTagInput(){
+  if(!bulkSelected.size) return;
+  const pk=document.getElementById('bulk-tag-picker');
+  if(pk.style.display==='block'){pk.style.display='none';return;}
+  // Populate with existing tags
+  const allTags=[...getAllTags()].sort();
+  document.getElementById('bulk-tag-list').innerHTML=
+    allTags.length?allTags.map(t=>`<div class="cp-item" onclick="_bulkTagPick('${t.replace(/'/g,"\'")}')">🏷 ${t}</div>`).join('')
+    :'<div style="padding:8px 10px;font-size:11px;color:var(--mu)">Žiadne tagy. Zadaj nový nižšie.</div>';
+  document.getElementById('bulk-tag-new').value='';
+  // Position above bulk bar
+  const bar=document.getElementById('bulk-bar');
+  const top=bar.getBoundingClientRect().top;
+  pk.style.bottom=(window.innerHeight-top+6)+'px';
+  pk.style.left='50%'; pk.style.transform='translateX(-50%)';
+  setTimeout(()=>{pk.style.display='block';document.getElementById('bulk-tag-new').focus();},10);
+}
+
+function _bulkTagPick(tag){
+  document.getElementById('bulk-tag-picker').style.display='none';
+  let changed=0;
+  bulkSelected.forEach(id=>{
+    const tx=TX.find(t=>t.id===id); if(!tx) return;
+    if(!tx.tags) tx.tags=[];
+    if(!tx.tags.includes(tag)){tx.tags.push(tag);changed++;}
+  });
+  if(changed){saveD(); renderTxPage(); updateTagFilter(); updateBadges();}
+  const cnt=document.getElementById('bulk-count');
+  if(cnt&&changed){const old=cnt.textContent;cnt.textContent=`🏷 "${tag}" → ${changed} txn`;setTimeout(()=>cnt.textContent=old,2500);}
+}
+
+function _bulkTagPickNew(){
+  const val=(document.getElementById('bulk-tag-new').value||'').trim();
+  if(!val) return;
+  _bulkTagPick(val);
+}
+
+function _bulkApplyTagConfirm(){ _bulkTagPickNew(); } // backward compat
+
+function startColResize(e,colId){
+  e.preventDefault(); e.stopPropagation();
+  _crCol=colId; _crX=e.clientX;
+  const th=document.querySelector(`#tx-hd th[data-col="${colId}"]`);
+  _crW=th?th.offsetWidth:120;
+  document.addEventListener('mousemove',_doColResize);
+  document.addEventListener('mouseup',_endColResize);
+}
+function _doColResize(e){
+  if(!_crCol)return;
+  const newW=Math.max(40,_crW+(e.clientX-_crX));
+  colWidths[_crCol]=newW;
+  const th=document.querySelector(`#tx-hd th[data-col="${_crCol}"]`);
+  if(th) th.style.width=newW+'px';
+}
+function _endColResize(){
+  if(_crCol) Store.set('colWidths',colWidths);
+  _crCol=null;
+  document.removeEventListener('mousemove',_doColResize);
+  document.removeEventListener('mouseup',_endColResize);
+}
 function isCCRepayment(t){
   if(t.isSplatka) return true;
   if(t.source !== 'account') return false;
@@ -2623,8 +2747,10 @@ function toggleExclTag(tag){
 }
 
 // ── Tag Report ────────────────────────────────────────────────────
-let _activeTagReport = null;
+let _activeTagTags = new Set(); // multi-select tags in tag report
 let _expandedTagCats = new Set(); // which category bars are expanded
+const TAG_PALETTE=['#4a9fd4','#e05c5c','#50c8a0','#f59e0b','#a78bfa','#fb7185'];
+function _tagColor(tag,allTags){return TAG_PALETTE[allTags.indexOf(tag)%TAG_PALETTE.length];}
 
 function renderTagReport(){
   const wrap=document.getElementById('an-tag-report'); if(!wrap) return;
@@ -2638,9 +2764,15 @@ function renderTagReport(){
     wrap.innerHTML='<div style="color:var(--mu);padding:30px;text-align:center;font-size:12px">Žiadne tagy. Pridaj ich v detaile transakcií (✎ v zozname transakcií).</div>';
     return;
   }
-  if(!_activeTagReport||!allTags.includes(_activeTagReport)) _activeTagReport=allTags[0];
+  _activeTagTags=new Set([..._activeTagTags].filter(t=>allTags.includes(t)));
+  if(!_activeTagTags.size) _activeTagTags.add(allTags[0]);
 
-  const tag=_activeTagReport;
+  if(_activeTagTags.size>1){
+    _renderTagReportMulti([..._activeTagTags],allTags,CAT,wrap,_buildTagSelector(allTags));
+    return;
+  }
+
+  const tag=[..._activeTagTags][0];
   const txs=TX.filter(t=>(t.tags||[]).includes(tag)&&!isCCRepayment(t)&&!t.excluded)
     .sort((a,b)=>(eDate(a)||a.date)-(eDate(b)||b.date));
 
@@ -2694,13 +2826,8 @@ function renderTagReport(){
   });
   const groupKeys=Object.keys(groups).sort();
 
-  // ── Selector chips ────────────────────────────────────────────
-  const selectorHtml='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px">'+
-    allTags.map(t=>{
-      const active=t===tag;
-      return`<button onclick="_activeTagReport='${t.replace(/'/g,"\\'")}';_expandedTagCats=new Set();renderTagReport()" 
-        style="font-size:11px;padding:4px 12px;border-radius:12px;border:1px solid ${active?'var(--acc2)':'var(--bd)'};background:${active?'var(--acc)22':'transparent'};color:${active?'var(--acc2)':'var(--mu)'};cursor:pointer;font-weight:${active?'700':'400'}">🏷 ${t}</button>`;
-    }).join('')+'</div>';
+  // ── Selector chips (multi-select) ──────────────────────────────
+  const selectorHtml=_buildTagSelector(allTags);
 
   // ── Header card ───────────────────────────────────────────────
   const isExcl=excludedTags.has(tag);
@@ -2962,6 +3089,175 @@ function renderTagCharts(catEntries, groupKeys, groups, totalSpent, CAT){
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  MULTI-TAG COMPARISON HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function saveIbanNameFromDet(){
+  const tx=TX.find(t=>t.id===detId); if(!tx?.iban) return;
+  const name=(document.getElementById('md-iban-name').value||'').trim();
+  if(name) ibanNames[tx.iban]=name; else delete ibanNames[tx.iban];
+  Store.set('ibanNames',ibanNames);
+  // Refresh title in detail modal
+  const titleEl=document.getElementById('md-t');
+  if(titleEl) titleEl.textContent=`${tx.merchantOverride||name||tx.merchant||'Transakcia'} · ${fd(tx.dateOverride||tx.date)}`;
+}
+
+function _buildTagSelector(allTags){
+  return '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px">'+
+    allTags.map(t=>{
+      const active=_activeTagTags.has(t);
+      const col=_tagColor(t,allTags);
+      return`<button onclick="_toggleTagReportTag('${t.replace(/'/g,"\\'")}')"\
+        style="font-size:11px;padding:4px 12px;border-radius:12px;border:1px solid ${active?col:'var(--bd)'};\
+background:${active?col+'22':'transparent'};color:${active?col:'var(--mu)'};\
+cursor:pointer;font-weight:${active?'700':'400'}">🏷 ${t}</button>`;
+    }).join('')+'</div>';
+}
+
+function _toggleTagReportTag(t){
+  if(_activeTagTags.has(t)&&_activeTagTags.size>1) _activeTagTags.delete(t);
+  else _activeTagTags.add(t);
+  _expandedTagCats=new Set();
+  renderTagReport();
+}
+
+function _renderTagReportMulti(tags,allTags,CAT,wrap,selectorHtml){
+  const tagData=tags.map(tag=>{
+    const txs=TX.filter(t=>(t.tags||[]).includes(tag)&&!isCCRepayment(t)&&!t.excluded)
+      .sort((a,b)=>(eDate(a)||a.date)-(eDate(b)||b.date));
+    const spent=txs.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
+    const income=txs.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
+    const dates=txs.map(t=>eDate(t)||t.date).filter(Boolean).sort((a,b)=>a-b);
+    const firstD=dates[0],lastD=dates[dates.length-1];
+    const catBreak={};
+    txs.filter(t=>t.amount<0).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{
+      if(amount<0){const cid=category||'__none';catBreak[cid]=(catBreak[cid]||0)+Math.abs(amount);}
+    });});
+    return{tag,txs,spent,income,firstD,lastD,catBreak};
+  });
+
+  // Union time range & granularity
+  const allDs=tagData.flatMap(d=>[d.firstD,d.lastD]).filter(Boolean);
+  const uFirst=allDs.length?new Date(Math.min(...allDs.map(d=>d.getTime()))):null;
+  const uLast=allDs.length?new Date(Math.max(...allDs.map(d=>d.getTime()))):null;
+  const uSpan=uFirst&&uLast?Math.max(1,Math.round((uLast-uFirst)/(1000*60*60*24))+1):1;
+  const isLong=uSpan>90,isMed=uSpan>14&&uSpan<=90;
+  const gKey=d=>{if(!d)return'?';if(isLong)return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(isMed){const w=Math.ceil(d.getDate()/7);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-W'+w;}return localDateKey(d);};
+  const gLabel=k=>{if(isLong){const[y,m]=k.split('-');return MO_NAMES[parseInt(m)-1]+' '+y.slice(2);}if(isMed){const[y,m,w]=k.split('-');return MO_NAMES[parseInt(m)-1].slice(0,3)+' '+w;}const[y,m,d]=k.split('-');return parseInt(d)+'.'+parseInt(m)+'.';};
+
+  tagData.forEach(td=>{
+    td.groups={};
+    td.txs.forEach(t=>{const d=eDate(t)||t.date;if(!d)return;const k=gKey(d);if(!td.groups[k])td.groups[k]={spent:0};if(t.amount<0)td.groups[k].spent+=Math.abs(txMyAmount(t));});
+  });
+  const allGK=[...new Set(tagData.flatMap(td=>Object.keys(td.groups)))].sort();
+  const gLabels=Object.fromEntries(allGK.map(k=>[k,gLabel(k)]));
+
+  // Combined top categories (max 7)
+  const combined={};
+  tagData.forEach(td=>Object.entries(td.catBreak).forEach(([cid,v])=>{combined[cid]=(combined[cid]||0)+v;}));
+  const topCats=Object.entries(combined).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([cid])=>cid);
+
+  // Header comparison cards
+  const headerHtml='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+tagData.map(td=>{
+    const col=_tagColor(td.tag,allTags);
+    const sp=td.firstD&&td.lastD?Math.max(1,Math.round((td.lastD-td.firstD)/(1000*60*60*24))+1):0;
+    const pl=sp>90?`${Math.round(sp/30)} mes.`:sp>14?`${Math.round(sp/7)} týž.`:`${sp} dní`;
+    return`<div style="flex:1;min-width:130px;background:var(--s2);border:1px solid ${col}33;border-top:3px solid ${col};border-radius:10px;padding:12px">
+      <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:6px">🏷 ${td.tag}</div>
+      <div style="font-size:16px;font-weight:700;font-family:var(--M);color:${td.spent?'var(--red)':'var(--mu)'}">${td.spent?'−'+fabs(td.spent):'—'}</div>
+      <div style="font-size:10px;color:var(--mu);margin-top:3px">${td.txs.length} txn · ${pl}</div>
+      ${td.income?`<div style="font-size:10px;color:var(--grn);margin-top:2px">+${fabs(td.income)}</div>`:''}
+    </div>`;
+  }).join('')+'</div>';
+
+  wrap.innerHTML=selectorHtml+headerHtml+`
+    <div style="background:var(--s2);border-radius:10px;padding:14px;border:1px solid var(--bd);margin-bottom:12px;position:relative">
+      <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Výdavky v čase</div>
+      <canvas id="tr-multi-time" height="160" style="width:100%;display:block"></canvas>
+      <div id="tr-multi-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:6px 10px;font-size:11px;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 8px #0006"></div>
+    </div>
+    ${topCats.length>=2?`<div style="background:var(--s2);border-radius:10px;padding:14px;border:1px solid var(--bd);margin-bottom:12px;position:relative">
+      <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Kategórie</div>
+      <canvas id="tr-multi-cat" height="170" style="width:100%;display:block"></canvas>
+      <div id="tr-multi-cat-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:6px 10px;font-size:11px;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 8px #0006"></div>
+    </div>`:''}
+    <div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">Klikni na jeden tag pre detailný prehľad</div>`;
+  setTimeout(()=>renderTagChartsMulti(tagData,allTags,allGK,gLabels,topCats,CAT),0);
+}
+
+function renderTagChartsMulti(tagData,allTags,allGK,gLabels,topCats,CAT){
+  const cs=getComputedStyle(document.documentElement);
+  const clrMu=cs.getPropertyValue('--mu').trim()||'#6a8399';
+  const clrBd=cs.getPropertyValue('--bd').trim()||'#2a3e52';
+
+  // ── MULTI-LINE TIMELINE ──────────────────────────────────────
+  const timeCv=document.getElementById('tr-multi-time');
+  const timeTip=document.getElementById('tr-multi-tip');
+  if(timeCv&&allGK.length){
+    timeCv.width=timeCv.offsetWidth||timeCv.parentElement?.offsetWidth||300;
+    const cw=timeCv.width,ch=timeCv.height,ctx=timeCv.getContext('2d');
+    const pL=38,pR=10,pT=12,pB=24,plotW=cw-pL-pR,plotH=ch-pT-pB,n=allGK.length;
+    const maxY=Math.max(...tagData.flatMap(td=>allGK.map(k=>td.groups[k]?.spent||0)),1);
+    const toX=i=>pL+(n<2?plotW/2:plotW*i/(n-1));
+    const toY=v=>pT+plotH*(1-v/maxY);
+
+    function drawML(hi){
+      ctx.clearRect(0,0,cw,ch);
+      [.25,.5,.75,1].forEach(f=>{const y=toY(maxY*f);ctx.strokeStyle=clrBd;ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(pL,y);ctx.lineTo(cw-pR,y);ctx.stroke();ctx.fillStyle=clrMu;ctx.font='8px sans-serif';ctx.textAlign='right';const v=maxY*f;ctx.fillText(v>=1000?Math.round(v/100)/10+'k€':Math.round(v)+'€',pL-3,y+3);});
+      tagData.forEach(td=>{
+        const col=_tagColor(td.tag,allTags);
+        const pts=allGK.map((k,i)=>({x:toX(i),y:toY(td.groups[k]?.spent||0),v:td.groups[k]?.spent||0}));
+        ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.lineJoin='round';
+        pts.forEach((p,i)=>{i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y);});ctx.stroke();
+        pts.forEach((p,i)=>{if(p.v>0||i===hi){ctx.beginPath();ctx.arc(p.x,p.y,i===hi?5:3,0,Math.PI*2);ctx.fillStyle=i===hi?col:col+'cc';ctx.fill();}});
+      });
+      if(hi>=0){const x=toX(hi);ctx.strokeStyle=clrMu;ctx.lineWidth=.8;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x,pT);ctx.lineTo(x,pT+plotH);ctx.stroke();ctx.setLineDash([]);}
+      const step=Math.ceil(n/7);ctx.fillStyle=clrMu;ctx.font='8px sans-serif';ctx.textAlign='center';
+      allGK.forEach((k,i)=>{if(i%step===0)ctx.fillText(gLabels[k]||k,toX(i),ch-5);});
+    }
+    drawML(-1);
+    function hitML(e){const rect=timeCv.getBoundingClientRect();const ex=(e.clientX||(e.touches&&e.touches[0].clientX)||0)-rect.left;let best=-1,bd=plotW/(Math.max(n-1,1))/2+8;allGK.forEach((_,i)=>{const d=Math.abs(ex-toX(i));if(d<bd){bd=d;best=i;}});return best;}
+    makePinnable(timeCv,{tipEl:timeTip,redrawFn:drawML,hitFn:hitML,
+      tipFn:i=>{if(i<0)return null;const k=allGK[i];return`<b>${gLabels[k]||k}</b><br>`+tagData.map(td=>{const col=_tagColor(td.tag,allTags);const v=td.groups[k]?.spent||0;return`<span style="color:${col}">■</span> ${td.tag}: ${v?'−'+fabs(v):'—'}`;}).join('<br>');},
+      positionFn:(e,rect)=>{const x=(e.clientX||(e.touches&&e.touches[0].clientX)||0)-rect.left;return{left:x>cw/2?x-185:x+12,top:10};},
+      borderColorFn:()=>clrMu});
+  }
+
+  // ── GROUPED BAR (CATEGORIES) ────────────────────────────────
+  const catCv=document.getElementById('tr-multi-cat');
+  const catTip=document.getElementById('tr-multi-cat-tip');
+  if(catCv&&topCats.length>=2){
+    catCv.width=catCv.offsetWidth||catCv.parentElement?.offsetWidth||300;
+    const cw=catCv.width,ch=catCv.height,ctx=catCv.getContext('2d');
+    const pL=38,pR=8,pT=12,pB=38,plotW=cw-pL-pR,plotH=ch-pT-pB;
+    const nC=topCats.length,nT=tagData.length;
+    const gW=Math.floor(plotW/nC);
+    const bW=Math.max(4,Math.floor(gW*.72/nT)-2);
+    const maxC=Math.max(...tagData.flatMap(td=>topCats.map(cid=>td.catBreak[cid]||0)),1);
+    const toY=v=>pT+plotH*(1-v/maxC);
+    const gX=gi=>pL+gW*gi+gW/2;
+    const bX=(gi,ti)=>gX(gi)-(nT*bW+(nT-1)*2)/2+ti*(bW+2);
+
+    function drawGB(hov){
+      ctx.clearRect(0,0,cw,ch);
+      [.25,.5,.75,1].forEach(f=>{const y=toY(maxC*f);ctx.strokeStyle=clrBd;ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(pL,y);ctx.lineTo(cw-pR,y);ctx.stroke();ctx.fillStyle=clrMu;ctx.font='8px sans-serif';ctx.textAlign='right';const v=maxC*f;ctx.fillText(v>=1000?Math.round(v/100)/10+'k€':Math.round(v)+'€',pL-3,y+3);});
+      topCats.forEach((cid,gi)=>{tagData.forEach((td,ti)=>{const v=td.catBreak[cid]||0;if(!v)return;const col=_tagColor(td.tag,allTags);const x=bX(gi,ti),y=toY(v),h=Math.max(2,plotH*(v/maxC));const isH=hov&&hov[0]===gi&&hov[1]===ti;ctx.fillStyle=isH?col:col+'bb';ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,bW,h,2):ctx.rect(x,y,bW,h);ctx.fill();});});
+      // X labels
+      ctx.font='8px sans-serif';ctx.textAlign='center';ctx.fillStyle=clrMu;
+      topCats.forEach((cid,gi)=>{const lbl=(CAT[cid]?.l||'—').slice(0,9);ctx.fillText(lbl,gX(gi),ch-20);});
+      // Legend
+      tagData.forEach((td,ti)=>{const col=_tagColor(td.tag,allTags);const lx=pL+ti*Math.floor(plotW/nT);ctx.fillStyle=col;ctx.fillRect(lx,ch-12,7,7);ctx.fillStyle=clrMu;ctx.font='9px sans-serif';ctx.textAlign='left';ctx.fillText(td.tag.slice(0,11),lx+10,ch-5);});
+    }
+    drawGB(null);
+    function hitGB(e){const rect=catCv.getBoundingClientRect();const ex=(e.clientX||(e.touches&&e.touches[0].clientX)||0)-rect.left;const ey=(e.clientY||(e.touches&&e.touches[0].clientY)||0)-rect.top;if(ey>pT+plotH)return null;let best=null,bd=bW/2+4;topCats.forEach((_,gi)=>{tagData.forEach((_,ti)=>{const x=bX(gi,ti)+bW/2,d=Math.abs(ex-x);if(d<bd){bd=d;best=[gi,ti];}});});return best;}
+    makePinnable(catCv,{tipEl:catTip,redrawFn:drawGB,hitFn:hitGB,
+      tipFn:h=>{if(!h)return null;const[gi,ti]=h;const cid=topCats[gi];const td=tagData[ti];const col=_tagColor(td.tag,allTags);const v=td.catBreak[cid]||0;return`<span style="color:${col}">■</span> <b>${td.tag}</b><br>${CAT[cid]?.l||'Nezar.'}: ${v?'−'+fabs(v):'—'}`;},
+      positionFn:(e,rect)=>{const x=(e.clientX||(e.touches&&e.touches[0].clientX)||0)-rect.left;return{left:x>cw/2?x-165:x+12,top:10};},
+      borderColorFn:h=>h?_tagColor(tagData[h[1]]?.tag,allTags):clrMu});
+  }
+}
+
 function renderTx(){
   if(!TX.length){
     document.getElementById('tx-hd').innerHTML='';
@@ -2997,7 +3293,11 @@ function renderTx(){
   document.getElementById('txcnt').textContent=fTx.length+' txn';
   txPage=1; txLoadedCount=txPgSize; renderTxPage(); renderPgBtns();
   const cv=COLS_DEF.filter(c=>visCols.includes(c.id));
-  document.getElementById('tx-hd').innerHTML=cv.map(c=>`<th${c.id==='amount'||c.id==='cat'?' class="sticky-r"':''}>${c.l}</th>`).join('');
+  document.getElementById('tx-hd').innerHTML=cv.map(c=>{
+    const w=colWidths[c.id]; const wSt=w?`width:${w}px;`:'';
+    const sticky=c.id==='amount'||c.id==='cat';
+    return`<th${sticky?' class="sticky-r"':''} data-col="${c.id}" style="${wSt}position:relative">${c.l}<span class="cr" onmousedown="startColResize(event,'${c.id}')"></span></th>`;
+  }).join('');
 }
 
 function renderTxPage(){
@@ -3010,20 +3310,20 @@ function renderTxPage(){
   const cv=COLS_DEF.filter(c=>visCols.includes(c.id));
   document.getElementById('tx-bd').innerHTML=pg.map(tx=>{
     const catForRow=getCatD().find(c=>c.id===tx.category);
-    const cells=cv.map(col=>{
+    let cells=cv.map(col=>{
       if(col.id==='date'){
         const d=tx.dateOverride||tx.date;
         const flag=tx.dateOverride?` <span style="color:var(--acc2);font-size:9px" title="Ručne zmenený dátum">✎</span>`:'';
         return`<td class="td">${fd(d)}${flag}</td>`;
       }
       if(col.id==='main'){
-        const d=tx.merchantOverride||tx.merchant||'—';
+        const d=tx.merchantOverride||(tx.iban&&ibanNames[tx.iban])||tx.merchant||'—';
         const s=tx.noteOverride||tx.place||tx.description||'';
         const tags=(tx.shared?.people?.length?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(100,160,255,.18);color:var(--acc2);margin-left:5px;vertical-align:middle;letter-spacing:.3px">÷ zdieľaná</span>`:'')
           +(isDebtLink(tx)?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(91,193,124,.18);color:var(--grn);margin-left:5px;vertical-align:middle;letter-spacing:.3px">↩ vrátka</span>`:'')
           +(tx.excluded?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(180,80,80,.18);color:var(--red);margin-left:5px;vertical-align:middle;letter-spacing:.3px">⊘ vylúčená</span>`:'');
         const txTagBadges=(tx.tags||[]).map(tag=>`<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:10px;background:var(--acc)22;color:var(--acc2);margin-left:4px;vertical-align:middle;border:1px solid var(--acc)44">🏷 ${tag}</span>`).join('');
-        return`<td><div class="tm">${d}${tags}${txTagBadges}</div>${s?`<div class="ts">${s}</div>`:''}</td>`;
+        return`<td><div class="tm"><span class="tm-name">${d}</span>${tags}${txTagBadges}</div>${s?`<div class="ts">${s}</div>`:''}</td>`;
       }
       if(col.id==='recipient')return`<td class="ts">${tx.merchant||'—'}</td>`;
       if(col.id==='info')return`<td class="ts">${tx.info||'—'}</td>`;
@@ -3063,7 +3363,13 @@ function renderTxPage(){
       return'<td>—</td>';
     }).join('');
     const rowBg=catForRow?.c?`background:${catForRow.c}08`:'background:transparent';
-    return`<tr class="${tx.shared?.people?.length?'tx-shared':isDebtLink(tx)?'tx-debtlink':tx.excluded?'tx-excluded':''}" style="${rowBg}" onclick="openDet('${tx.id}')">${cells}</tr>`;
+    const isSel=bulkSelected.has(tx.id);
+    const selBg=isSel?`;outline:2px solid var(--acc);outline-offset:-2px`:'';
+    if(bulkMode){
+      cells=`<td style="padding:4px 8px;width:28px;text-align:center;vertical-align:middle"><input type="checkbox" ${isSel?'checked':''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--acc);pointer-events:none"></td>`+cells;
+    }
+    const rowClick=bulkMode?`onclick="_bulkToggle('${tx.id}')"`:`onclick="openDet('${tx.id}')"`;
+    return`<tr data-txid="${tx.id}" class="${tx.shared?.people?.length?'tx-shared':isDebtLink(tx)?'tx-debtlink':tx.excluded?'tx-excluded':''}" style="${rowBg}${selBg}" ${rowClick}>${cells}</tr>`;
   }).join('');
 }
 
@@ -3177,6 +3483,13 @@ function openDet(id){
   }
   document.getElementById('md-mer').value=tx.merchantOverride||'';
   document.getElementById('md-note').value=tx.noteOverride||'';
+  // IBAN contact name
+  const ibanWrap=document.getElementById('md-iban-name-wrap');
+  const ibanNameEl=document.getElementById('md-iban-name');
+  if(ibanWrap&&ibanNameEl){
+    if(tx.iban){ibanWrap.style.display='block';document.getElementById('md-iban-label').textContent=tx.iban;ibanNameEl.value=ibanNames[tx.iban]||'';}
+    else{ibanWrap.style.display='none';ibanNameEl.value='';}
+  }
   renderMdTags(tx);  // tags chips
   // isSplatka — only relevant for credit card
   const splatkaRow=document.getElementById('md-splatka-row');
@@ -3521,6 +3834,11 @@ function saveCatEdit(){
     // Assign to tx if called from detail
     if (_catEditPrefillTxId) { const tx = TX.find(t => t.id === _catEditPrefillTxId); if (tx) { tx.category = id; } }
     saveD(); renderCatGrid(); initRuleCatSelect(); updateFilters(); renderTx();
+    if(_cpAfterNewCat){
+      _cpTxId=_cpAfterNewCat; _cpAfterNewCat=null;
+      renderCPList(); document.getElementById('cat-picker').style.display='block';
+      document.getElementById('cat-picker').style.transform='';
+    }
     // Refresh detail dropdown if open
     if (detId && document.getElementById('m-det').classList.contains('on')) {
       const tx = TX.find(t => t.id === detId);
@@ -7291,6 +7609,12 @@ function gdInitUI() {
 
 let _cpTxId = null;
 
+let _cpAfterNewCat=null;
+function _cpNewCat(){
+  _cpAfterNewCat=_cpTxId;
+  document.getElementById('cat-picker').style.display='none';
+  openCatEditModal(_cpTxId, null); // null editId = new category, prefill tx assignment
+}
 function openCatPicker(txId, el) {
   _cpTxId = txId;
   renderCPList();
@@ -7318,10 +7642,20 @@ function renderCPList() {
     `${c.l}</div>`
   ).join('') +
   `<div style="border-top:1px solid var(--bd);margin-top:2px">` +
-  `<div class="cp-item" style="color:var(--acc2)" onclick="_cpSplit()">✂ &nbsp;Rozdeliť transakciu…</div></div>`;
+  `<div class="cp-item" style="color:var(--acc2)" onclick="_cpSplit()">✂ &nbsp;Rozdeliť transakciu…</div>` +
+  `<div class="cp-item" style="color:var(--grn)" onclick="_cpNewCat()">✚ &nbsp;Nová kategória…</div></div>`;
 }
 
 function _cpPick(catId) {
+  if(_cpBulkMode){
+    bulkSelected.forEach(id=>{
+      const tx=TX.find(t=>t.id===id); if(!tx) return;
+      tx.category=catId||null; tx.categoryLocked=true;
+    });
+    closeCatPicker(); _cpBulkMode=false;
+    saveD(); renderTxPage(); _updateBulkBar();
+    return;
+  }
   if (_cpTxId) { setCat(_cpTxId, catId || null); renderTx(); updateBadges(); }
   closeCatPicker();
 }
@@ -7464,6 +7798,22 @@ document.addEventListener('scroll', e => {
 <!-- Category Picker Popover -->
 <div id="cat-picker" style="display:none;position:fixed;z-index:9999;background:var(--s1);border:1px solid var(--bd);border-radius:6px;box-shadow:0 4px 24px rgba(0,0,0,.65);min-width:200px;max-width:270px;overflow:hidden">
   <div id="cat-picker-list" style="max-height:300px;overflow-y:auto;padding:4px 0"></div>
+</div>
+<div id="bulk-tag-picker" style="display:none;position:fixed;z-index:9999;background:var(--s1);border:1px solid var(--bd);border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.7);min-width:180px;max-width:260px;overflow:hidden">
+  <div style="padding:6px 8px;font-size:9px;color:var(--mu);border-bottom:1px solid var(--bd);letter-spacing:.5px;text-transform:uppercase">Vyber alebo pridaj tag</div>
+  <div id="bulk-tag-list" style="max-height:220px;overflow-y:auto;padding:4px 0"></div>
+  <div style="border-top:1px solid var(--bd);padding:6px 8px;display:flex;gap:4px;align-items:center">
+    <input id="bulk-tag-new" type="text" placeholder="Nový tag…" style="flex:1;font-size:11px;padding:4px 6px;background:var(--s2);border:1px solid var(--bd);color:var(--txt);border-radius:4px;outline:none" onkeydown="if(event.key==='Enter')_bulkTagPickNew();if(event.key==='Escape')document.getElementById('bulk-tag-picker').style.display='none'">
+    <button class="btn" onclick="_bulkTagPickNew()" style="font-size:10px;padding:4px 8px;color:var(--grn);border-color:var(--grn)">✓</button>
+  </div>
+</div>
+<div id="bulk-bar"  style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:2px solid var(--acc);padding:10px 14px;z-index:500;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:0 -4px 20px rgba(0,0,0,.5)">
+  <span id="bulk-count" style="font-size:12px;color:var(--acc2);font-weight:700;min-width:90px">0 vybraných</span>
+  <button class="btn" onclick="bulkSelectAll()" style="font-size:10px;padding:5px 10px">Vybrať všetky</button>
+  <button class="btn" id="bulk-apply-cat" onclick="bulkApplyCat()" style="font-size:10px;padding:5px 10px;color:var(--acc2);border-color:var(--acc2)">Kategória</button>
+  <button class="btn" id="bulk-tag-btn" onclick="_toggleBulkTagInput()" style="font-size:10px;padding:5px 10px;color:var(--grn);border-color:var(--grn)">🏷 Tag</button>
+
+  <button class="btn" onclick="toggleBulkMode()" style="font-size:10px;padding:5px 10px;margin-left:auto;color:var(--red);border-color:var(--red)">✕ Zrušiť</button>
 </div>
 </body>
 </html>
