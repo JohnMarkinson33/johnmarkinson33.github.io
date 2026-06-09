@@ -4362,7 +4362,8 @@ async function importBackup(inp){
     if(data.builtinCats){BUILTIN_CATS.length=0;data.builtinCats.forEach(c=>BUILTIN_CATS.push(c));}
     visCols=data.visCols||['date','main','place','source','cat','amount'];
     if(data.detFieldsHidden){detFieldsHidden.clear();data.detFieldsHidden.forEach(f=>detFieldsHidden.add(f));}
-    if(data.ibanNames) ibanNames=data.ibanNames;
+    if(data.ibanNames){ ibanNames=data.ibanNames; }
+    else { ibanNames=(await Store.get('ibanNames'))||{}; } // stará záloha → zachovaj existujúce
     if(data.editLog) editLog=data.editLog;
     if(data.ccLimit){const el=document.getElementById('cc-lim');if(el)el.value=data.ccLimit;}
     if(openingBalance){const el=document.getElementById('ob');if(el)el.value=openingBalance;}
@@ -7768,7 +7769,8 @@ async function gdLoad() {
     if (data.builtinCats) { BUILTIN_CATS.length = 0; data.builtinCats.forEach(c => BUILTIN_CATS.push(c)); }
     visCols = data.visCols || ['date','main','place','source','cat','amount'];
     if (data.detFieldsHidden) { detFieldsHidden.clear(); data.detFieldsHidden.forEach(f=>detFieldsHidden.add(f)); }
-    if (data.ibanNames) ibanNames = data.ibanNames;
+    if (data.ibanNames) { ibanNames = data.ibanNames; }
+    else { ibanNames = (await Store.get('ibanNames')) || {}; } // stará záloha → zachovaj existujúce
     if (data.editLog) editLog = data.editLog;
     if (data.ccLimit) { const el = document.getElementById('cc-lim'); if (el) el.value = data.ccLimit; }
     if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
