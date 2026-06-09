@@ -285,7 +285,7 @@ input[type=checkbox]{accent-color:var(--acc);cursor:pointer;width:13px;height:13
 .an-tab.on{border-color:var(--acc);color:var(--acc);background:rgba(94,168,216,.1)}
 
 /* CUSTOM CATEGORIES */
-.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:14px}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px 14px;margin-bottom:14px;align-items:start}
 .cat-chip{display:flex;align-items:flex-start;gap:7px;padding:7px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:5px;font-size:11px}
 .cat-chip-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:2px}
 .cat-chip-label{flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;word-break:break-word;line-height:1.4}
@@ -680,7 +680,14 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <button class="btn" style="padding:3px 10px;font-size:11px" onclick="closeDrill()">✕ Zavrieť</button>
     </div>
     <div style="overflow-x:auto">
-      <table class="tbl">
+      <table class="tbl" style="table-layout:fixed;width:100%">
+        <colgroup>
+          <col style="width:80px">
+          <col style="width:220px">
+          <col>
+          <col style="width:68px">
+          <col style="width:100px">
+        </colgroup>
         <thead><tr><th>Dátum</th><th>Obchodník</th><th>Popis</th><th>Zdroj</th><th style="text-align:right">Suma</th></tr></thead>
         <tbody id="an-drill-body"></tbody>
       </table>
@@ -1203,7 +1210,12 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         <label for="cat-edit-inv" style="font-size:12px;cursor:pointer;flex:1">Zaradiť ako <strong>Investovanie / Sporenie</strong><br><span style="color:var(--mu);font-size:10px">Sledovaná zvlášť ako aktívum, nie výdavok</span></label>
       </div>
     </div>
-    <div style="display:flex;gap:8px">
+    <div id="cat-edit-parent-wrap" style="margin-top:12px">
+        <div class="ml">Rodičovská kategória <span style="font-size:9px;color:var(--mu)">(voliteľné — vytvorí podkategóriu)</span></div>
+        <select class="mi" id="cat-edit-parent" style="margin-bottom:4px"></select>
+        <div id="cat-edit-parent-note" style="font-size:10px;color:var(--mu)"></div>
+      </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
       <button class="ms" onclick="saveCatEdit()">Uložiť</button>
       <button class="btn" onclick="cm('m-cat-edit')">Zrušiť</button>
     </div>
@@ -1399,7 +1411,7 @@ const BUILTIN_CATS = [
 ];
 function getCatD() { return [...BUILTIN_CATS, ...customCats]; }
 function getCAT() { const m={}; getCatD().forEach(c=>m[c.id]=c); return m; }
-const catOptsHtml = () => getCatD().map(c => `<option value="${c.id}">${c.l}</option>`).join('');
+const catOptsHtml = () => buildCatSelectHtml(null,false);
 
 const BUILTIN = []; // No built-in rules — users define their own in the Rules tab
 
@@ -1842,6 +1854,35 @@ function _bulkTagPickNew(){
 
 function _bulkApplyTagConfirm(){ _bulkTagPickNew(); } // backward compat
 
+// ── SUBCATEGORY HELPERS ─────────────────────────────────────────────────
+function getSubcatIds(parentId){return getCatD().filter(c=>c.parentId===parentId).map(c=>c.id);}
+function getCatParentId(catId){return getCAT()[catId]?.parentId||null;}
+function getCatRootId(catId){const p=getCatParentId(catId);return p||catId;}
+function isSubcat(catId){return !!getCAT()[catId]?.parentId;}
+function getRootCats(){return getCatD().filter(c=>!c.parentId);}
+function buildCatSelectHtml(selectedId,includeEmpty=true){
+  const catd=getCatD(),roots=catd.filter(c=>!c.parentId);
+  let h=includeEmpty?`<option value="" ${!selectedId?'selected':''} style="color:var(--mu)">— Nezaradené</option>`:'';
+  roots.forEach(r=>{
+    const subs=catd.filter(c=>c.parentId===r.id);
+    if(subs.length){
+      h+=`<optgroup label="${r.l}">`;
+      h+=`<option value="${r.id}"${selectedId===r.id?' selected':''}>${r.l}</option>`;
+      subs.forEach(s=>h+=`<option value="${s.id}"${selectedId===s.id?' selected':''}>↳ ${s.l}</option>`);
+      h+=`</optgroup>`;
+    }else{h+=`<option value="${r.id}"${selectedId===r.id?' selected':''}>${r.l}</option>`;}
+  });
+  return h;
+}
+function togglePivotParent(id){
+  if(_pivotExpandedParents.has(id))_pivotExpandedParents.delete(id);else _pivotExpandedParents.add(id);
+  renderPivot();
+}
+function _drillExpandParent(id,label,view){
+  _pivotExpandedParents.add(id);
+  renderPivot();
+  drillCat(id,label,view);
+}
 function startColResize(e,colId){
   e.preventDefault(); e.stopPropagation();
   _crCol=colId; _crX=e.clientX;
@@ -2547,7 +2588,7 @@ function updateFilters(){
   // Preserve current values before rebuilding
   const prevCat=document.getElementById('f-cat')?.value||'';
   const prevMon=document.getElementById('f-mon')?.value||'';
-  document.getElementById('f-cat').innerHTML='<option value="">Všetky kat.</option><option value="__null">— Nezaradené</option>'+getCatD().map(c=>`<option value="${c.id}">${c.l}</option>`).join('');
+  document.getElementById('f-cat').innerHTML='<option value="">Všetky kat.</option><option value="__null">— Nezaradené</option>'+buildCatSelectHtml(null,false);
   // Restore preserved values
   if(prevCat){const el=document.getElementById('f-cat');if(el&&[...el.options].some(o=>o.value===prevCat))el.value=prevCat;}
   const months=[...new Set(TX.map(t=>mKey(eDate(t))).filter(Boolean))].sort().reverse();
@@ -2748,6 +2789,7 @@ function toggleExclTag(tag){
 
 // ── Tag Report ────────────────────────────────────────────────────
 let _activeTagTags = new Set(); // multi-select tags in tag report
+let _pivotExpandedParents = new Set(); // expanded parent cats in pivot table
 let _expandedTagCats = new Set(); // which category bars are expanded
 const TAG_PALETTE=['#4a9fd4','#e05c5c','#50c8a0','#f59e0b','#a78bfa','#fb7185'];
 function _tagColor(tag,allTags){return TAG_PALETTE[allTags.indexOf(tag)%TAG_PALETTE.length];}
@@ -3277,8 +3319,12 @@ function renderTx(){
   txFilters={q,src,cat,mon,typ};
   fTx=TX.filter(t=>{
     if(src&&t.source!==src)return false;
-    if(cat==='__null'&&t.category)return false; // show all falsy categories (null, undefined, '')
-    if(cat&&cat!=='__null'&&t.category!==cat)return false;
+    if(cat==='__null'&&t.category)return false;
+    if(cat&&cat!=='__null'){
+      // Include transactions in selected category OR any of its subcategories
+      const _fCatIds=new Set([cat,...getSubcatIds(cat)]);
+      if(!_fCatIds.has(t.category))return false;
+    }
     if(mon&&mKey(eDate(t))!==mon)return false;
     if(typ==='e'&&t.amount>=0)return false;
     if(typ==='i'&&t.amount<0)return false;
@@ -3353,7 +3399,8 @@ function renderTxPage(){
           const warn=inconsistent?'⚠ ':'';
           return`<td class="sticky-r"><span class="cat-qb" style="border-color:${col};color:${col}" onclick="event.stopPropagation();openCatPicker('${tx.id}',this)">${warn}✂ ${dots}</span></td>`;
         }
-        const lbl=catForRow?catForRow.l:'Nezaradené';
+        const parentCatForRow=catForRow?.parentId?getCatD().find(p=>p.id===catForRow.parentId):null;
+        const lbl=catForRow?(parentCatForRow?`${parentCatForRow.l} › ${catForRow.l}`:catForRow.l):'Nezaradené';
         const clr=catForRow?catForRow.c:'var(--mu)';
         const emojiPfx=catForRow?.emoji?`<span style="margin-right:3px">${catForRow.emoji}</span>`:'';
         const lkIco=tx.categoryLocked?'<span style="font-size:7px;opacity:.6;margin-left:2px" title="Ručne nastavená">🔒</span>':'';
@@ -3443,7 +3490,7 @@ function openDet(id){
       <div class="fl2">${f.l}</div>
       <div class="fv" style="${f.cls==='pos'?'color:var(--grn)':f.cls==='neg'?'color:var(--red)':''}">${f.v}</div>
     </div>`).join('');
-  document.getElementById('md-cat').innerHTML=`<option value="" ${!tx.category?'selected':''} style="color:var(--mu)">— Nezaradené</option>`+getCatD().map(c=>`<option value="${c.id}"${tx.category===c.id?' selected':''}>${c.l}</option>`).join('');
+  document.getElementById('md-cat').innerHTML=buildCatSelectHtml(tx.category);
   const lockHint=document.getElementById('md-cat-lock');
   if(lockHint) lockHint.textContent=tx.categoryLocked?'🔒 ručne nastavená':'auto';
   // Splits display
@@ -3790,9 +3837,10 @@ function saveColCfg(){
 let _catEditId = null;       // null = new cat, string = edit existing
 let _catEditPrefillTxId = null;
 
-function openCatEditModal(prefillTxId, editId){
+function openCatEditModal(prefillTxId, editId, prefillParentId){
   _catEditPrefillTxId = prefillTxId || null;
   _catEditId = editId || null;
+  _catEditPrefillParentId = prefillParentId || null;
   const nameEl = document.getElementById('cat-edit-name');
   const colorEl = document.getElementById('cat-edit-color');
   const hexEl  = document.getElementById('cat-edit-color-hex');
@@ -3808,6 +3856,33 @@ function openCatEditModal(prefillTxId, editId){
     nameEl.value = ''; colorEl.value = '#5ea8d8'; hexEl.value = '#5ea8d8'; invEl.checked = false;
     document.getElementById('cat-edit-emoji').value = '';
   }
+  // Parent dropdown: only root cats (no grandchildren); hidden if cat has subcats
+  const parentSel=document.getElementById('cat-edit-parent');
+  const parentWrap=document.getElementById('cat-edit-parent-wrap');
+  const parentNote=document.getElementById('cat-edit-parent-note');
+  if(parentSel&&parentWrap){
+    const allCatd=getCatD();
+    const existingSubs=allCatd.filter(c=>c.parentId===_catEditId);
+    const hasSubcats=existingSubs.length>0;
+    parentWrap.style.display=hasSubcats?'none':'block';
+    if(parentNote) parentNote.textContent=hasSubcats?`Táto kategória má ${existingSubs.length} podkategóri${existingSubs.length===1?'u':existingSubs.length<5?'e':'í'} — nemôže mať rodiča.`:'';
+    // Only root categories can be parents
+    const possibleParents=allCatd.filter(c=>!c.parentId&&c.id!==_catEditId);
+    const currentParent=_catEditId?allCatd.find(c=>c.id===_catEditId)?.parentId||'':'';
+    const effectiveParent=currentParent||_catEditPrefillParentId||'';
+    parentSel.innerHTML='<option value="">— žiadna (hlavná kategória)</option>'+
+      possibleParents.map(p=>`<option value="${p.id}"${effectiveParent===p.id?' selected':''}>${p.l}</option>`).join('');
+    // Inherit parent color for new subcat
+    if(_catEditPrefillParentId&&!_catEditId){
+      const parentCat=allCatd.find(p=>p.id===_catEditPrefillParentId);
+      if(parentCat){
+        const ce=document.getElementById('cat-edit-color');
+        const he=document.getElementById('cat-edit-color-hex');
+        if(ce){ce.value=parentCat.c;if(he)he.value=parentCat.c;}
+      }
+    }
+    _catEditPrefillParentId=null; // consume once
+  }
   document.getElementById('m-cat-edit').classList.add('on');
   setTimeout(() => nameEl.focus(), 80);
 }
@@ -3819,17 +3894,20 @@ function saveCatEdit(){
   const color = (/^#[0-9a-fA-F]{6}$/.test(hexEl.value) ? hexEl.value : document.getElementById('cat-edit-color').value) || '#5ea8d8';
   const isInvestment = document.getElementById('cat-edit-inv').checked || undefined;
   const emoji = document.getElementById('cat-edit-emoji').value.trim() || undefined;
+  const parentId = document.getElementById('cat-edit-parent')?.value || undefined;
+  // Validate: can't set parentId if this cat already has subcats
+  if(parentId&&_catEditId){const subs=getCatD().filter(c=>c.parentId===_catEditId);if(subs.length){alert('Nemôžeš nastaviť rodiča kategórii, ktorá má podkategórie.');return;}}
   if (_catEditId) {
     // Edit existing
     const bi = BUILTIN_CATS.findIndex(c => c.id === _catEditId);
-    if (bi >= 0) { BUILTIN_CATS[bi].l = name; BUILTIN_CATS[bi].c = color; BUILTIN_CATS[bi].isInvestment = isInvestment; BUILTIN_CATS[bi].emoji = emoji; }
-    else { const ci = customCats.findIndex(c => c.id === _catEditId); if (ci >= 0) { customCats[ci].l = name; customCats[ci].c = color; customCats[ci].isInvestment = isInvestment; customCats[ci].emoji = emoji; } }
+    if (bi >= 0) { BUILTIN_CATS[bi].l=name;BUILTIN_CATS[bi].c=color;BUILTIN_CATS[bi].isInvestment=isInvestment;BUILTIN_CATS[bi].emoji=emoji;if(parentId!==undefined)BUILTIN_CATS[bi].parentId=parentId||undefined; }
+    else { const ci=customCats.findIndex(c=>c.id===_catEditId); if(ci>=0){customCats[ci].l=name;customCats[ci].c=color;customCats[ci].isInvestment=isInvestment;customCats[ci].emoji=emoji;customCats[ci].parentId=parentId||undefined;} }
     cm('m-cat-edit'); saveD(); renderCatGrid(); initRuleCatSelect(); updateFilters();
   } else {
     // New category
     if (getCatD().find(c => c.l.toLowerCase() === name.toLowerCase())) { alert('Kategória s týmto názvom už existuje'); return; }
     const id = 'cat_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'') + '_' + Math.random().toString(36).slice(2,5);
-    customCats.push({id, l:name, c:color, builtin:false, isInvestment, emoji});
+    customCats.push({id, l:name, c:color, builtin:false, isInvestment, emoji, parentId:parentId||undefined});
     cm('m-cat-edit');
     // Assign to tx if called from detail
     if (_catEditPrefillTxId) { const tx = TX.find(t => t.id === _catEditPrefillTxId); if (tx) { tx.category = id; } }
@@ -3840,10 +3918,9 @@ function saveCatEdit(){
       document.getElementById('cat-picker').style.transform='';
     }
     // Refresh detail dropdown if open
-    if (detId && document.getElementById('m-det').classList.contains('on')) {
-      const tx = TX.find(t => t.id === detId);
-      document.getElementById('md-cat').innerHTML = `<option value="" style="color:var(--mu)">— Nezaradené</option>` +
-        getCatD().map(c => `<option value="${c.id}"${tx && tx.category === c.id ? ' selected' : ''}>${c.l}</option>`).join('');
+    if(detId&&document.getElementById('m-det').classList.contains('on')){
+      const tx=TX.find(t=>t.id===detId);
+      document.getElementById('md-cat').innerHTML=buildCatSelectHtml(tx?.category);
     }
   }
 }
@@ -3903,28 +3980,66 @@ function renderRules(){
 
 // ==================== CUSTOM CATEGORIES ====================
 function renderCatGrid(){
-  const catd = getCatD();
-  document.getElementById('cat-grid').innerHTML = catd.map(cat => `
-    <div class="cat-chip">
-      <div class="cat-chip-dot" style="background:${cat.c};cursor:pointer" onclick="openCatEditModal(null,'${cat.id}')" title="Zmeniť farbu"></div>
-      <span class="cat-chip-label" title="${cat.l.replace(/"/g,'&quot;')}">${cat.l}${cat.isInvestment?' 💹':''}</span>
-      <button class="cat-chip-del" onclick="event.stopPropagation();openCatEditModal(null,'${cat.id}')" title="Upraviť" style="color:var(--mu);font-size:11px">✎</button>
-      <button class="cat-chip-del" onclick="deleteCat('${cat.id}')" title="Zmazať">✕</button>
-    </div>`).join('');
+  const catd=getCatD();
+  const roots=catd.filter(c=>!c.parentId);
+  const rows=roots.map(cat=>{
+    const subs=catd.filter(c=>c.parentId===cat.id);
+    const emoji=cat.emoji?`<span style="margin-right:4px">${cat.emoji}</span>`:'';
+    const inv=cat.isInvestment?`<span style="font-size:9px;color:var(--grn);margin-left:3px">💹</span>`:'';
+    // Root row
+    let html=`<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:${subs.length?'6px 6px 0 0':'6px'};font-size:11px;font-weight:600">
+      <div style="width:11px;height:11px;border-radius:50%;background:${cat.c};flex-shrink:0;cursor:pointer" onclick="openCatEditModal(null,'${cat.id}')" title="Upraviť farbu"></div>
+      <span style="flex:1">${emoji}${cat.l}${inv}</span>
+      <button class="cat-chip-del" onclick="openCatEditModal(null,null,'${cat.id}')" title="Pridať podkategóriu" style="color:var(--grn);font-size:13px;font-weight:700;padding:0 4px">+</button>
+      <button class="cat-chip-del" onclick="openCatEditModal(null,'${cat.id}')" title="Upraviť" style="color:var(--mu);font-size:11px">✎</button>
+      <button class="cat-chip-del" onclick="deleteCat('${cat.id}')" title="Zmazať" style="font-size:12px">✕</button>
+    </div>`;
+    // Subcat rows
+    if(subs.length){
+      html+=subs.map((s,i)=>{
+        const se=s.emoji?`<span style="margin-right:4px">${s.emoji}</span>`:'';
+        const last=i===subs.length-1;
+        return`<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 22px;background:var(--s1);border:1px solid var(--bd);border-top:none;border-radius:${last?'0 0 6px 6px':'0'};font-size:11px">
+          <span style="color:var(--mu);font-size:10px;flex-shrink:0">↳</span>
+          <div style="width:9px;height:9px;border-radius:50%;background:${s.c};flex-shrink:0;cursor:pointer" onclick="openCatEditModal(null,'${s.id}')" title="Upraviť farbu"></div>
+          <span style="flex:1;color:var(--mu)">${se}${s.l}</span>
+          <button class="cat-chip-del" onclick="openCatEditModal(null,'${s.id}')" title="Upraviť" style="font-size:11px">✎</button>
+          <button class="cat-chip-del" onclick="deleteCat('${s.id}')" title="Zmazať" style="font-size:12px">✕</button>
+        </div>`;
+      }).join('');
+    }
+    return`<div>${html}</div>`;
+  }).join('');
+  document.getElementById('cat-grid').innerHTML=rows;
 }
 
 function addCustomCat(){ openCatEditModal(); }
 
 function deleteCat(id){
-  if (!confirm('Zmazať kategóriu? Transakcie s touto kategóriou budú preradené na "Ostatné".')) return;
-  // Remove from builtin list or custom list
-  const bi = BUILTIN_CATS.findIndex(c=>c.id===id);
-  if (bi>=0) BUILTIN_CATS.splice(bi,1);
-  customCats = customCats.filter(c=>c.id!==id);
-  // Fallback category — ensure 'ostatne' still exists or use first
-  const fallback = getCatD()[0]?.id || 'ostatne';
-  TX.forEach(tx => { if(tx.category===id) tx.category=fallback; });
-  saveD(); renderCatGrid(); initRuleCatSelect();
+  const catd=getCatD(); const cat=catd.find(c=>c.id===id); if(!cat) return;
+  const subs=getSubcatIds(id);
+  if(subs.length){
+    const choice=confirm(`Kategória "${cat.l}" má ${subs.length} podkategóri${subs.length===1?'u':subs.length<5?'e':'í'}.
+
+OK = zmazať aj podkategórie
+Zrušiť = zrušiť mazanie`);
+    if(!choice) return;
+    // Delete subcats first (they have no subcats themselves)
+    subs.forEach(sid=>{
+      BUILTIN_CATS.splice(BUILTIN_CATS.findIndex(c=>c.id===sid),1);
+      customCats=customCats.filter(c=>c.id!==sid);
+      const fb=getCatD()[0]?.id||'ostatne';
+      TX.forEach(tx=>{if(tx.category===sid)tx.category=fb;});
+    });
+  } else {
+    if(!confirm(`Zmazať kategóriu "${cat.l}"? Transakcie s touto kategóriou budú preradené na prvú dostupnú.`)) return;
+  }
+  const bi=BUILTIN_CATS.findIndex(c=>c.id===id);
+  if(bi>=0) BUILTIN_CATS.splice(bi,1);
+  customCats=customCats.filter(c=>c.id!==id);
+  const fallback=getCatD()[0]?.id||'ostatne';
+  TX.forEach(tx=>{if(tx.category===id)tx.category=fallback;});
+  saveD(); renderCatGrid(); initRuleCatSelect(); updateFilters();
 }
 
 function restoreBuiltinCats(){
@@ -4420,8 +4535,10 @@ function renderFlexBudget(){
   const flexItems=budgetLimits.filter(l=>l.type==='monthly'&&l.flexType!=='irregular').map(l=>{
     const cat=catd.find(c=>c.id===l.catId);
     if(!cat) return null;
-    const spent=bc[l.catId]||0;
-    return{cat,limit:l.amount,spent};
+    const spent=(bc[l.catId]||0)+getSubcatIds(l.catId).reduce((s,sid)=>s+(bc[sid]||0),0);
+    // Detect conflict: subcat also has its own limit
+    const conflictSubs=getSubcatIds(l.catId).filter(sid=>budgetLimits.some(bl=>bl.catId===sid&&bl.type===l.flexType||bl.type==='monthly'));
+    return{cat,limit:l.amount,spent,conflict:conflictSubs.length>0};
   }).filter(Boolean);
   const flexTotal=flexItems.reduce((s,x)=>s+x.spent,0);
   const flexLimitTotal=flexItems.reduce((s,x)=>s+x.limit,0);
@@ -4431,7 +4548,7 @@ function renderFlexBudget(){
     const cat=catd.find(c=>c.id===l.catId);
     if(!cat) return null;
     const yearlySpent=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&t.amount<0&&!isCCRepayment(t)&&!t.excluded)
-      .reduce((s,t)=>s+getTxCatAmounts(t).filter(({category,amount})=>category===l.catId&&amount<0).reduce((ss,{amount})=>ss+Math.abs(amount),0),0);
+      .reduce((s,t)=>s+getTxCatAmounts(t).filter(({category,amount})=>(category===l.catId||getCatParentId(category)===l.catId)&&amount<0).reduce((ss,{amount})=>ss+Math.abs(amount),0),0);
     return{cat,limit:l.amount,spent:yearlySpent,mesEq:l.amount/12};
   }).filter(Boolean);
 
@@ -4531,7 +4648,7 @@ function renderFlexBudget(){
     const col=rawPct>=100?'#e05c5c':rawPct>=80?'#f0a040':cat.c;
     html+=`<div style="margin-bottom:10px;cursor:pointer" onclick="openBudgetDrill('${cat.id}','${cat.l}','${bgMon}',false)">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px">
-        <span style="color:${cat.c};font-weight:600">■ ${cat.l}</span>
+        <span style="color:${cat.c};font-weight:600">■ ${cat.l}${conflict?'<span title="Podkategória má vlastný limit — možné dvojité počítanie" style="font-size:9px;color:var(--acc2);cursor:help;margin-left:3px">⚠</span>':''}</span>
         <span style="color:${rawPct>100?'var(--red)':'var(--txt)'};font-family:var(--M)">${fabs(spent)} <span style="color:var(--mu)">/ ${fabs(limit)}</span>${rawPct>100?` <span style="color:var(--red);font-size:10px">+${fabs(spent-limit)}</span>`:''}</span>
       </div>
       <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden">
@@ -5032,12 +5149,13 @@ let _drillCatId=null, _drillIsYearly=false;
 function openBudgetDrill(catId,catLabel,period,isYearly){
   _drillCatId=catId; _drillIsYearly=!!isYearly;
   let txs;
+  const _bdrCatIds=new Set([catId,...getSubcatIds(catId)]);
   if(isYearly){
     const yr=parseInt(period);
-    txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&(t.category||null)===catId&&t.amount<0);
+    txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&_bdrCatIds.has(t.category)&&t.amount<0);
   } else {
     const [yr,mo]=period.split('-').map(Number);
-    txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&eDate(t).getMonth()===mo-1&&(t.category||null)===catId&&t.amount<0);
+    txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&eDate(t).getMonth()===mo-1&&_bdrCatIds.has(t.category)&&t.amount<0);
   }
   txs=txs.sort((a,b)=>b.date-a.date);
   const total=txs.reduce((s,t)=>s+Math.abs(t.amount),0);
@@ -5210,25 +5328,58 @@ function renderMonthlyPivot(){
   const colHdr=`<th class="cat-hd">Kategória</th>${weeks.map(w=>`<th style="font-size:9px;padding:3px;text-align:center">${w.l}</th>`).join('')}<th style="font-size:9px;padding:3px 5px">∑</th>`;
 
   // ── Row builders ──────────────────────────────────────────────
+  // Aggregate subcats into parent row builder
   function expRow(cat){
-    const net=netCatTotals[cat.id];
-    const hasRef=incTotals[cat.id]>0.01;
-    const disp=Math.max(0,net); if(disp<0.01&&!hasRef)return'';
-    const ttip=hasRef?` title="Hrubé: ${fabs(expTotals[cat.id])}, vrátky: −${fabs(incTotals[cat.id])}"`:' ';
-    return`<tr class="prow" onclick="drillCat('${cat.id}','${cat.l}','monthly')">
-      <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l}${hasRef?`<sup style="color:#5bc17c;font-size:8px">↩</sup>`:''}</td>
-      ${netMatrix[cat.id].map(v=>{const d=Math.max(0,v);return d>0.005?`<td${ttip}><span class="hc" style="--cc:${cat.c}">${d.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
-      <td class="tc" style="color:var(--red)"${ttip}>${fabs(disp)}</td>
+    const subs=catd.filter(s=>s.parentId===cat.id);
+    const aggExpT=expTotals[cat.id]+subs.reduce((s,c)=>s+(expTotals[c.id]||0),0);
+    const aggIncT=incTotals[cat.id]+subs.reduce((s,c)=>s+(incTotals[c.id]||0),0);
+    const aggNet=Math.max(0,aggExpT-aggIncT);
+    if(aggNet<0.01&&aggIncT<0.01)return'';
+    const hasRef=aggIncT>0.01;
+    const ttip=hasRef?` title="Hrubé: ${fabs(aggExpT)}, vrátky: −${fabs(aggIncT)}"`:' ';
+    const hasSubs=subs.length>0;
+    const expanded=_pivotExpandedParents.has(cat.id);
+    const toggle=hasSubs?`<span onclick="event.stopPropagation();togglePivotParent('${cat.id}')" style="cursor:pointer;margin-right:3px;font-size:11px;color:var(--mu)">${expanded?'▾':'▸'}</span>`:'';
+    const aggNM=weeks.map((_,wi)=>netMatrix[cat.id][wi]+subs.reduce((s,sc)=>s+(netMatrix[sc.id]?.[wi]||0),0));
+    let html=`<tr class="prow" onclick="${hasSubs?`_drillExpandParent('${cat.id}','${cat.l}','monthly')`:` drillCat('${cat.id}','${cat.l}','monthly')`}">
+      <td class="cat-cell">${toggle}<span style="color:${cat.c}">■</span> ${cat.l}${hasRef?`<sup style="color:#5bc17c;font-size:8px">↩</sup>`:''}</td>
+      ${aggNM.map(v=>{const d=Math.max(0,v);return d>0.005?`<td${ttip}><span class="hc" style="--cc:${cat.c}">${d.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
+      <td class="tc" style="color:var(--red)"${ttip}>${fabs(aggNet)}</td>
     </tr>`;
+    if(hasSubs&&expanded){
+      subs.filter(s=>(expTotals[s.id]||0)>0.005||(incTotals[s.id]||0)>0.005).forEach(s=>{
+        const sNet=Math.max(0,netCatTotals[s.id]||0);const sRef=incTotals[s.id]>0.01;
+        const sTip=sRef?` title="Hrubé: ${fabs(expTotals[s.id])}, vrátky: −${fabs(incTotals[s.id])}"`:' ';
+        html+=`<tr class="prow" onclick="drillCat('${s.id}','${s.l}','monthly')">
+          <td class="cat-cell" style="padding-left:26px;color:var(--mu)">↳ <span style="color:${s.c||cat.c}">■</span> ${s.l}${sRef?`<sup style="color:#5bc17c;font-size:8px">↩</sup>`:''}</td>
+          ${netMatrix[s.id].map(v=>{const d=Math.max(0,v);return d>0.005?`<td${sTip}><span class="hc" style="--cc:${s.c||cat.c};opacity:.75">${d.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
+          <td class="tc" style="color:var(--red);opacity:.8"${sTip}>${fabs(sNet)}</td>
+        </tr>`;
+      });
+    }
+    return html;
   }
 
   function incRow(cat){
-    const val=incTotals[cat.id]; if(val<0.01)return'';
-    return`<tr class="prow" onclick="drillCat('${cat.id}','${cat.l}','monthly')">
-      <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l}</td>
-      ${incMatrix[cat.id].map(v=>v>0.005?`<td><span class="hc" style="--cc:#4caf82">+${v.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`).join('')}
-      <td class="tc" style="color:#4caf82">+${fabs(val)}</td>
+    const subs=catd.filter(s=>s.parentId===cat.id);
+    const aggIncT=incTotals[cat.id]+subs.reduce((s,c)=>s+(incTotals[c.id]||0),0);
+    if(aggIncT<0.01)return'';
+    const hasSubs=subs.length>0;const expanded=_pivotExpandedParents.has(cat.id);
+    const toggle=hasSubs?`<span onclick="event.stopPropagation();togglePivotParent('${cat.id}')" style="cursor:pointer;margin-right:3px;font-size:11px;color:var(--mu)">${expanded?'▾':'▸'}</span>`:'';
+    const aggIM=weeks.map((_,wi)=>incMatrix[cat.id][wi]+subs.reduce((s,sc)=>s+(incMatrix[sc.id]?.[wi]||0),0));
+    let html=`<tr class="prow" onclick="${hasSubs?`_drillExpandParent('${cat.id}','${cat.l}','monthly')`:` drillCat('${cat.id}','${cat.l}','monthly')`}">
+      <td class="cat-cell">${toggle}<span style="color:${cat.c}">■</span> ${cat.l}</td>
+      ${aggIM.map(v=>v>0.005?`<td><span class="hc" style="--cc:#4caf82">+${v.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`).join('')}
+      <td class="tc" style="color:#4caf82">+${fabs(aggIncT)}</td>
     </tr>`;
+    if(hasSubs&&expanded) subs.filter(s=>incTotals[s.id]>0.005).forEach(s=>{
+      html+=`<tr class="prow" onclick="drillCat('${s.id}','${s.l}','monthly')">
+        <td class="cat-cell" style="padding-left:26px;color:var(--mu)">↳ <span style="color:${s.c||cat.c}">■</span> ${s.l}</td>
+        ${incMatrix[s.id].map(v=>v>0.005?`<td><span class="hc" style="--cc:#4caf82;opacity:.75">+${v.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`).join('')}
+        <td class="tc" style="color:#4caf82;opacity:.8">+${fabs(incTotals[s.id])}</td>
+      </tr>`;
+    });
+    return html;
   }
 
   // ── HTML ──────────────────────────────────────────────────────
@@ -5238,14 +5389,14 @@ function renderMonthlyPivot(){
   const secHdr=(label,color='#e05c5c22',textColor='#e05c5c')=>
     `<tr><td colspan="${W+2}" style="padding:5px 8px 3px;font-size:9px;font-weight:700;background:${color};color:${textColor};letter-spacing:.8px;text-transform:uppercase;border-top:1px solid var(--bd)">${label}</td></tr>`;
   html+=secHdr('Výdavky');
-  activeExpCats.forEach(cat=>{html+=expRow(cat);});
+  activeExpCats.filter(c=>!c.parentId).forEach(cat=>{html+=expRow(cat);});
   if(!activeExpCats.length) html+=`<tr><td colspan="${W+2}" class="h0">Žiadne výdavky</td></tr>`;
   html+=`<tr class="stotal"><td class="cat-cell" style="color:var(--red)">∑ Výdavky</td>${totalExpWeek.map(v=>`<td style="color:var(--red)">${v>0.01?v.toFixed(0)+'€':'—'}</td>`).join('')}<td style="color:var(--red);font-weight:700">${fabs(grandExp)}</td></tr>`;
 
   // PRÍJMY (pure income only)
   if(incOnlyCats.length){
     html+=secHdr('Príjmy','#4caf8222','#4caf82');
-    incOnlyCats.forEach(cat=>{html+=incRow(cat);});
+    incOnlyCats.filter(c=>!c.parentId).forEach(cat=>{html+=incRow(cat);});
     html+=`<tr class="stotal"><td class="cat-cell" style="color:#4caf82">∑ Príjmy</td>${totalIncWeek.map(v=>`<td style="color:#4caf82">${v>0.01?'+'+v.toFixed(0)+'€':'—'}</td>`).join('')}<td style="color:#4caf82;font-weight:700">+${fabs(grandInc)}</td></tr>`;
     // NET row
     const netRow=weeks.map((_,wi)=>{const n=totalIncWeek[wi]-totalExpWeek[wi];const c=n>=0?'#4caf82':'var(--red)';return`<td style="color:${c};font-weight:700">${n>=0?'+':''}${n.toFixed(0)}€</td>`;}).join('');
@@ -5326,27 +5477,40 @@ function renderYearlyPivot(){
   const colHdr=`<th class="cat-hd">Kategória</th>${activeMo.map(i=>`<th>${mNames[i]}</th>`).join('')}<th>Spolu</th>`;
 
   function expRowY(cat){
-    const grossExp=expTotals[cat.id]; if(!grossExp)return'';
-    const grossInc=incTotals[cat.id];
-    const netExp=Math.max(0,netCatTotals[cat.id]);
+    const subs=catd.filter(s=>s.parentId===cat.id);
+    const hasSubs=subs.length>0; const expanded=_pivotExpandedParents.has(cat.id);
+    const grossExp=(expTotals[cat.id]||0)+subs.reduce((s,c)=>s+(expTotals[c.id]||0),0);
+    const grossInc=(incTotals[cat.id]||0)+subs.reduce((s,c)=>s+(incTotals[c.id]||0),0);
+    if(!grossExp&&!grossInc) return'';
+    const netExp=Math.max(0,grossExp-grossInc);
     const hasRef=grossInc>0.01;
     const ttip=hasRef?`Hrubé výdavky: ${fabs(grossExp)}&#10;Vrátky: −${fabs(grossInc)}&#10;Čisto: ${fabs(netExp)}`:'';
     const refBadge=hasRef?` <span style="font-size:9px;color:#5bc17c;cursor:help" title="${ttip}">↩</span>`:'';
+    const toggle=hasSubs?`<span onclick="event.stopPropagation();togglePivotParent('${cat.id}')" style="cursor:pointer;margin-right:3px;font-size:11px;color:var(--mu)">${expanded?'▾':'▸'}</span>`:'';
     const cells=activeMo.map(mo=>{
-      const net=Math.max(0,expMatrix[cat.id][mo]-incMatrix[cat.id][mo]);
-      const gross=expMatrix[cat.id][mo];
-      const inc=incMatrix[cat.id][mo];
+      const gross=(expMatrix[cat.id][mo]||0)+subs.reduce((s,sc)=>s+(expMatrix[sc.id]?.[mo]||0),0);
+      const inc=(incMatrix[cat.id][mo]||0)+subs.reduce((s,sc)=>s+(incMatrix[sc.id]?.[mo]||0),0);
+      const net=Math.max(0,gross-inc);
       const ct=gross>0&&inc>0?` title="${gross.toFixed(0)}€ − ${inc.toFixed(0)}€"`:' ';
       if(net>0.005) return`<td><span class="heat-cell" style="background:${cat.c}25;border-left:3px solid ${cat.c};color:var(--txt)"${ct}>${net.toFixed(0)}€${inc>0.01?'<sup style="font-size:7px;color:#5bc17c">↩</sup>':''}</span></td>`;
       if(gross>0.01) return`<td><span class="heat-cell" style="background:${cat.c}10;border-left:2px solid ${cat.c}44;color:var(--mu);font-size:9px" title="Plne vrátené">↩</span></td>`;
       return`<td class="heat0">—</td>`;
     }).join('');
     const starNote=hasRef?` <span style="font-size:9px;color:#5bc17c;cursor:help" title="${ttip}">*</span>`:'';
-    return`<tr style="cursor:pointer" onclick="drillCat('${cat.id}','${cat.l}','yearly')">
-      <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l}${refBadge}</td>
+    let hY=`<tr style="cursor:pointer" onclick="${hasSubs?`_drillExpandParent('${cat.id}','${cat.l}','yearly')`:` drillCat('${cat.id}','${cat.l}','yearly')`}">
+      <td class="cat-cell">${toggle}<span style="color:${cat.c}">■</span> ${cat.l}${refBadge}</td>
       ${cells}
       <td style="color:${netExp>0.01?'var(--red)':'var(--mu)'};font-weight:600">${fabs(netExp)}${starNote}</td>
     </tr>`;
+    if(hasSubs&&expanded) subs.filter(s=>(expTotals[s.id]||0)>0.005).forEach(s=>{
+      const sNet=Math.max(0,(expTotals[s.id]||0)-(incTotals[s.id]||0));
+      hY+=`<tr style="cursor:pointer" onclick="drillCat('${s.id}','${s.l}','yearly')">
+        <td class="cat-cell" style="padding-left:26px;color:var(--mu)">↳ <span style="color:${s.c||cat.c}">■</span> ${s.l}</td>
+        ${activeMo.map(mo=>{const n=Math.max(0,(expMatrix[s.id]?.[mo]||0)-(incMatrix[s.id]?.[mo]||0));return n>0.005?`<td><span class="heat-cell" style="background:${s.c||cat.c}20;border-left:3px solid ${s.c||cat.c};color:var(--txt);opacity:.8">${n.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
+        <td style="color:${sNet>0.01?'var(--red)':'var(--mu)'};font-weight:600;opacity:.8">${fabs(sNet)}</td>
+      </tr>`;
+    });
+    return hY;
   }
 
   function incRowY(cat,useInc=false,isNetInc=false){
@@ -5354,11 +5518,25 @@ function renderYearlyPivot(){
     const isVratka=isNetInc&&expTotals[cat.id]>0.01;
     const label=isVratka?` <span style="font-size:9px;color:var(--mu);cursor:help" title="Vrátky z výdavkov v tejto kategórii — viď VÝDAVKY sekciu">↩ vrátky</span>`:
       isNetInc?` <span style="font-size:9px;color:var(--mu)">↩</span>`:'';
-    return`<tr style="cursor:pointer" onclick="drillCat('${cat.id}','${cat.l}','yearly')">
-      <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l}${label}</td>
-      ${activeMo.map(mo=>{const v=incMatrix[cat.id][mo];return v>0.005?`<td><span class="heat-cell" style="background:${cat.c}20;border-left:3px solid ${cat.c};color:var(--txt)">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
-      <td style="color:${isVratka?'#5bc17c':cat.c};font-weight:600">+${fabs(val)}</td>
+    const _iSubs=catd.filter(s=>s.parentId===cat.id);
+    const _iHasSubs=_iSubs.length>0&&!useInc&&!isNetInc;
+    const _iExpanded=_pivotExpandedParents.has(cat.id);
+    const _iToggle=_iHasSubs?`<span onclick="event.stopPropagation();togglePivotParent('${cat.id}')" style="cursor:pointer;margin-right:3px;font-size:11px;color:var(--mu)">${_iExpanded?'▾':'▸'}</span>`:'';
+    const _aggIM=activeMo.map(mo=>incMatrix[cat.id][mo]+_iSubs.reduce((s,sc)=>s+(incMatrix[sc.id]?.[mo]||0),0));
+    const _aggVal=incTotals[cat.id]+_iSubs.reduce((s,sc)=>s+(incTotals[sc.id]||0),0);
+    let iHtml=`<tr style="cursor:pointer" onclick="${_iHasSubs?`_drillExpandParent('${cat.id}','${cat.l}','yearly')`:`drillCat('${cat.id}','${cat.l}','yearly')`}">
+      <td class="cat-cell">${_iToggle}<span style="color:${cat.c}">■</span> ${cat.l}${label}</td>
+      ${_aggIM.map(mo=>{const v=mo;return v>0.005?`<td><span class="heat-cell" style="background:${cat.c}20;border-left:3px solid ${cat.c};color:var(--txt)">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
+      <td style="color:${isVratka?'#5bc17c':cat.c};font-weight:600">+${fabs(_aggVal)}</td>
     </tr>`;
+    if(_iHasSubs&&_iExpanded) _iSubs.filter(s=>incTotals[s.id]>0.005).forEach(s=>{
+      iHtml+=`<tr style="cursor:pointer" onclick="drillCat('${s.id}','${s.l}','yearly')">
+        <td class="cat-cell" style="padding-left:26px;color:var(--mu)">↳ <span style="color:${s.c||cat.c}">■</span> ${s.l}</td>
+        ${activeMo.map(mo=>{const v=incMatrix[s.id]?.[mo]||0;return v>0.005?`<td><span class="heat-cell" style="background:${s.c||cat.c}20;border-left:3px solid ${s.c||cat.c};color:var(--txt);opacity:.8">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
+        <td style="color:${s.c||cat.c};font-weight:600;opacity:.8">+${fabs(incTotals[s.id])}</td>
+      </tr>`;
+    });
+    return iHtml;
   }
 
   // ── Category groups ────────────────────────────────────────
@@ -5386,7 +5564,7 @@ function renderYearlyPivot(){
 
   // ── VÝDAVKY ──────────────────────────────────────────────────
   html+=secHdrY('Výdavky');
-  activeExpCats.forEach(cat=>{html+=expRowY(cat);});
+  activeExpCats.filter(c=>!c.parentId).forEach(cat=>{html+=expRowY(cat);});
   if(!activeExpCats.length)html+=`<tr><td colspan="${activeMo.length+2}" class="heat0">Žiadne výdavky</td></tr>`;
   html+=`<tr class="stotal"><td class="cat-cell" style="color:var(--red)">∑ Výdavky</td>${expNetMo.map(v=>`<td style="color:var(--red)">${v>0.01?v.toFixed(0)+'€':'—'}</td>`).join('')}<td class="tc" style="color:var(--red)">${fabs(grandExpNet)}</td></tr>`;
 
@@ -5458,13 +5636,14 @@ function drillCat(catId,catLabel,scope){
     const d=eDate(t); if(!t.date||!d||d.getFullYear()!==anYear) return false;
     return scope!=='monthly'||d.getMonth()===anMonth;
   };
+  const _drillCatIds=new Set([catId,...getSubcatIds(catId)]); // parent + all subcats
   const hasCat=t=>t.splits?.length
-    ? t.splits.some(s=>s.category===catId)
-    : t.category===catId;
-  let txs=TX.filter(t=>yearMatch(t)&&hasCat(t)&&!t.excluded)
+    ? t.splits.some(s=>_drillCatIds.has(s.category))
+    : _drillCatIds.has(t.category);
+  let txs=TX.filter(t=>yearMatch(t)&&hasCat(t)&&!t.excluded&&!isCCRepayment(t)&&!(t.tags||[]).some(tag=>excludedTags.has(tag)))
     .sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
   const catAmt=tx=>tx.splits?.length
-    ? tx.splits.filter(s=>s.category===catId).reduce((s,sp)=>s+sp.amount,0)
+    ? tx.splits.filter(s=>_drillCatIds.has(s.category)).reduce((s,sp)=>s+sp.amount,0)
     : tx.amount;
   const txIds=new Set(txs.map(t=>t.id));
   const retsByExp={};
@@ -5536,7 +5715,7 @@ function drillCat(catId,catLabel,scope){
     }).join(''):'';
     const expRow='<tr style="cursor:pointer" onclick="openDet(\'' +tx.id+ '\')">'+
       '<td class="td">'+fd(eDate(tx)||tx.date)+'</td>'+
-      '<td class="tm" style="max-width:180px">'+(tx.merchantOverride||tx.merchant||'—')+icons+tagBadges+'</td>'+
+      '<td class="tm" style="width:220px;overflow:hidden;text-overflow:ellipsis">'+(tx.merchantOverride||tx.merchant||'—')+icons+tagBadges+'</td>'+
       '<td class="ts">'+(tx.info||tx.description||tx.place||'—')+'</td>'+
       '<td><span class="src '+tx.source+'">'+(tx.source==='account'?'účet':'karta')+'</span></td>'+
       '<td class="ta '+(isPos?'pos':'neg')+'">'+(isPos?'+':'-')+' '+fabs(amt)+splitNote+shareNote+effectiveNote+'</td></tr>';
@@ -6141,9 +6320,10 @@ function renderComparison(){
     <div class="sc r" style="margin:0"><div class="sc-l">Výdavky ${mb}</div><div class="sc-v neg">${fabs(expB)}</div><div class="sc-s">${txB.filter(t=>t.amount<0).length} txn</div></div>`;
   const catd=getCatD().filter(c=>c.id!=='sporenie');
   const bcA={},bcB={};
-  txA.filter(t=>t.amount<0).forEach(t=>{bcA[t.category]=(bcA[t.category]||0)+Math.abs(t.amount);});
-  txB.filter(t=>t.amount<0).forEach(t=>{bcB[t.category]=(bcB[t.category]||0)+Math.abs(t.amount);});
-  const activeCats=catd.filter(c=>(bcA[c.id]||0)+(bcB[c.id]||0)>0);
+  txA.filter(t=>!isCCRepayment(t)&&!t.excluded).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcA[root]=(bcA[root]||0)+Math.abs(amount);}});});
+  txB.filter(t=>!isCCRepayment(t)&&!t.excluded).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcB[root]=(bcB[root]||0)+Math.abs(amount);}});});
+  // Only show root categories (subcats aggregated)
+  const activeCats=catd.filter(c=>!c.parentId&&(bcA[c.id]||0)+(bcB[c.id]||0)>0);
   const maxV=Math.max(...activeCats.flatMap(c=>[bcA[c.id]||0,bcB[c.id]||0]),1);
   const cv=document.getElementById('cmp-chart');if(!cv)return;
   const tip=document.getElementById('cmp-tip');
@@ -7610,6 +7790,7 @@ function gdInitUI() {
 let _cpTxId = null;
 
 let _cpAfterNewCat=null;
+let _catEditPrefillParentId=null;
 function _cpNewCat(){
   _cpAfterNewCat=_cpTxId;
   document.getElementById('cat-picker').style.display='none';
@@ -7632,18 +7813,26 @@ function openCatPicker(txId, el) {
   p.style.left = left + 'px';
 }
 
-function renderCPList() {
-  const tx  = TX.find(t => t.id === _cpTxId);
-  const cur = tx?.category || null;
-  const all = [{id:null, l:'— Nezaradené', c:'var(--mu)'}, ...getCatD()];
-  document.getElementById('cat-picker-list').innerHTML = all.map(c =>
-    `<div class="cp-item${c.id===cur?' cp-active':''}" onclick="_cpPick('${c.id||''}')">` +
-    `<span style="width:8px;height:8px;border-radius:50%;background:${c.id?c.c:'var(--mu)'};margin-right:8px;flex-shrink:0;display:inline-block"></span>` +
-    `${c.l}</div>`
-  ).join('') +
-  `<div style="border-top:1px solid var(--bd);margin-top:2px">` +
-  `<div class="cp-item" style="color:var(--acc2)" onclick="_cpSplit()">✂ &nbsp;Rozdeliť transakciu…</div>` +
-  `<div class="cp-item" style="color:var(--grn)" onclick="_cpNewCat()">✚ &nbsp;Nová kategória…</div></div>`;
+function renderCPList(){
+  const tx=TX.find(t=>t.id===_cpTxId);
+  const cur=tx?.category||null;
+  const catd=getCatD();
+  const roots=catd.filter(c=>!c.parentId);
+  let items=`<div class="cp-item${!cur?' cp-active':''}" onclick="_cpPick('')">` +
+    `<span style="width:8px;height:8px;border-radius:50%;background:var(--mu);margin-right:8px;display:inline-block;flex-shrink:0"></span>— Nezaradené</div>`;
+  roots.forEach(r=>{
+    const subs=catd.filter(c=>c.parentId===r.id);
+    items+=`<div class="cp-item${cur===r.id?' cp-active':''}" onclick="_cpPick('${r.id}')">` +
+      `<span style="width:8px;height:8px;border-radius:50%;background:${r.c};margin-right:8px;display:inline-block;flex-shrink:0"></span>${r.l}</div>`;
+    subs.forEach(s=>{
+      items+=`<div class="cp-item${cur===s.id?' cp-active':''}" onclick="_cpPick('${s.id}')" style="padding-left:26px">` +
+        `<span style="width:6px;height:6px;border-radius:50%;background:${s.c||r.c};margin-right:8px;display:inline-block;flex-shrink:0"></span>↳ ${s.l}</div>`;
+    });
+  });
+  document.getElementById('cat-picker-list').innerHTML=items+
+    `<div style="border-top:1px solid var(--bd);margin-top:2px">` +
+    `<div class="cp-item" style="color:var(--acc2)" onclick="_cpSplit()">✂ &nbsp;Rozdeliť transakciu…</div>` +
+    `<div class="cp-item" style="color:var(--grn)" onclick="_cpNewCat()">✚ &nbsp;Nová kategória…</div></div>`;
 }
 
 function _cpPick(catId) {
