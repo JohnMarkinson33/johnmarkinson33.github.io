@@ -4339,7 +4339,8 @@ function exportBackup(){
     tx:TX.map(sTx), deletedTX:deletedTX.map(sTx), budgets, budgetLimits, openingBalance, rules, recurDefs,
     customCats, builtinCats:[...BUILTIN_CATS], visCols,
     detFieldsHidden:[...detFieldsHidden],
-    ccLimit:document.getElementById('cc-lim')?.value||''
+    ccLimit:document.getElementById('cc-lim')?.value||'',
+    ibanNames, editLog:editLog.slice(0,500)
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
@@ -4354,18 +4355,24 @@ async function importBackup(inp){
   try{
     const txt=await new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsText(f);});
     const data=JSON.parse(txt);
-    TX=(data.tx||[]).map(dTx); budgets=data.budgets||{}; budgetLimits=data.budgetLimits||[]; openingBalance=data.openingBalance||0; recurDefs=data.recurDefs||[];
-    rules=data.rules||[]; customCats=data.customCats||[];
+    TX=(data.tx||[]).map(dTx);
+    deletedTX=(data.deletedTX||[]).map(dTx);
+    budgets=data.budgets||{}; budgetLimits=data.budgetLimits||[]; openingBalance=data.openingBalance||0;
+    recurDefs=data.recurDefs||[]; rules=data.rules||[]; customCats=data.customCats||[];
     if(data.builtinCats){BUILTIN_CATS.length=0;data.builtinCats.forEach(c=>BUILTIN_CATS.push(c));}
     visCols=data.visCols||['date','main','place','source','cat','amount'];
+    if(data.detFieldsHidden){detFieldsHidden.clear();data.detFieldsHidden.forEach(f=>detFieldsHidden.add(f));}
+    if(data.ibanNames) ibanNames=data.ibanNames;
+    if(data.editLog) editLog=data.editLog;
     if(data.ccLimit){const el=document.getElementById('cc-lim');if(el)el.value=data.ccLimit;}
     if(openingBalance){const el=document.getElementById('ob');if(el)el.value=openingBalance;}
     document.getElementById('txc').textContent=TX.length+' transakcií';
-    await Store.set('tx',TX.map(sTx)); await Store.set('budgets',budgets); await Store.set('recurDefs',recurDefs);
-    await Store.set('ob',openingBalance); await Store.set('rules',rules);
-    await Store.set('cols',visCols);
-    await Store.set('customcats', customCats);
-    await Store.set('builtincats', [...BUILTIN_CATS]);
+    await Store.set('tx',TX.map(sTx)); await Store.set('deleted',deletedTX.map(sTx));
+    await Store.set('budgets',budgets); await Store.set('budgetlimits',budgetLimits);
+    await Store.set('recurDefs',recurDefs); await Store.set('ob',openingBalance);
+    await Store.set('rules',rules); await Store.set('cols',visCols);
+    await Store.set('customcats',customCats); await Store.set('builtincats',[...BUILTIN_CATS]);
+    await Store.set('ibanNames',ibanNames); await Store.set('editlog',editLog.slice(0,500));
     updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
     alert(`Záloha načítaná: ${TX.length} transakcií, ${rules.length} pravidiel.`);
     go('dashboard');
@@ -7708,11 +7715,11 @@ async function gdSave() {
     const payload = {
       version: 5, exported: new Date().toISOString(),
       tx: TX.map(sTx), deletedTX: deletedTX.map(sTx),
-      budgets, budgetLimits, openingBalance, rules,
+      budgets, budgetLimits, openingBalance, rules, recurDefs,
       customCats, builtinCats: [...BUILTIN_CATS], visCols,
       detFieldsHidden: [...detFieldsHidden],
       ccLimit: document.getElementById('cc-lim')?.value || '',
-      editLog: editLog.slice(0, 500)
+      editLog: editLog.slice(0, 500), ibanNames
     };
     const file = await gdFindFile();
     const fid = file?.id || null;
@@ -7755,19 +7762,23 @@ async function gdLoad() {
     budgets = data.budgets || {};
     budgetLimits = data.budgetLimits || [];
     openingBalance = data.openingBalance || 0;
+    recurDefs = data.recurDefs || [];
     rules = data.rules || [];
     customCats = data.customCats || [];
     if (data.builtinCats) { BUILTIN_CATS.length = 0; data.builtinCats.forEach(c => BUILTIN_CATS.push(c)); }
     visCols = data.visCols || ['date','main','place','source','cat','amount'];
+    if (data.detFieldsHidden) { detFieldsHidden.clear(); data.detFieldsHidden.forEach(f=>detFieldsHidden.add(f)); }
+    if (data.ibanNames) ibanNames = data.ibanNames;
     if (data.editLog) editLog = data.editLog;
     if (data.ccLimit) { const el = document.getElementById('cc-lim'); if (el) el.value = data.ccLimit; }
     if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
     document.getElementById('txc').textContent = TX.length + ' transakcií';
     await Store.set('tx', TX.map(sTx)); await Store.set('deleted', deletedTX.map(sTx));
     await Store.set('budgets', budgets); await Store.set('budgetlimits', budgetLimits);
-    await Store.set('ob', openingBalance); await Store.set('rules', rules);
-    await Store.set('customcats', customCats); await Store.set('builtincats', [...BUILTIN_CATS]);
-    await Store.set('cols', visCols); await Store.set('editlog', editLog.slice(0, 500));
+    await Store.set('recurDefs', recurDefs); await Store.set('ob', openingBalance);
+    await Store.set('rules', rules); await Store.set('customcats', customCats);
+    await Store.set('builtincats', [...BUILTIN_CATS]); await Store.set('cols', visCols);
+    await Store.set('editlog', editLog.slice(0, 500)); await Store.set('ibanNames', ibanNames);
     updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
     const ts = new Date(data.exported).toLocaleString('sk-SK', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
     gdStat(`Obnovené ✓ (záloha z ${ts})`, 'ok');
