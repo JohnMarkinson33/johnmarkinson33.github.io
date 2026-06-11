@@ -302,6 +302,10 @@ input[type=color]{width:36px;height:32px;border:1px solid var(--bd);border-radiu
   .fg{grid-template-columns:1fr}.f.full{grid-column:auto}
   main{padding:12px}
   .tbl th:nth-child(3),.tbl td:nth-child(3),.tbl th:nth-child(4),.tbl td:nth-child(4){display:none}
+  /* drilldown: let columns size to content on mobile (fixed widths overflow) */
+  #an-drill table.tbl{table-layout:auto}
+  #an-drill .tbl col{width:auto!important}
+  #an-drill-body td.ta,#an-drill .tbl thead th:last-child{font-size:11px;padding:6px 6px;vertical-align:middle}
 }
 /* Category quick badge (tx table) */
 .cat-qb{display:inline-block;border:1px solid;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;transition:opacity .15s;vertical-align:middle}
@@ -334,7 +338,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v69</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v71</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('import')">↑ Import</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -2791,6 +2795,7 @@ function toggleExclTag(tag){
 let _activeTagTags = new Set(); // multi-select tags in tag report
 let _pivotExpandedParents = new Set(); // expanded parent cats in pivot table
 let _expandedTagCats = new Set(); // which category bars are expanded
+let _expandedTagIncCats = new Set(); // which income category bars are expanded
 const TAG_PALETTE=['#4a9fd4','#e05c5c','#50c8a0','#f59e0b','#a78bfa','#fb7185'];
 function _tagColor(tag,allTags){return TAG_PALETTE[allTags.indexOf(tag)%TAG_PALETTE.length];}
 
@@ -2839,6 +2844,10 @@ function renderTagReport(){
   });
   const catEntries=Object.entries(catBreak).sort((a,b)=>b[1]-a[1]);
   const maxCatVal=catEntries[0]?.[1]||1;
+  const catIncBreak={};
+  txs.filter(t=>t.amount>0).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount>0){const cid=category||'__inc';catIncBreak[cid]=(catIncBreak[cid]||0)+amount;}});});
+  const catIncEntries=Object.entries(catIncBreak).sort((a,b)=>b[1]-a[1]);
+  const maxCatIncVal=catIncEntries[0]?.[1]||1;
 
   // ── Time grouping (auto-granularity) ─────────────────────────
   const getGroupKey=d=>{
@@ -2980,7 +2989,39 @@ function renderTagReport(){
       }).join('')}
     </div>`;
 
-  wrap.innerHTML=selectorHtml+headerHtml+chartHtml+catHtml+txGroupHtml;
+  const incTotalAll=catIncEntries.reduce((s,[,a])=>s+a,0)||1;
+  const catIncHtml=catIncEntries.length?
+    `<div style="background:var(--s2);border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid var(--bd)">
+      <div style="font-size:10px;font-weight:700;color:var(--grn);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Príjmy podľa kategórií</div>
+      ${catIncEntries.map(([cid,amt])=>{
+        const ci=CAT[cid];const l=ci?.l||'Príjmy';const col=ci?.c||'var(--grn)';
+        const barPct=Math.round(amt/maxCatIncVal*100);
+        const pct=Math.round(amt/incTotalAll*100);
+        const expanded=_expandedTagIncCats.has(cid);
+        const catTxs=txs.filter(t=>t.amount>0&&getTxCatAmounts(t).some(x=>x.category===cid&&x.amount>0))
+          .sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
+        const txRows=catTxs.map(t=>{
+          const parts=getTxCatAmounts(t).filter(x=>x.category===cid&&x.amount>0);
+          const shown=parts.reduce((s,x)=>s+x.amount,0);
+          return`<div onclick="openDet('${t.id}')" style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;border-radius:4px;margin:1px 0"
+            onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
+            <span style="font-size:10px;color:var(--mu);flex-shrink:0;min-width:55px">${fd(eDate(t)||t.date)}</span>
+            <span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.merchantOverride||(t.iban&&ibanNames[t.iban])||t.merchant||'—'}</span>
+            <span style="font-size:11px;font-family:var(--M);color:var(--grn);flex-shrink:0">+${fabs(shown)}</span>
+          </div>`;}).join('');
+        return`<div style="margin-bottom:10px">
+          <div onclick="_expandedTagIncCats.has('${cid}')?_expandedTagIncCats.delete('${cid}'):_expandedTagIncCats.add('${cid}');renderTagReport()"
+            style="cursor:pointer;padding:2px 0" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+              <span style="color:${col};font-weight:600">■ ${l} <span style="font-size:9px;color:var(--mu)">${catTxs.length}×</span></span>
+              <span style="font-family:var(--M)"><span style="color:var(--grn);font-weight:600">+${fabs(amt)}</span> <span style="color:var(--mu)">${pct}%</span> ${expanded?'▴':'▾'}</span>
+            </div>
+            <div style="height:5px;background:var(--s3);border-radius:2px"><div style="height:100%;width:${barPct}%;background:${col};border-radius:2px;opacity:.8"></div></div>
+          </div>
+          ${expanded?`<div style="padding:4px 0 4px 8px;border-left:2px solid ${col}44;margin-top:4px;margin-left:4px">${txRows}</div>`:''}
+        </div>`;}).join('')}
+    </div>`:'';
+  wrap.innerHTML=selectorHtml+headerHtml+chartHtml+catHtml+catIncHtml+txGroupHtml;
   setTimeout(()=>renderTagCharts(catEntries,groupKeys,groups,spent,CAT),0);
   } catch(e) { wrap.innerHTML='<div style="padding:20px;color:var(--red);font-size:11px">Chyba: '+e.message+'</div>'; console.error('TagReport error:',e); }
 }
@@ -3143,6 +3184,19 @@ function saveIbanNameFromDet(){
   // Refresh title in detail modal
   const titleEl=document.getElementById('md-t');
   if(titleEl) titleEl.textContent=`${tx.merchantOverride||name||tx.merchant||'Transakcia'} · ${fd(tx.dateOverride||tx.date)}`;
+  // Live-update merchant names in TX list and open drill-down (same IBAN)
+  document.querySelectorAll('#tx-bd tr[data-txid]').forEach(row=>{
+    const rt=TX.find(t=>t.id===row.dataset.txid);
+    if(rt?.iban===tx.iban&&!rt.merchantOverride){
+      const nm=row.querySelector('.tm-name');
+      if(nm) nm.textContent=name||(rt.merchant||'—');
+    }
+  });
+  document.querySelectorAll('#an-drill-body td.tm .tm-name').forEach(nm=>{
+    const txId=nm.closest('tr')?.onclick?.toString().match(/'([^']+)'/)?.[1];
+    const rt=TX.find(t=>t.id===txId);
+    if(rt?.iban===tx.iban&&!rt.merchantOverride) nm.textContent=name||(rt.merchant||'—');
+  });
 }
 
 function _buildTagSelector(allTags){
@@ -3161,6 +3215,7 @@ function _toggleTagReportTag(t){
   if(_activeTagTags.has(t)&&_activeTagTags.size>1) _activeTagTags.delete(t);
   else _activeTagTags.add(t);
   _expandedTagCats=new Set();
+  _expandedTagIncCats=new Set();
   renderTagReport();
 }
 
@@ -5685,21 +5740,19 @@ function drillCat(catId,catLabel,scope){
     const tagBadges=(tx.tags||[]).map(t=>`<span style="display:inline-block;font-size:9px;padding:1px 4px;border-radius:8px;background:var(--acc)22;color:var(--acc2);border:1px solid var(--acc)44;margin-left:3px">🏷 ${t}</span>`).join('');
     const staticShare=tx.shared?.people?.length
       ? Math.max(0,fullAmt-tx.shared.people.reduce((s,p)=>s+(p.amount||0),0)) : null;
-    const shareNote=!isSplit&&staticShare!==null&&Math.abs(staticShare-fullAmt)>0.01
-      ? '<span style="font-size:9px;color:var(--mu);margin-left:4px">(tvoja: '+fabs(staticShare)+')</span>' : '';
+    const shareNote='';
     // For income tx with debtLinks: show effective amount (minus debt portion)
     const dlAmt=isPos?debtLinkAmount(tx):0;
     // effectiveNote only for non-split txs — splits are already defined from txMyAmount (after debtLink deduction)
     const effectiveAmt=isPos&&dlAmt>0.01&&!isSplit ? Math.max(0,amt-dlAmt) : null;
-    const effectiveNote=effectiveAmt!==null
-      ? '<span style="font-size:9px;color:var(--mu);margin-left:4px">(čistý: +'+fabs(effectiveAmt)+')</span>' : '';
+    const effectiveNote='';
     const rets=retsByExp[tx.id]||[];
     const retRows=rets.map(r=>{
       const rd=eDate(r.tx);const ds=rd?rd.getDate()+'.'+(rd.getMonth()+1)+'.':'';
       const rsrc=r.tx.source==='account'?'účet':'karta';
       return '<tr style="cursor:pointer" onclick="openDet(\'' +r.tx.id+ '\')">'+
         '<td class="td" style="color:var(--grn);font-size:10px;padding-left:18px">↳ '+ds+'</td>'+
-        '<td class="tm" style="font-size:10px;color:var(--grn);padding-left:12px;border-left:2px solid rgba(91,193,124,.3)">'+(r.tx.merchantOverride||r.tx.merchant||r.tx.description||'platba')+'</td>'+
+        '<td style="font-size:10px;color:var(--grn);padding:4px 8px 4px 12px;border-left:2px solid rgba(91,193,124,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(r.tx.merchantOverride||r.tx.merchant||r.tx.description||'platba')+'</td>'+
         '<td class="ts">'+(r.tx.info||r.tx.description||r.tx.place||'—')+'</td>'+
         '<td><span class="src '+r.tx.source+'">'+rsrc+'</span></td>'+
         '<td class="ta pos">+'+fabs(r.linkAmt)+'</td></tr>';
@@ -5723,46 +5776,57 @@ function drillCat(catId,catLabel,scope){
     }).join(''):'';
     const expRow='<tr style="cursor:pointer" onclick="openDet(\'' +tx.id+ '\')">'+
       '<td class="td">'+fd(eDate(tx)||tx.date)+'</td>'+
-      '<td class="tm" style="width:220px;overflow:hidden;text-overflow:ellipsis">'+(tx.merchantOverride||tx.merchant||'—')+icons+tagBadges+'</td>'+
-      '<td class="ts">'+(tx.info||tx.description||tx.place||'—')+'</td>'+
+      '<td class="tm"><span class="tm-name">'+(tx.merchantOverride||(tx.iban&&ibanNames[tx.iban])||tx.merchant||'—')+'</span>'+icons+tagBadges+'</td>'+
+      '<td class="ts" style="overflow:hidden;text-overflow:ellipsis;max-width:0">'+(tx.info||tx.description||tx.place||'—')+'</td>'+
       '<td><span class="src '+tx.source+'">'+(tx.source==='account'?'účet':'karta')+'</span></td>'+
-      '<td class="ta '+(isPos?'pos':'neg')+'">'+(isPos?'+':'-')+' '+fabs(amt)+splitNote+shareNote+effectiveNote+'</td></tr>';
+      '<td class="ta '+(isPos?'pos':'neg')+'">'+(isPos?'+':'−')+fabs(amt)+splitNote+shareNote+effectiveNote+'</td></tr>';
     return expRow+dlRows+retRows;
   }).join('');
-  // debtLinks on income txs in this category (money passing through, not mine)
-  // Split txs: splits are already net of debtLink — don't double-deduct in footer
-  const grossIncDebtLinks=txs.filter(t=>catAmt(t)>0).reduce((s,t)=>s+(isDebtLink(t)&&!t.splits?.length?debtLinkAmount(t):0),0);
-  // net = effective income (mine) minus effective expense (after returns)
-  // sharedOffset already captured as "Vrátené pohľadávky" — don't double-deduct from income
-  const effectiveExp=Math.max(0, grossExp-sharedOffset);
-  const effectiveInc=Math.max(0, grossInc-grossIncDebtLinks);
-  const netSigned=effectiveInc-effectiveExp; // positive = net income, negative = net expense
+  // ── PIVOT-CONSISTENT NET ──────────────────────────────────────
+  // Footer net MUST equal the pivot row for the SAME scope.
+  // Monthly pivot = single getTxCatAmounts pass.
+  // Yearly pivot adds a 2nd pass attributing debtLink returns to the
+  // expense's category. We mirror both exactly so drilldown == pivot.
+  let myExp=0,myInc=0;
+  txs.forEach(tx=>{
+    getTxCatAmounts(tx).forEach(({category,amount})=>{
+      if(!_drillCatIds.has(category))return;
+      if(amount<0) myExp+=Math.abs(amount); else myInc+=amount;
+    });
+  });
+  if(scope!=='monthly'){
+    // 2nd pass (yearly): debtLink income → income of the linked expense's category
+    TX.filter(t=>yearMatch(t)&&t.amount>0&&isDebtLink(t)).forEach(tx=>{
+      getDebtLinks(tx).forEach(l=>{
+        const expTx=TX.find(t=>t.id===l.expTxId); if(!expTx)return;
+        const cid=expTx.category; if(!cid||!_drillCatIds.has(cid))return;
+        if(tx.category===cid)return; // already counted in 1st pass
+        myInc+=typeof l.amount==='number'?l.amount:Math.abs(tx.amount);
+      });
+    });
+  }
+  const myNet=myExp-myInc;                          // == pivot netCatTotals (signed)
+  const totalReduction=grossExp-Math.max(0,myNet);  // everything netted off raw gross
+  const realReturns=Math.min(sharedOffset,Math.max(0,totalReduction)); // ↳ returns shown in rows
+  const otherNet=Math.max(0,totalReduction-realReturns); // shares / in-cat income / vyrovnané
+  const rowDiv=(lbl,val,cls,lblCol)=>'<div style="display:flex;justify-content:space-between"><span style="color:'+(lblCol||'var(--mu)')+'">'+lbl+'</span><span'+(cls?' class="'+cls+'"':' style="color:var(--mu)"')+'>'+val+'</span></div>';
   let fh='<div style="display:flex;flex-direction:column;gap:3px;font-size:11px">';
   const SEP='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd);padding-top:4px;margin-top:2px;font-weight:600">';
-  if(grossExp>0 && grossInc>0){
-    // Mixed: both expenses and incomes
-    fh+='<div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">Hrubé výdavky:</span><span class="neg">'+fabs(grossExp)+'</span></div>';
-    if(sharedOffset>0.01) fh+='<div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">Vrátené pohľadávky:</span><span class="pos">+'+fabs(sharedOffset)+'</span></div>';
-    fh+='<div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">Príjmy v kategórii:</span><span class="pos">+'+fabs(grossInc)+'</span></div>';
-    if(grossIncDebtLinks>0.01) fh+='<div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">z toho vrátky pohľadávok:</span><span style="color:var(--mu)">−'+fabs(grossIncDebtLinks)+'</span></div>';
-    if(netSigned>0.01)
-      fh+=SEP+'<span>Čistý príjem:</span><span class="pos">+'+fabs(netSigned)+'</span></div>';
-    else if(netSigned<-0.01)
-      fh+=SEP+'<span>Čistý výdavok:</span><span class="neg">'+fabs(-netSigned)+'</span></div>';
+  if(grossExp>0.01){
+    fh+=rowDiv('Hrubé výdavky:',fabs(grossExp),'neg');
+    if(realReturns>0.01) fh+=rowDiv('Vrátené pohľadávky:','+'+fabs(realReturns),'pos');
+    if(otherNet>0.01) fh+=rowDiv('Podiely / príjmy v kat.:','−'+fabs(otherNet),null);
+    if(myNet>0.01)
+      fh+=SEP+'<span>Čistý výdavok:</span><span class="neg">'+fabs(myNet)+'</span></div>';
+    else if(myNet<-0.01)
+      fh+=SEP+'<span>Čistý príjem:</span><span class="pos">+'+fabs(-myNet)+'</span></div>';
     else
       fh+=SEP+'<span>Vyrovnané:</span><span style="color:var(--mu)">0,00 €</span></div>';
-  } else if(grossExp>0){
-    // Expense-only
-    fh+='<div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">Hrubé výdavky:</span><span class="neg">'+fabs(grossExp)+'</span></div>';
-    if(sharedOffset>0.01) fh+='<div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">Vrátené pohľadávky:</span><span class="pos">+'+fabs(sharedOffset)+'</span></div>';
-    if(sharedOffset>0.01) fh+=SEP+'<span>Čistý výdavok:</span><span class="neg">'+fabs(effectiveExp)+'</span></div>';
-    else fh+=SEP+'<span>Spolu:</span><span class="neg">'+fabs(grossExp)+'</span></div>';
   } else {
     // Income-only category
-    fh+='<div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">Hrubé príjmy:</span><span class="pos">+'+fabs(grossInc)+'</span></div>';
-    if(grossIncDebtLinks>0.01) fh+='<div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">z toho vrátky pohľadávok:</span><span style="color:var(--mu)">−'+fabs(grossIncDebtLinks)+'</span></div>';
-    if(grossIncDebtLinks>0.01) fh+=SEP+'<span>Čistý príjem (tvoj):</span><span class="pos">+'+fabs(effectiveInc)+'</span></div>';
-    else fh+=SEP+'<span>Spolu:</span><span class="pos">+'+fabs(grossInc)+'</span></div>';
+    fh+=rowDiv('Hrubé príjmy:','+'+fabs(grossInc),'pos');
+    if(grossInc-myInc>0.01) fh+=rowDiv('z toho vrátky pohľadávok:','−'+fabs(grossInc-myInc),null);
+    fh+=SEP+'<span>Čistý príjem (tvoj):</span><span class="pos">+'+fabs(Math.max(0,myInc))+'</span></div>';
   }
   fh+='</div>';
   document.getElementById('an-drill-total').innerHTML=fh;
