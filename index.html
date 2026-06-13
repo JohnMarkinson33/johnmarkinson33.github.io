@@ -83,6 +83,7 @@ header{padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;align-it
 .logo{font-family:var(--H);font-size:16px;white-space:nowrap;flex-shrink:0}.logo span{color:var(--acc)}
 .save-dot{width:6px;height:6px;border-radius:50%;background:var(--grn);opacity:0;transition:opacity .3s;flex-shrink:0}
 .save-dot.on{opacity:1}
+.save-dot.err{opacity:1;background:var(--red);box-shadow:0 0 6px var(--red)}
 .hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .theme-btn{background:none;border:1px solid var(--bd);color:var(--mu);padding:4px 8px;border-radius:4px;cursor:pointer;font-size:13px;line-height:1}
 .theme-btn:hover{border-color:var(--acc);color:var(--acc)}
@@ -338,7 +339,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v71</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v77</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('import')">↑ Import</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -1316,53 +1317,95 @@ const Store = {
   },
   async set(k, v) {
     const s = JSON.stringify(v);
-    try { if (window.storage) { await window.storage.set('fintb_' + k, s); return; } } catch(e) {}
-    try { localStorage.setItem('fintb_' + k, s); } catch(e) {}
+    try { if (window.storage) { await window.storage.set('fintb_' + k, s); return true; } } catch(e) {}
+    try { localStorage.setItem('fintb_' + k, s); return true; } catch(e) { console.error('Store.set zlyhal:', k, e); return false; }
   }
 };
 
-let _saveTm = null;
+let _saveTm = null, _saveFailWarned = false;
+function _warnSaveFail(){
+  if(_saveFailWarned) return; _saveFailWarned = true;
+  const b=document.createElement('div');
+  b.style.cssText='position:fixed;top:10px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;padding:10px 14px;border-radius:6px;z-index:9999;font-size:12px;max-width:90vw;box-shadow:0 4px 16px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center';
+  b.innerHTML='<span>⚠ Ukladanie zlyhalo — zmeny sa neukladajú (plné úložisko?). Exportuj zálohu!</span><button onclick="this.parentElement.remove()" style="background:none;border:1px solid #fff;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer">OK</button>';
+  document.body.appendChild(b);
+}
 function scheduleSave() {
   clearTimeout(_saveTm);
   _saveTm = setTimeout(async () => {
-    await Store.set('tx', TX.map(sTx));
-    await Store.set('deleted', deletedTX.map(sTx));
-    await Store.set('editlog', editLog.slice(0,500)); // keep last 500 edits
-    await Store.set('budgets', budgets);
-    await Store.set('budgetlimits', budgetLimits);
-    await Store.set('ob', openingBalance);
-    await Store.set('rules', rules);
-    await Store.set('customcats', customCats);
-    await Store.set('builtincats', BUILTIN_CATS);
-    await Store.set('cols', visCols);
-    await Store.set('dethidden', [...detFieldsHidden]);
-    await Store.set('cclim', document.getElementById('cc-lim')?.value || '');
-    await Store.set('recurDefs', recurDefs);
+    let ok = true;
+    const S = async (k, v) => { if (await Store.set(k, v) === false) ok = false; };
+    await S('tx', TX.map(sTx));
+    await S('deleted', deletedTX.map(sTx));
+    await S('editlog', editLog.slice(0,500)); // keep last 500 edits
+    await S('budgets', budgets);
+    await S('budgetlimits', budgetLimits);
+    await S('ob', openingBalance);
+    await S('rules', rules);
+    await S('customcats', customCats);
+    await S('builtincats', BUILTIN_CATS);
+    await S('cols', visCols);
+    await S('dethidden', [...detFieldsHidden]);
+    await S('cclim', document.getElementById('cc-lim')?.value || '');
+    await S('recurDefs', recurDefs);
+    await S('recurmarks', recurMarks);
+    await S('exctags', [...excludedTags]);
     const dot = document.getElementById('save-dot');
-    dot.classList.add('on');
-    setTimeout(() => dot.classList.remove('on'), 1200);
+    dot.classList.remove('on','err');
+    if (ok) {
+      dot.title='Uložené';
+      dot.classList.add('on');
+      setTimeout(() => dot.classList.remove('on'), 1200);
+    } else {
+      dot.title='Ukladanie zlyhalo!';
+      dot.classList.add('err');
+      _warnSaveFail();
+    }
   }, 600);
 }
 function saveD() { scheduleSave(); _returnMap=null; }
 
 function sTx(t) { return {...t, date: t.date?.toISOString(), dateProcParsed: t.dateProcParsed?.toISOString(), dateOverride: t.dateOverride?.toISOString(), dateBank: t.dateBank?.toISOString()}; }
 function dTx(t) { return {...t, date: t.date ? new Date(t.date) : null, dateProcParsed: t.dateProcParsed ? new Date(t.dateProcParsed) : null, dateOverride: t.dateOverride ? new Date(t.dateOverride) : undefined, dateBank: t.dateBank ? new Date(t.dateBank) : undefined}; }
+// Legacy singular debtLink -> debtLinks[] (used by loadAll, importBackup, gdLoad)
+function migrateDebtLinks(arr){ (arr||[]).forEach(t=>{ if(t.debtLink && !t.debtLinks){ t.debtLinks=[t.debtLink]; delete t.debtLink; } }); }
 
 async function loadAll() {
   const tx = await Store.get('tx');
   if (tx && tx.length) {
     TX = tx.map(dTx);
-    // One-time migration: legacy singular debtLink -> debtLinks array
-    TX.forEach(t=>{ if(t.debtLink && !t.debtLinks){ t.debtLinks=[t.debtLink]; delete t.debtLink; } });
+    migrateDebtLinks(TX);
     document.getElementById('txc').textContent = TX.length + ' transakcií';
   }
   const del = await Store.get('deleted');
   if (del && del.length) deletedTX = del.map(dTx);
+  migrateDebtLinks(deletedTX);
   const editLogRaw=await Store.get('editlog');
   if(editLogRaw&&editLogRaw.length) editLog=editLogRaw;
   budgets = (await Store.get('budgets')) || {};
   budgetLimits = (await Store.get('budgetlimits')) || [];
   recurDefs = (await Store.get('recurDefs')) || [];
+  recurMarks = (await Store.get('recurmarks')) || {};
+  recurMarks.pins=recurMarks.pins||{}; recurMarks.blocks=recurMarks.blocks||{};
+  recurMarks.excl=recurMarks.excl||{}; recurMarks.incl=recurMarks.incl||{};
+  // One-time migration: legacy raw-localStorage recurring marks -> recurMarks (Store + backups)
+  try {
+    const legacy=[];
+    for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(/^rec_(pin|block|excl|incl)_/.test(k)) legacy.push(k); }
+    if(legacy.length){
+      legacy.forEach(k=>{
+        const m=k.match(/^rec_(pin|block|excl|incl)_(.+)$/); if(!m) return;
+        const kind=m[1], key=m[2], v=localStorage.getItem(k);
+        if(kind==='pin') recurMarks.pins[key]=v;
+        else if(kind==='block') recurMarks.blocks[key]=1;
+        else { try{ recurMarks[kind][key]=JSON.parse(v||'[]'); }catch(e){} }
+        localStorage.removeItem(k);
+      });
+      await Store.set('recurmarks', recurMarks);
+    }
+  } catch(e) {}
+  const exct = await Store.get('exctags');
+  if (exct && exct.length) excludedTags = new Set(exct);
   openingBalance = (await Store.get('ob')) || 0;
   if (openingBalance) document.getElementById('ob').value = openingBalance;
   rules = (await Store.get('rules')) || [];
@@ -1391,6 +1434,14 @@ let _crCol=null,_crX=0,_crW=0; // column resize state
 let bulkMode=false, bulkSelected=new Set(); // bulk select mode
 let _cpBulkMode=false; // cat picker called from bulk action bar
 let recurDefs=[];
+let recurMarks={pins:{},blocks:{},excl:{},incl:{}}; // per-month recurring overrides (Store + zálohy)
+function _rmK(recId,yr,mo){return recId+'_'+yr+'_'+mo;}
+function getRecPin(recId,yr,mo){return recurMarks.pins[_rmK(recId,yr,mo)]||null;}
+function setRecPin(recId,yr,mo,txId){recurMarks.pins[_rmK(recId,yr,mo)]=txId;saveD();}
+function clearRecPin(recId,yr,mo){delete recurMarks.pins[_rmK(recId,yr,mo)];saveD();}
+function isRecBlocked(recId,yr,mo){return !!recurMarks.blocks[_rmK(recId,yr,mo)];}
+function setRecBlock(recId,yr,mo){recurMarks.blocks[_rmK(recId,yr,mo)]=1;saveD();}
+function clearRecBlock(recId,yr,mo){delete recurMarks.blocks[_rmK(recId,yr,mo)];saveD();}
 let detFieldsHidden = new Set(); // field labels to hide in detail modal
 let pend = {account:[], credit_card:[]}, period = 'month', txPage = 1, txPgSize = 30, txLoadedCount = 0, fTx = [], detId = null;
 let anView = 'monthly', anYear = new Date().getFullYear(), anMonth = new Date().getMonth();
@@ -1644,14 +1695,15 @@ function mergeTransactions(newTxs, source) {
         Math.abs(e.amount-nw.amount)<0.005&&
         !matchedPendingIds.has(e.id)
       );
-      // Fuzzy: same merchant+amount within 14 days
-      const fuzzyEx=!exactEx&&TX.find(e=>
+      // Fuzzy: same merchant+amount within 14 days — NEAREST date wins
+      // (B16: first-found vedel upgradnúť nesprávne dvojča pri 2 rovnakých pending)
+      const fuzzyEx=!exactEx?((TX.filter(e=>
         e.source==='credit_card'&&!e.isSettled&&
         fuzzyMatch(e.merchant,nw.merchant)&&
         Math.abs(e.amount-nw.amount)<0.005&&
         e.date&&nw.date&&Math.abs(e.date.getTime()-nw.date.getTime())<=14*86400000&&
         !matchedPendingIds.has(e.id)
-      );
+      ).sort((a,b)=>Math.abs(a.date.getTime()-nw.date.getTime())-Math.abs(b.date.getTime()-nw.date.getTime()))[0])||null):null;
       const ex=exactEx||fuzzyEx;
       if(ex){
         matchedPendingIds.add(ex.id);
@@ -1695,11 +1747,14 @@ function mergeTransactions(newTxs, source) {
 
     for (const nw of pending) {
       // Don't add if there's already a settled record covering this (any fuzzy match within 14 days)
+      // B16: 14d okno falošne zhltlo NOVÚ pending, ak existovalo settled dvojča
+      // (2 rovnaké kávy v týždni). Transakčný dátum settled == dátum pending,
+      // takže stačí ±2 dni (tolerancia na autorizáciu cez polnoc).
       const existsSettled=TX.find(e=>
         e.source==='credit_card'&&e.isSettled&&
         fuzzyMatch(e.merchant,nw.merchant)&&
         Math.abs(e.amount-nw.amount)<0.005&&
-        e.date&&nw.date&&Math.abs(e.date.getTime()-nw.date.getTime())<=14*86400000
+        e.date&&nw.date&&Math.abs(e.date.getTime()-nw.date.getTime())<=2*86400000
       );
       if(existsSettled) continue; // settled already covers this
 
@@ -1956,6 +2011,25 @@ function txMyAmount(tx){
     return -Math.max(0,effective);
   }
   return tx.amount;
+}
+// ── Kanonický analytický filter ──────────────────────────────────
+// JEDINÁ definícia "transakcia existuje pre analytiku": má dátum (eDate),
+// nie je splátka KK (flag aj heuristika cez isCCRepayment), nie je excluded,
+// nemá vylúčený tag (ak sa výslovne nepovie withExcludedTags:true).
+// opts: {year, month (0-indexed!), from, to, withExcludedTags}
+function anTx(o={}){
+  return TX.filter(t=>{
+    const d=eDate(t);
+    if(!d) return false;
+    if(o.year!=null && d.getFullYear()!==o.year) return false;
+    if(o.month!=null && d.getMonth()!==o.month) return false;
+    if(o.from && d<o.from) return false;
+    if(o.to && d>o.to) return false;
+    if(isCCRepayment(t)) return false;
+    if(t.excluded) return false;
+    if(!o.withExcludedTags && (t.tags||[]).some(tag=>excludedTags.has(tag))) return false;
+    return true;
+  });
 }
 // Split/shared helper — returns [{category,amount}] using myShare for shared tx
 function getTxCatAmounts(tx){
@@ -2293,7 +2367,7 @@ function drawInteractiveBars(canvasId,tooltipId,period,txsAll,col,height,getVal)
 }
 
 function rTimeChart(){
-  const expTx=TX.filter(t=>t.amount<0&&t.date&&!isCCRepayment(t)&&!t.excluded&&!(t.tags||[]).some(tag=>excludedTags.has(tag)));
+  const expTx=anTx().filter(t=>t.amount<0);
   drawInteractiveBars('c-time','c-time-tip',period,expTx,'#5ea8d8',160,t=>Math.abs(t.amount));
 }
 
@@ -2601,7 +2675,7 @@ function updateFilters(){
   const bg=document.getElementById('bg-mon');
   bg.innerHTML=months.map(m=>`<option value="${m}">${m}</option>`).join('');
   if(months.length)bg.value=months[0];
-  const years=[...new Set(TX.map(t=>t.date?.getFullYear()).filter(Boolean))].sort().reverse();
+  const years=[...new Set(TX.map(t=>eDate(t)?.getFullYear()).filter(Boolean))].sort().reverse();
   const bgYr=document.getElementById('bg-yr');
   if(bgYr){bgYr.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');if(years.length)bgYr.value=years[0];}
   const svY=document.getElementById('sv-year');
@@ -2724,7 +2798,7 @@ function removeTag(tag){
   if(!tx.tags.length) delete tx.tags;
   saveD();
   renderMdTags(tx);
-  excludedTags.delete(tag);
+  if(excludedTags.delete(tag)) saveD();
   renderExclTagChips();
 }
 
@@ -2787,6 +2861,7 @@ function renderExclTagChips(){
 function toggleExclTag(tag){
   if(excludedTags.has(tag)) excludedTags.delete(tag);
   else excludedTags.add(tag);
+  saveD();
   renderExclTagChips();
   renderPivot();
 }
@@ -4073,28 +4148,41 @@ function addCustomCat(){ openCatEditModal(); }
 function deleteCat(id){
   const catd=getCatD(); const cat=catd.find(c=>c.id===id); if(!cat) return;
   const subs=getSubcatIds(id);
+  // Fallback: deleting a subcat -> its parent; deleting a root (incl. with subs) -> Nezaradené
+  const parentId=getCatParentId(id);
+  const fb=subs.length?null:(parentId||null);
   if(subs.length){
-    const choice=confirm(`Kategória "${cat.l}" má ${subs.length} podkategóri${subs.length===1?'u':subs.length<5?'e':'í'}.
+    if(!confirm(`Kategória "${cat.l}" má ${subs.length} podkategóri${subs.length===1?'u':subs.length<5?'e':'í'}.
 
-OK = zmazať aj podkategórie
-Zrušiť = zrušiť mazanie`);
-    if(!choice) return;
-    // Delete subcats first (they have no subcats themselves)
-    subs.forEach(sid=>{
-      BUILTIN_CATS.splice(BUILTIN_CATS.findIndex(c=>c.id===sid),1);
-      customCats=customCats.filter(c=>c.id!==sid);
-      const fb=getCatD()[0]?.id||'ostatne';
-      TX.forEach(tx=>{if(tx.category===sid)tx.category=fb;});
-    });
+OK = zmazať aj s podkategóriami (transakcie → Nezaradené)
+Zrušiť = zrušiť mazanie`)) return;
   } else {
-    if(!confirm(`Zmazať kategóriu "${cat.l}"? Transakcie s touto kategóriou budú preradené na prvú dostupnú.`)) return;
+    const dest=fb?(getCAT()[fb]?.l||'rodičovskú kategóriu'):'Nezaradené';
+    if(!confirm(`Zmazať kategóriu "${cat.l}"? Transakcie budú preradené na: ${dest}.`)) return;
   }
-  const bi=BUILTIN_CATS.findIndex(c=>c.id===id);
-  if(bi>=0) BUILTIN_CATS.splice(bi,1);
-  customCats=customCats.filter(c=>c.id!==id);
-  const fallback=getCatD()[0]?.id||'ostatne';
-  TX.forEach(tx=>{if(tx.category===id)tx.category=fallback;});
+  const removeIds=[id,...subs];
+  const removedSet=new Set(removeIds);
+  // Safe removal — splice len na nájdenom indexe (findIndex=-1 by zmazal poslednú builtin kategóriu)
+  removeIds.forEach(cid=>{
+    const bi=BUILTIN_CATS.findIndex(c=>c.id===cid);
+    if(bi>=0) BUILTIN_CATS.splice(bi,1);
+    customCats=customCats.filter(c=>c.id!==cid);
+  });
+  // Reassign transactions: direct categories AND split parts (orphan splits by zmizli z pivotu)
+  TX.concat(deletedTX).forEach(tx=>{
+    if(removedSet.has(tx.category)){ tx.category=fb; if(!fb) tx.categoryLocked=undefined; }
+    if(tx.splits?.length) tx.splits.forEach(sp=>{ if(removedSet.has(sp.category)) sp.category=fb; });
+  });
+  // Clean dangling references
+  budgetLimits=budgetLimits.filter(l=>!removedSet.has(l.catId));
+  const rulesBefore=rules.length;
+  rules=rules.filter(r=>!removedSet.has(r.category));
+  const droppedRules=rulesBefore-rules.length;
+  recurDefs.forEach(r=>{ if(removedSet.has(r.category)) r.category=null; });
+  removeIds.forEach(cid=>_pivotExpandedParents.delete(cid));
   saveD(); renderCatGrid(); initRuleCatSelect(); updateFilters();
+  if(typeof renderRules==='function') renderRules();
+  if(droppedRules) alert(`Zmazan${droppedRules===1?'é bolo aj 1 pravidlo':'ých bolo aj '+droppedRules+' pravidiel'} priraden${droppedRules===1?'é':'ých'} tejto kategórii.`);
 }
 
 function restoreBuiltinCats(){
@@ -4395,7 +4483,8 @@ function exportBackup(){
     customCats, builtinCats:[...BUILTIN_CATS], visCols,
     detFieldsHidden:[...detFieldsHidden],
     ccLimit:document.getElementById('cc-lim')?.value||'',
-    ibanNames, editLog:editLog.slice(0,500)
+    ibanNames, editLog:editLog.slice(0,500),
+    excludedTags:[...excludedTags], recurMarks, colWidths
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
@@ -4412,6 +4501,7 @@ async function importBackup(inp){
     const data=JSON.parse(txt);
     TX=(data.tx||[]).map(dTx);
     deletedTX=(data.deletedTX||[]).map(dTx);
+    migrateDebtLinks(TX); migrateDebtLinks(deletedTX);
     budgets=data.budgets||{}; budgetLimits=data.budgetLimits||[]; openingBalance=data.openingBalance||0;
     recurDefs=data.recurDefs||[]; rules=data.rules||[]; customCats=data.customCats||[];
     if(data.builtinCats){BUILTIN_CATS.length=0;data.builtinCats.forEach(c=>BUILTIN_CATS.push(c));}
@@ -4420,6 +4510,10 @@ async function importBackup(inp){
     if(data.ibanNames){ ibanNames=data.ibanNames; }
     else { ibanNames=(await Store.get('ibanNames'))||{}; } // stará záloha → zachovaj existujúce
     if(data.editLog) editLog=data.editLog;
+    excludedTags=new Set(data.excludedTags||[]);
+    recurMarks=data.recurMarks||{pins:{},blocks:{},excl:{},incl:{}};
+    recurMarks.pins=recurMarks.pins||{};recurMarks.blocks=recurMarks.blocks||{};recurMarks.excl=recurMarks.excl||{};recurMarks.incl=recurMarks.incl||{};
+    if(data.colWidths) colWidths=data.colWidths;
     if(data.ccLimit){const el=document.getElementById('cc-lim');if(el)el.value=data.ccLimit;}
     if(openingBalance){const el=document.getElementById('ob');if(el)el.value=openingBalance;}
     document.getElementById('txc').textContent=TX.length+' transakcií';
@@ -4429,6 +4523,8 @@ async function importBackup(inp){
     await Store.set('rules',rules); await Store.set('cols',visCols);
     await Store.set('customcats',customCats); await Store.set('builtincats',[...BUILTIN_CATS]);
     await Store.set('ibanNames',ibanNames); await Store.set('editlog',editLog.slice(0,500));
+    await Store.set('exctags',[...excludedTags]); await Store.set('recurmarks',recurMarks);
+    await Store.set('colWidths',colWidths);
     updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
     alert(`Záloha načítaná: ${TX.length} transakcií, ${rules.length} pravidiel.`);
     go('dashboard');
@@ -4551,7 +4647,7 @@ function renderFlexBudget(){
   const [yr,mo]=bgMon.split('-').map(Number);
   const now=new Date();
   const isCurrentMonth=bgMon===mKey(now);
-  const txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&eDate(t).getMonth()===mo-1&&!isCCRepayment(t)&&!t.excluded);
+  const txs=anTx({year:yr,month:mo-1}); // B10: budget teraz rešpektuje aj vylúčené tagy (jednotná sémantika s pivotom)
   const CAT=getCAT();
 
   // --- Income for this month ---
@@ -4564,10 +4660,8 @@ function renderFlexBudget(){
     &&(!r.endMonth||r.endMonth>=bgMonKey)
   ).map(rec=>{
     const inPayMonth=isPaymentMonth(rec,yr,mo);
-    const blockKey='rec_block_'+rec.id+'_'+yr+'_'+mo;
-    const isBlocked=!!localStorage.getItem(blockKey);
-    const pinKey='rec_pin_'+rec.id+'_'+yr+'_'+mo;
-    const pinnedId=!isBlocked?localStorage.getItem(pinKey):null;
+    const isBlocked=isRecBlocked(rec.id,yr,mo);
+    const pinnedId=!isBlocked?getRecPin(rec.id,yr,mo):null;
     const pinnedTx=pinnedId?TX.find(t=>t.id===pinnedId):null;
     const autoMatches=inPayMonth&&!isBlocked?findRecurTx(rec,yr,mo):[];
     const matchTx=pinnedTx||(autoMatches.length>0?autoMatches[0]:null);
@@ -4600,7 +4694,7 @@ function renderFlexBudget(){
     if(!cat) return null;
     const spent=(bc[l.catId]||0)+getSubcatIds(l.catId).reduce((s,sid)=>s+(bc[sid]||0),0);
     // Detect conflict: subcat also has its own limit
-    const conflictSubs=getSubcatIds(l.catId).filter(sid=>budgetLimits.some(bl=>bl.catId===sid&&bl.type===l.flexType||bl.type==='monthly'));
+    const conflictSubs=getSubcatIds(l.catId).filter(sid=>budgetLimits.some(bl=>bl.catId===sid&&bl.type==='monthly'&&bl.flexType!=='irregular')); // B7: precedencia &&/|| označovala konflikt vždy
     return{cat,limit:l.amount,spent,conflict:conflictSubs.length>0};
   }).filter(Boolean);
   const flexTotal=flexItems.reduce((s,x)=>s+x.spent,0);
@@ -4619,7 +4713,7 @@ function renderFlexBudget(){
   // Irregular: sum current-month spending for irreg categories
   const irregMonthSpent=irregItems.reduce((s,x)=>{
     const mspent=txs.filter(t=>t.amount<0).reduce((ss,t)=>ss+getTxCatAmounts(t)
-      .filter(({category,amount})=>category===x.cat.id&&amount<0)
+      .filter(({category,amount})=>(category===x.cat.id||getCatParentId(category)===x.cat.id)&&amount<0) // B8: aj subkategórie (zhodne s yearlySpent)
       .reduce((sss,{amount})=>sss+Math.abs(amount),0),0);
     return s+mspent;
   },0);
@@ -4828,18 +4922,12 @@ function renderBudgetCharts(yr, mo, numMonths, flexItems, irregItems, fixedTotal
   // Compute per-month data
   const mdata=months.map(({yr:myr,mo:mmo})=>{
     const mk=myr+'-'+String(mmo).padStart(2,'0');
-    const mtxs=TX.filter(t=>{
-      const d=eDate(t)||t.date; if(!d) return false;
-      return d.getFullYear()===myr&&d.getMonth()===mmo-1&&!isCCRepayment(t)&&!t.excluded&&!isSplatka(t);
-    });
+    const mtxs=anTx({year:myr,month:mmo-1});
     const income=mtxs.filter(t=>t.amount>0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
     let flexSpend=0,irregSpend=0,otherSpend=0;
     const fixedRecs=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=mk)&&(!r.endMonth||r.endMonth>=mk));
     const fixedMesEq=fixedRecs.reduce((s,r)=>s+calcHistoricalMesEq(r,myr,mmo),0);
-    const fixedTxIdsM=new Set(fixedRecs.map(r=>{
-      const pinKey='rec_pin_'+r.id+'_'+myr+'_'+mmo;
-      return localStorage.getItem(pinKey);
-    }).filter(Boolean));
+    const fixedTxIdsM=new Set(fixedRecs.map(r=>getRecPin(r.id,myr,mmo)).filter(Boolean));
     mtxs.filter(t=>t.amount<0&&!fixedTxIdsM.has(t.id)).forEach(t=>{
       getTxCatAmounts(t).forEach(({category,amount})=>{
         if(amount>=0) return;
@@ -4969,8 +5057,8 @@ function renderBudgetCharts(yr, mo, numMonths, flexItems, irregItems, fixedTotal
   if(!flexItems.length){ ctxB.fillStyle=CLR.mu; ctxB.font='11px sans-serif'; ctxB.textAlign='center'; ctxB.fillText('Žiadne flex kategórie',Wb/2,Hb/2); return; }
 
   const catSpends=months.map(({yr:myr,mo:mmo})=>{
-    const fixedTxIdsM2=new Set(recurDefs.filter(r=>r.active).map(r=>localStorage.getItem('rec_pin_'+r.id+'_'+myr+'_'+mmo)).filter(Boolean));
-    const mtxs=TX.filter(t=>{const d=eDate(t)||t.date;if(!d)return false;return d.getFullYear()===myr&&d.getMonth()===mmo-1&&!isCCRepayment(t)&&!t.excluded;});
+    const fixedTxIdsM2=new Set(recurDefs.filter(r=>r.active).map(r=>getRecPin(r.id,myr,mmo)).filter(Boolean));
+    const mtxs=anTx({year:myr,month:mmo-1});
     const s={};
     mtxs.filter(t=>t.amount<0&&!fixedTxIdsM2.has(t.id)).forEach(t=>{
       getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0&&flexCatIds.has(category))s[category]=(s[category]||0)+Math.abs(amount);});
@@ -5054,7 +5142,7 @@ function ensureBudgetMonths(){
   }
   const bgYr=document.getElementById('bg-yr');
   if(bgYr && bgYr.options.length===0){
-    const years=[...new Set(TX.map(t=>t.date?.getFullYear()).filter(Boolean))].sort().reverse();
+    const years=[...new Set(TX.map(t=>eDate(t)?.getFullYear()).filter(Boolean))].sort().reverse();
     bgYr.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
     if(years.length) bgYr.value=years[0];
   }
@@ -5309,6 +5397,77 @@ function setAnView(v, btn){
   }
 }
 
+// ── ZDIEĽANÉ VÝPOČTOVÉ JADRO PIVOTU ─────────────────────────────
+// Jediná definícia "netto kategórie" pre mesačný, ročný aj drilldown.
+// nb = počet bucketov (týždne / 12 mesiacov), bucketOf(tx) → index alebo -1.
+// opts.attributeReturns (default true): 2. prechod — debtLink vrátky sa
+//   pripočítajú ako príjem ku kategórii VÝDAVKU (vyrieši B9: mesačný = ročný).
+// opts.balancedPct: true → "vyrovnané" = |net| < max(0.5€, 0.5% obratu);
+//   inak striktne < 0.01€.
+function buildPivotData(txs, nb, bucketOf, opts={}){
+  const catd=getCatD();
+  const pcatd=[...catd,{id:'__none',l:'Nezaradené',c:'#8a97a5'}]; // Nezaradené pseudo-kat
+  const expMatrix={},incMatrix={},expTotals={},incTotals={};
+  const expBucketTotals=Array(nb).fill(0),incBucketTotals=Array(nb).fill(0);
+  pcatd.forEach(c=>{expMatrix[c.id]=Array(nb).fill(0);incMatrix[c.id]=Array(nb).fill(0);expTotals[c.id]=0;incTotals[c.id]=0;});
+  txs.forEach(tx=>{
+    const bi=bucketOf(tx); if(bi==null||bi<0)return;
+    // Shared výdavok → zaznamenaj HRUBÚ sumu (vrátky pripočíta 2. prechod).
+    // Tým je zaobchádzanie shared = non-shared a plne vrátené nákupy idú do VYROVNANÉ.
+    if(tx.amount<0 && tx.shared?.people?.length && !tx.splits?.length){
+      const cid=tx.category||'__none';
+      if(expMatrix[cid]!==undefined){const g=Math.abs(tx.amount);expMatrix[cid][bi]+=g;expTotals[cid]+=g;expBucketTotals[bi]+=g;}
+      return;
+    }
+    getTxCatAmounts(tx).forEach(({category,amount})=>{
+      const cid=category||'__none';
+      if(amount<0){ if(expMatrix[cid]!==undefined){expMatrix[cid][bi]+=Math.abs(amount);expTotals[cid]+=Math.abs(amount);expBucketTotals[bi]+=Math.abs(amount);} }
+      else { if(incMatrix[cid]!==undefined){incMatrix[cid][bi]+=amount;incTotals[cid]+=amount;incBucketTotals[bi]+=amount;} }
+    });
+  });
+  if(opts.attributeReturns!==false){
+    const byId=new Map(TX.map(t=>[t.id,t]));
+    const txsSet=new Set(txs.map(t=>t.id)); // výdavok musí byť v ROVNAKOM rozsahu ako 1. prechod
+    // 2. prechod: debtLink vrátky → pripočítané ku kategórii a BUCKETU VÝDAVKU.
+    // Iterujeme VŠETKY vrátky v TX (nie len v rozsahu) — vrátka môže prísť v inom
+    // mesiaci než výdavok. Výdavok musí byť v txs (getWeeks presahuje hranice mesiaca,
+    // preto nestačí bucketOf>=0). Platí pre shared aj non-shared.
+    TX.filter(t=>t.amount>0&&isDebtLink(t)).forEach(tx=>{
+      getDebtLinks(tx).forEach(l=>{
+        const expTx=byId.get(l.expTxId); if(!expTx||!txsSet.has(expTx.id))return;
+        const cid=expTx.category||'__none'; if(incMatrix[cid]===undefined)return;
+        const bi=bucketOf(expTx); if(bi==null||bi<0)return;
+        const linkAmt=typeof l.amount==='number'?l.amount:Math.abs(tx.amount);
+        incMatrix[cid][bi]+=linkAmt; incTotals[cid]+=linkAmt; incBucketTotals[bi]+=linkAmt;
+      });
+    });
+  }
+  const netMatrix={},netCatTotals={};
+  pcatd.forEach(c=>{netMatrix[c.id]=expMatrix[c.id].map((v,bi)=>v-incMatrix[c.id][bi]); netCatTotals[c.id]=expTotals[c.id]-incTotals[c.id];});
+  // Klasifikácia na úrovni KOREŇOV (rodič + subkategórie agregované)
+  const subsOf=r=>catd.filter(s=>s.parentId===r.id);
+  const roots=pcatd.filter(c=>!c.parentId);
+  const aggExpT={},aggIncT={};
+  roots.forEach(r=>{const ss=subsOf(r);
+    aggExpT[r.id]=(expTotals[r.id]||0)+ss.reduce((s,x)=>s+(expTotals[x.id]||0),0);
+    aggIncT[r.id]=(incTotals[r.id]||0)+ss.reduce((s,x)=>s+(incTotals[x.id]||0),0);});
+  const grossActivity=r=>aggExpT[r.id]+aggIncT[r.id];
+  const balTol=r=>opts.balancedPct?Math.max(0.50,grossActivity(r)*0.005):0.01;
+  const balancedCats=roots.filter(r=>aggExpT[r.id]>0.01&&aggIncT[r.id]>0.01&&Math.abs(aggExpT[r.id]-aggIncT[r.id])<balTol(r));
+  const balancedIds=new Set(balancedCats.map(c=>c.id));
+  const activeExpCats=roots.filter(r=>!balancedIds.has(r.id)&&(aggExpT[r.id]-aggIncT[r.id])>0.01);
+  const incOnlyCats=roots.filter(r=>aggIncT[r.id]>0.01&&aggExpT[r.id]<0.01);
+  const incOnlyIds=new Set(incOnlyCats.map(c=>c.id));
+  const incDomCats=roots.filter(r=>!balancedIds.has(r.id)&&!incOnlyIds.has(r.id)&&(aggIncT[r.id]-aggExpT[r.id])>0.01);
+  // Per-bucket agregáty rodiča (rodič + subcats)
+  const aggNetBucketOf=r=>{const ss=subsOf(r);return netMatrix[r.id].map((v,bi)=>v+ss.reduce((s,sc)=>s+(netMatrix[sc.id]?.[bi]||0),0));};
+  const aggIncBucketOf=r=>{const ss=subsOf(r);return incMatrix[r.id].map((v,bi)=>v+ss.reduce((s,sc)=>s+(incMatrix[sc.id]?.[bi]||0),0));};
+  return {catd,pcatd,expMatrix,incMatrix,expTotals,incTotals,expBucketTotals,incBucketTotals,
+    netMatrix,netCatTotals,subsOf,roots,aggExpT,aggIncT,grossActivity,
+    balancedCats,balancedIds,activeExpCats,incOnlyCats,incOnlyIds,incDomCats,
+    aggNetBucketOf,aggIncBucketOf};
+}
+
 function renderPivot(){
   closeDrill();
   if(!TX.length){
@@ -5325,7 +5484,7 @@ function renderMonthlyPivot(){
   const now=new Date();
   if(anYear==null) anYear=now.getFullYear();
   if(anMonth==null) anMonth=now.getMonth();
-  const years=[...new Set(TX.map(t=>t.date?.getFullYear()).filter(Boolean))].sort().reverse();
+  const years=[...new Set(TX.map(t=>eDate(t)?.getFullYear()).filter(Boolean))].sort().reverse();
   const mNames=['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
 
   document.getElementById('pivot-nav').innerHTML=`
@@ -5339,53 +5498,27 @@ function renderMonthlyPivot(){
     <button class="cy-arr" onclick="pivotNextMonth()">›</button>
     <span style="color:var(--mu);font-size:10px;margin-left:6px">klikni na riadok pre detail</span>`;
 
-  const mTx=TX.filter(t=>t.date&&eDate(t).getFullYear()===anYear&&eDate(t).getMonth()===anMonth&&!isCCRepayment(t)&&!t.excluded&&!(t.tags||[]).some(tag=>excludedTags.has(tag)));
+  const mTx=anTx({year:anYear,month:anMonth});
   const catd=getCatD();
   const weeks=getWeeks(anYear,anMonth);
   const W=weeks.length;
 
-  // Build per-category gross expense and gross income matrices
-  const expMatrix={},incMatrix={};
-  const expTotals={},incTotals={};
-  const expWeekTotals=Array(W).fill(0),incWeekTotals=Array(W).fill(0);
-  catd.forEach(c=>{
-    expMatrix[c.id]=Array(W).fill(0); incMatrix[c.id]=Array(W).fill(0);
-    expTotals[c.id]=0; incTotals[c.id]=0;
-  });
-  mTx.forEach(tx=>{
-    const wi=weeks.findIndex(w=>{const d=eDate(tx);if(!d)return false;const dk=localDateKey(d);return dk>=localDateKey(w.s)&&dk<=localDateKey(w.e);});
-    if(wi<0)return;
-    getTxCatAmounts(tx).forEach(({category,amount})=>{
-      const cid=category; if(!cid)return;
-      if(amount<0){
-        if(expMatrix[cid]!==undefined){expMatrix[cid][wi]+=Math.abs(amount);expTotals[cid]+=Math.abs(amount);expWeekTotals[wi]+=Math.abs(amount);}
-      } else {
-        if(incMatrix[cid]!==undefined){incMatrix[cid][wi]+=amount;incTotals[cid]+=amount;incWeekTotals[wi]+=amount;}
-      }
-    });
-  });
+  // Zdieľané jadro — B9: mesačný používa rovnaký 2. prechod (atribúcia vrátok) ako ročný
+  const bucketOf=tx=>weeks.findIndex(w=>{const d=eDate(tx);if(!d)return false;const dk=localDateKey(d);return dk>=localDateKey(w.s)&&dk<=localDateKey(w.e);});
+  const P=buildPivotData(mTx, W, bucketOf, {});
+  const {pcatd,expMatrix,incMatrix,expTotals,incTotals,netMatrix,netCatTotals,subsOf,roots,
+    aggExpT,aggIncT,balancedCats,balancedIds,activeExpCats,incOnlyCats,incOnlyIds,incDomCats}=P;
+  const aggNetWeekOf=r=>P.aggNetBucketOf(r);
+  const aggIncWeekOf=r=>P.aggIncBucketOf(r);
 
-  // Net per category per week: expense - income (refunds offset)
-  const netMatrix={};
-  catd.forEach(c=>{netMatrix[c.id]=Array(W).fill(0).map((_,wi)=>expMatrix[c.id][wi]-incMatrix[c.id][wi]);});
-  const netCatTotals={};
-  catd.forEach(c=>{netCatTotals[c.id]=expTotals[c.id]-incTotals[c.id];});
-
-  // Category groups — clean separation
-  const balancedCats=catd.filter(c=>expTotals[c.id]>0.01&&incTotals[c.id]>0.01&&Math.abs(netCatTotals[c.id])<0.01);
-  const balancedIds=new Set(balancedCats.map(c=>c.id));
-  // VÝDAVKY: any cat with net expense > 0 (mixed cats here with net value, balanced excluded)
-  const activeExpCats=catd.filter(c=>!balancedIds.has(c.id)&&netCatTotals[c.id]>0.01);
-  // PRÍJMY: ONLY pure income cats (no expense at all)
-  const incOnlyCats=catd.filter(c=>incTotals[c.id]>0.01&&expTotals[c.id]<0.01);
-
-  // Totals (only net exp cats + pure inc cats for section totals)
+  // Section totals — z koreňových agregátov, sedia s riadkami
   const totalExpWeek=Array(W).fill(0);
-  activeExpCats.forEach(c=>c&&netMatrix[c.id].forEach((v,wi)=>{totalExpWeek[wi]+=Math.max(0,v);}));
+  activeExpCats.forEach(r=>aggNetWeekOf(r).forEach((v,wi)=>{totalExpWeek[wi]+=Math.max(0,v);}));
   const totalIncWeek=Array(W).fill(0);
-  incOnlyCats.forEach(c=>incMatrix[c.id].forEach((v,wi)=>{totalIncWeek[wi]+=v;}));
-  const grandExp=activeExpCats.reduce((s,c)=>s+Math.max(0,netCatTotals[c.id]),0);
-  const grandInc=incOnlyCats.reduce((s,c)=>s+incTotals[c.id],0);
+  incOnlyCats.forEach(r=>aggIncWeekOf(r).forEach((v,wi)=>{totalIncWeek[wi]+=v;}));
+  incDomCats.forEach(r=>aggNetWeekOf(r).forEach((v,wi)=>{totalIncWeek[wi]+=Math.max(0,-v);}));
+  const grandExp=activeExpCats.reduce((s,r)=>s+Math.max(0,aggExpT[r.id]-aggIncT[r.id]),0);
+  const grandInc=incOnlyCats.reduce((s,r)=>s+aggIncT[r.id],0)+incDomCats.reduce((s,r)=>s+(aggIncT[r.id]-aggExpT[r.id]),0);
   const grandNet=grandInc-grandExp;
 
   const colHdr=`<th class="cat-hd">Kategória</th>${weeks.map(w=>`<th style="font-size:9px;padding:3px;text-align:center">${w.l}</th>`).join('')}<th style="font-size:9px;padding:3px 5px">∑</th>`;
@@ -5445,6 +5578,17 @@ function renderMonthlyPivot(){
     return html;
   }
 
+  // Zmiešaná kategória s prevahou príjmov — riadok s ČISTÝM príjmom (ako ročný)
+  function netIncRowM(cat){
+    const nW=aggNetWeekOf(cat);
+    const val=aggIncT[cat.id]-aggExpT[cat.id];
+    return`<tr class="prow" onclick="drillCat('${cat.id}','${cat.l}','monthly')">
+      <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l} <span style="font-size:9px;color:var(--mu)" title="Príjmy v kategórii prevyšujú výdavky — zobrazený čistý príjem">↩</span></td>
+      ${nW.map(v=>{const d=Math.max(0,-v);return d>0.005?`<td><span class="hc" style="--cc:#4caf82">+${d.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
+      <td class="tc" style="color:#4caf82">+${fabs(val)}</td>
+    </tr>`;
+  }
+
   // ── HTML ──────────────────────────────────────────────────────
   let html=`<thead><tr>${colHdr}</tr></thead><tbody>`;
 
@@ -5452,14 +5596,15 @@ function renderMonthlyPivot(){
   const secHdr=(label,color='#e05c5c22',textColor='#e05c5c')=>
     `<tr><td colspan="${W+2}" style="padding:5px 8px 3px;font-size:9px;font-weight:700;background:${color};color:${textColor};letter-spacing:.8px;text-transform:uppercase;border-top:1px solid var(--bd)">${label}</td></tr>`;
   html+=secHdr('Výdavky');
-  activeExpCats.filter(c=>!c.parentId).forEach(cat=>{html+=expRow(cat);});
+  activeExpCats.forEach(cat=>{html+=expRow(cat);});
   if(!activeExpCats.length) html+=`<tr><td colspan="${W+2}" class="h0">Žiadne výdavky</td></tr>`;
   html+=`<tr class="stotal"><td class="cat-cell" style="color:var(--red)">∑ Výdavky</td>${totalExpWeek.map(v=>`<td style="color:var(--red)">${v>0.01?v.toFixed(0)+'€':'—'}</td>`).join('')}<td style="color:var(--red);font-weight:700">${fabs(grandExp)}</td></tr>`;
 
-  // PRÍJMY (pure income only)
-  if(incOnlyCats.length){
+  // PRÍJMY (čisté + zmiešané s prevahou príjmov)
+  if(incOnlyCats.length||incDomCats.length){
     html+=secHdr('Príjmy','#4caf8222','#4caf82');
-    incOnlyCats.filter(c=>!c.parentId).forEach(cat=>{html+=incRow(cat);});
+    incOnlyCats.forEach(cat=>{html+=incRow(cat);});
+    incDomCats.forEach(cat=>{html+=netIncRowM(cat);});
     html+=`<tr class="stotal"><td class="cat-cell" style="color:#4caf82">∑ Príjmy</td>${totalIncWeek.map(v=>`<td style="color:#4caf82">${v>0.01?'+'+v.toFixed(0)+'€':'—'}</td>`).join('')}<td style="color:#4caf82;font-weight:700">+${fabs(grandInc)}</td></tr>`;
     // NET row
     const netRow=weeks.map((_,wi)=>{const n=totalIncWeek[wi]-totalExpWeek[wi];const c=n>=0?'#4caf82':'var(--red)';return`<td style="color:${c};font-weight:700">${n>=0?'+':''}${n.toFixed(0)}€</td>`;}).join('');
@@ -5470,11 +5615,13 @@ function renderMonthlyPivot(){
   if(balancedCats.length){
     html+=secHdr('Vyrovnané','#4a9fd422','#4a9fd4');
     balancedCats.forEach(cat=>{
-      const grossExp=expTotals[cat.id];
-      const ttip=` title="Hrubé výdavky: ${fabs(grossExp)}, vrátky: −${fabs(incTotals[cat.id])}"`;
+      const ss=subsOf(cat);
+      const gW=weeks.map((_,wi)=>expMatrix[cat.id][wi]+ss.reduce((s,sc)=>s+(expMatrix[sc.id]?.[wi]||0),0));
+      const grossExp=aggExpT[cat.id];
+      const ttip=` title="Hrubé výdavky: ${fabs(grossExp)}, vrátky: −${fabs(aggIncT[cat.id])}"`;
       html+=`<tr class="prow" onclick="drillCat('${cat.id}','${cat.l}','monthly')">
         <td class="cat-cell"${ttip}><span style="color:${cat.c}">■</span> ${cat.l} <sup style="color:#4a9fd4;font-size:8px">↩</sup></td>
-        ${expMatrix[cat.id].map((_,wi)=>{const g=expMatrix[cat.id][wi];return g>0.01?`<td${ttip}><span class="hc" style="--cc:#4a9fd4">${g.toFixed(0)}€↩</span></td>`:`<td class="h0">—</td>`;}).join('')}
+        ${gW.map(g=>g>0.01?`<td${ttip}><span class="hc" style="--cc:#4a9fd4">${g.toFixed(0)}€↩</span></td>`:`<td class="h0">—</td>`).join('')}
         <td class="tc" style="color:#4a9fd4"${ttip}>${fabs(grossExp)} <sup style="font-size:8px">↩</sup></td>
       </tr>`;
     });
@@ -5486,7 +5633,7 @@ function renderMonthlyPivot(){
 
 
 function renderYearlyPivot(){
-  const years=[...new Set(TX.map(t=>t.date?.getFullYear()).filter(Boolean))].sort().reverse();
+  const years=[...new Set(TX.map(t=>eDate(t)?.getFullYear()).filter(Boolean))].sort().reverse();
   if(!anYear||!years.includes(anYear)) anYear=years[0]||new Date().getFullYear();
   const mNames=['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
 
@@ -5498,44 +5645,15 @@ function renderYearlyPivot(){
     <button class="cy-arr" onclick="anYear++;renderPivot()">›</button>
     <span style="color:var(--mu);font-size:10px;margin-left:6px">klikni na riadok pre detail</span>`;
 
-  const yTx=TX.filter(t=>{const d=eDate(t);return d&&d.getFullYear()===anYear&&!isCCRepayment(t)&&!t.excluded&&!(t.tags||[]).some(tag=>excludedTags.has(tag));});
-  const catd=getCatD();
+  const yTx=anTx({year:anYear});
 
-  const expMatrix={},incMatrix={},expTotals={},incTotals={};
-  const expMoTotals=Array(12).fill(0),incMoTotals=Array(12).fill(0);
-  catd.forEach(c=>{expMatrix[c.id]=Array(12).fill(0);incMatrix[c.id]=Array(12).fill(0);expTotals[c.id]=0;incTotals[c.id]=0;});
-  yTx.forEach(tx=>{
-    const mo=eDate(tx)?.getMonth();if(mo==null)return;
-    // Use getTxCatAmounts → respects splits + myShare (shared/debtLink), consistent with weekly pivot
-    getTxCatAmounts(tx).forEach(({category,amount})=>{
-      const cid=category; if(!cid)return;
-      if(amount<0){
-        if(expMatrix[cid]!==undefined){expMatrix[cid][mo]+=Math.abs(amount);expTotals[cid]+=Math.abs(amount);expMoTotals[mo]+=Math.abs(amount);}
-      } else {
-        if(incMatrix[cid]!==undefined){incMatrix[cid][mo]+=amount;incTotals[cid]+=amount;incMoTotals[mo]+=amount;}
-      }
-    });
-  });
-
-  // Second pass: attribute debtLink income to the expense's category
-  yTx.filter(t=>t.amount>0&&isDebtLink(t)).forEach(tx=>{
-    const mo=eDate(tx)?.getMonth(); if(mo==null)return;
-    getDebtLinks(tx).forEach(l=>{
-      const expTx=TX.find(t=>t.id===l.expTxId); if(!expTx)return;
-      const cid=expTx.category; if(!cid||incMatrix[cid]===undefined)return;
-      if(tx.category===cid)return; // already counted
-      const linkAmt=typeof l.amount==='number'?l.amount:Math.abs(tx.amount);
-      incMatrix[cid][mo]+=linkAmt; incTotals[cid]+=linkAmt; incMoTotals[mo]+=linkAmt;
-    });
-  });
-
-  const netCatTotals={};
-  catd.forEach(c=>{netCatTotals[c.id]=expTotals[c.id]-incTotals[c.id];});
+  const P=buildPivotData(yTx, 12, tx=>eDate(tx)?.getMonth(), {balancedPct:true});
+  const {catd,pcatd,expMatrix,incMatrix,expTotals,incTotals,netMatrix,netCatTotals,subsOf,roots,
+    aggExpT,aggIncT,balancedCats,balancedIds,activeExpCats,incOnlyCats,incOnlyIds,incDomCats}=P;
+  const expMoTotals=P.expBucketTotals, incMoTotals=P.incBucketTotals;
   const activeMo=[...Array(12).keys()].filter(i=>expMoTotals[i]>0||incMoTotals[i]>0);
-
-  const grandExp=catd.reduce((s,c)=>s+Math.max(0,netCatTotals[c.id]),0);
-  const grandInc=catd.reduce((s,c)=>s+incTotals[c.id],0);
-  const grandNet=grandInc-grandExp;
+  const grandNet=(incOnlyCats.reduce((s,r)=>s+aggIncT[r.id],0)+incDomCats.reduce((s,r)=>s+(aggIncT[r.id]-aggExpT[r.id]),0))
+    -activeExpCats.reduce((s,r)=>s+Math.max(0,aggExpT[r.id]-aggIncT[r.id]),0);
 
   const colHdr=`<th class="cat-hd">Kategória</th>${activeMo.map(i=>`<th>${mNames[i]}</th>`).join('')}<th>Spolu</th>`;
 
@@ -5577,11 +5695,13 @@ function renderYearlyPivot(){
   }
 
   function incRowY(cat,useInc=false,isNetInc=false){
-    const val=incTotals[cat.id]; if(val<=0.01)return'';
+    const _iSubs=catd.filter(s=>s.parentId===cat.id);
+    const _aggValGuard=incTotals[cat.id]+_iSubs.reduce((s,sc)=>s+(incTotals[sc.id]||0),0);
+    if(_aggValGuard<=0.01)return''; // agreguje subcats — rodič s príjmom len na subkat sa už nepreskočí
+    const val=incTotals[cat.id];
     const isVratka=isNetInc&&expTotals[cat.id]>0.01;
     const label=isVratka?` <span style="font-size:9px;color:var(--mu);cursor:help" title="Vrátky z výdavkov v tejto kategórii — viď VÝDAVKY sekciu">↩ vrátky</span>`:
       isNetInc?` <span style="font-size:9px;color:var(--mu)">↩</span>`:'';
-    const _iSubs=catd.filter(s=>s.parentId===cat.id);
     const _iHasSubs=_iSubs.length>0&&!useInc&&!isNetInc;
     const _iExpanded=_pivotExpandedParents.has(cat.id);
     const _iToggle=_iHasSubs?`<span onclick="event.stopPropagation();togglePivotParent('${cat.id}')" style="cursor:pointer;margin-right:3px;font-size:11px;color:var(--mu)">${_iExpanded?'▾':'▸'}</span>`:'';
@@ -5602,56 +5722,39 @@ function renderYearlyPivot(){
     return iHtml;
   }
 
-  // ── Category groups ────────────────────────────────────────
-  // Balanced: |net| < 0.5% of gross activity (truly zero-sum exchanges)
-  const grossActivity=c=>expTotals[c.id]+incTotals[c.id];
-  const balancedCats=catd.filter(c=>expTotals[c.id]>0.01&&incTotals[c.id]>0.01&&Math.abs(netCatTotals[c.id])<Math.max(0.50,grossActivity(c)*0.005));
-  const balancedIds=new Set(balancedCats.map(c=>c.id));
-  // VÝDAVKY: net positive expense (exclude balanced)
-  const activeExpCats=catd.filter(c=>!balancedIds.has(c.id)&&netCatTotals[c.id]>0.01);
-  // PRÍJMY pure income: no expense at all
-  const incOnlyCats=catd.filter(c=>incTotals[c.id]>0.01&&expTotals[c.id]<0.01);
-  const incOnlyIds=new Set(incOnlyCats.map(c=>c.id));
-  // PRÍJMY income-dominated: income > expense (exclude balanced AND pure income to avoid duplicates)
-  const incDomCats=catd.filter(c=>!balancedIds.has(c.id)&&!incOnlyIds.has(c.id)&&netCatTotals[c.id]<-0.01);
   const secHdrY=(label,color='#e05c5c22',tc='#e05c5c')=>
     `<tr><td colspan="${activeMo.length+2}" style="padding:5px 8px 2px;font-size:9px;font-weight:700;background:${color};color:${tc};letter-spacing:.8px;text-transform:uppercase;border-top:1px solid var(--bd)">${label}</td></tr>`;
 
-  // Section totals
-  const expNetMo=activeMo.map(mo=>activeExpCats.reduce((s,c)=>s+Math.max(0,expMatrix[c.id][mo]-incMatrix[c.id][mo]),0));
-  const grandExpNet=activeExpCats.reduce((s,c)=>s+Math.max(0,netCatTotals[c.id]),0);
-  const incOnlyMo=activeMo.map(mo=>incOnlyCats.reduce((s,c)=>s+incMatrix[c.id][mo],0));
-  const grandIncY=incOnlyCats.reduce((s,c)=>s+incTotals[c.id],0);
+  // Section totals — z koreňových agregátov (vrátane subkategórií)
+  const aggNetMo=(r,mo)=>{const ss=subsOf(r);return (expMatrix[r.id][mo]-incMatrix[r.id][mo])+ss.reduce((s,sc)=>s+((expMatrix[sc.id]?.[mo]||0)-(incMatrix[sc.id]?.[mo]||0)),0);};
+  const aggIncMo=(r,mo)=>{const ss=subsOf(r);return incMatrix[r.id][mo]+ss.reduce((s,sc)=>s+(incMatrix[sc.id]?.[mo]||0),0);};
+  const expNetMo=activeMo.map(mo=>activeExpCats.reduce((s,r)=>s+Math.max(0,aggNetMo(r,mo)),0));
+  const grandExpNet=activeExpCats.reduce((s,r)=>s+Math.max(0,aggExpT[r.id]-aggIncT[r.id]),0);
+  const incOnlyMo=activeMo.map(mo=>incOnlyCats.reduce((s,r)=>s+aggIncMo(r,mo),0));
+  const grandIncY=incOnlyCats.reduce((s,r)=>s+aggIncT[r.id],0);
 
   let html=`<thead><tr>${colHdr}</tr></thead><tbody>`;
 
   // ── VÝDAVKY ──────────────────────────────────────────────────
   html+=secHdrY('Výdavky');
-  activeExpCats.filter(c=>!c.parentId).forEach(cat=>{html+=expRowY(cat);});
+  activeExpCats.forEach(cat=>{html+=expRowY(cat);});
   if(!activeExpCats.length)html+=`<tr><td colspan="${activeMo.length+2}" class="heat0">Žiadne výdavky</td></tr>`;
   html+=`<tr class="stotal"><td class="cat-cell" style="color:var(--red)">∑ Výdavky</td>${expNetMo.map(v=>`<td style="color:var(--red)">${v>0.01?v.toFixed(0)+'€':'—'}</td>`).join('')}<td class="tc" style="color:var(--red)">${fabs(grandExpNet)}</td></tr>`;
 
   // ── PRÍJMY (pure income only) ─────────────────────────────────
   if(incOnlyCats.length||incDomCats.length){
     html+=secHdrY('Príjmy','#4caf8222','#4caf82');
-    incOnlyCats.forEach(cat=>{
-      const val=incTotals[cat.id];
-      html+=`<tr class="prow" onclick="drillCat('${cat.id}','${cat.l}','yearly')">
-        <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l}</td>
-        ${activeMo.map(mo=>{const v=incMatrix[cat.id][mo];return v>0.005?`<td><span class="hc" style="--cc:#4caf82">+${v.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
-        <td class="tc" style="color:#4caf82">+${fabs(val)}</td>
-      </tr>`;
-    });
+    incOnlyCats.forEach(cat=>{html+=incRowY(cat);});
     incDomCats.forEach(cat=>{
-      const val=Math.abs(netCatTotals[cat.id]);
+      const val=aggIncT[cat.id]-aggExpT[cat.id];
       html+=`<tr class="prow" onclick="drillCat('${cat.id}','${cat.l}','yearly')">
-        <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l} <span style="font-size:9px;color:var(--mu)">↩</span></td>
-        ${activeMo.map(mo=>{const v=Math.abs(Math.min(0,expMatrix[cat.id][mo]-incMatrix[cat.id][mo]));return v>0.005?`<td><span class="hc" style="--cc:#4caf82">+${v.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
+        <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l} <span style="font-size:9px;color:var(--mu)" title="Príjmy v kategórii prevyšujú výdavky — zobrazený čistý príjem">↩</span></td>
+        ${activeMo.map(mo=>{const v=Math.max(0,-aggNetMo(cat,mo));return v>0.005?`<td><span class="hc" style="--cc:#4caf82">+${v.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
         <td class="tc" style="color:#4caf82">+${fabs(val)}</td>
       </tr>`;
     });
-    const grandIncTotal=grandIncY+incDomCats.reduce((s,c)=>s+Math.abs(netCatTotals[c.id]),0);
-    const sumIncMo=activeMo.map((mo,ii)=>incOnlyMo[ii]+incDomCats.reduce((s,c)=>s+Math.abs(Math.min(0,expMatrix[c.id][mo]-incMatrix[c.id][mo])),0));
+    const grandIncTotal=grandIncY+incDomCats.reduce((s,r)=>s+(aggIncT[r.id]-aggExpT[r.id]),0);
+    const sumIncMo=activeMo.map((mo,ii)=>incOnlyMo[ii]+incDomCats.reduce((s,r)=>s+Math.max(0,-aggNetMo(r,mo)),0));
     html+=`<tr class="stotal"><td class="cat-cell" style="color:#4caf82">∑ Príjmy</td>${sumIncMo.map(v=>`<td style="color:#4caf82">${v>0.01?'+'+v.toFixed(0)+'€':'—'}</td>`).join('')}<td class="tc" style="color:#4caf82">+${fabs(grandIncTotal)}</td></tr>`;
     const netRowCells=activeMo.map((mo,ii)=>{const n=sumIncMo[ii]-expNetMo[ii];const c=n>=0?'#4caf82':'var(--red)';return`<td style="color:${c};font-weight:700">${n>=0?'+':''}${n.toFixed(0)}€</td>`;}).join('');
     const grandNetAll=grandIncY+incDomCats.reduce((s,c)=>s+Math.abs(netCatTotals[c.id]),0)-grandExpNet;
@@ -5662,11 +5765,12 @@ function renderYearlyPivot(){
   if(balancedCats.length){
     html+=secHdrY('Vyrovnané','#4a9fd422','#4a9fd4');
     balancedCats.forEach(cat=>{
-      const grossExp=expTotals[cat.id];
-      const ttip=` title="Hrubé výdavky: ${fabs(grossExp)}, vrátky: −${fabs(incTotals[cat.id])}"`;
+      const ss=subsOf(cat);
+      const grossExp=aggExpT[cat.id];
+      const ttip=` title="Hrubé výdavky: ${fabs(grossExp)}, vrátky: −${fabs(aggIncT[cat.id])}"`;
       html+=`<tr class="prow" onclick="drillCat('${cat.id}','${cat.l}','yearly')">
         <td class="cat-cell"${ttip}><span style="color:${cat.c}">■</span> ${cat.l} <sup style="color:#4a9fd4;font-size:8px">↩</sup></td>
-        ${activeMo.map(mo=>{const g=expMatrix[cat.id][mo];return g>0.01?`<td${ttip}><span class="hc" style="--cc:#4a9fd4">${g.toFixed(0)}€↩</span></td>`:`<td class="h0">—</td>`;}).join('')}
+        ${activeMo.map(mo=>{const g=expMatrix[cat.id][mo]+ss.reduce((s,sc)=>s+(expMatrix[sc.id]?.[mo]||0),0);return g>0.01?`<td${ttip}><span class="hc" style="--cc:#4a9fd4">${g.toFixed(0)}€↩</span></td>`:`<td class="h0">—</td>`;}).join('')}
         <td class="tc" style="color:#4a9fd4"${ttip}>${fabs(grossExp)} <sup>↩</sup></td>
       </tr>`;
     });
@@ -5700,13 +5804,15 @@ function drillCat(catId,catLabel,scope){
     return scope!=='monthly'||d.getMonth()===anMonth;
   };
   const _drillCatIds=new Set([catId,...getSubcatIds(catId)]); // parent + all subcats
+  const _drillNone=catId==='__none'; // Nezaradené = transakcie bez kategórie
+  const _inDrill=cid=>_drillNone?!cid:_drillCatIds.has(cid);
   const hasCat=t=>t.splits?.length
-    ? t.splits.some(s=>_drillCatIds.has(s.category))
-    : _drillCatIds.has(t.category);
+    ? t.splits.some(s=>_inDrill(s.category))
+    : _inDrill(t.category);
   let txs=TX.filter(t=>yearMatch(t)&&hasCat(t)&&!t.excluded&&!isCCRepayment(t)&&!(t.tags||[]).some(tag=>excludedTags.has(tag)))
     .sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
   const catAmt=tx=>tx.splits?.length
-    ? tx.splits.filter(s=>_drillCatIds.has(s.category)).reduce((s,sp)=>s+sp.amount,0)
+    ? tx.splits.filter(s=>_inDrill(s.category)).reduce((s,sp)=>s+sp.amount,0)
     : tx.amount;
   const txIds=new Set(txs.map(t=>t.id));
   const retsByExp={};
@@ -5783,24 +5889,29 @@ function drillCat(catId,catLabel,scope){
     return expRow+dlRows+retRows;
   }).join('');
   // ── PIVOT-CONSISTENT NET ──────────────────────────────────────
-  // Footer net MUST equal the pivot row for the SAME scope.
-  // Monthly pivot = single getTxCatAmounts pass.
-  // Yearly pivot adds a 2nd pass attributing debtLink returns to the
-  // expense's category. We mirror both exactly so drilldown == pivot.
+  // Footer net MUST equal the pivot row → rovnaká logika ako buildPivotData:
+  // shared výdavky hrubo, vrátky (vrátane shared) atribuované cez 2. prechod
+  // do kategórie+mesiaca VÝDAVKU. Tým drilldown == pivot pre všetky scopes.
   let myExp=0,myInc=0;
   txs.forEach(tx=>{
+    if(tx.amount<0 && tx.shared?.people?.length && !tx.splits?.length){
+      if(_inDrill(tx.category)) myExp+=Math.abs(tx.amount); // gross
+      return;
+    }
     getTxCatAmounts(tx).forEach(({category,amount})=>{
-      if(!_drillCatIds.has(category))return;
+      if(!_inDrill(category))return;
       if(amount<0) myExp+=Math.abs(amount); else myInc+=amount;
     });
   });
-  if(scope!=='monthly'){
-    // 2nd pass (yearly): debtLink income → income of the linked expense's category
-    TX.filter(t=>yearMatch(t)&&t.amount>0&&isDebtLink(t)).forEach(tx=>{
+  {
+    const byId=new Map(TX.map(t=>[t.id,t]));
+    // 2. prechod: filtrujeme podľa VÝDAVKU (yearMatch(expTx)), nie podľa vrátky —
+    // vrátka môže prísť v inom mesiaci. Platí pre shared aj non-shared.
+    TX.filter(t=>t.amount>0&&isDebtLink(t)).forEach(tx=>{
       getDebtLinks(tx).forEach(l=>{
-        const expTx=TX.find(t=>t.id===l.expTxId); if(!expTx)return;
-        const cid=expTx.category; if(!cid||!_drillCatIds.has(cid))return;
-        if(tx.category===cid)return; // already counted in 1st pass
+        const expTx=byId.get(l.expTxId); if(!expTx)return;
+        const cid=expTx.category; if(!cid||!_inDrill(cid))return;
+        if(!yearMatch(expTx))return; // výdavok musí padať do rozsahu drilldownu
         myInc+=typeof l.amount==='number'?l.amount:Math.abs(tx.amount);
       });
     });
@@ -5838,7 +5949,7 @@ function closeDrill(){document.getElementById('an-drill').style.display='none';}
 // CHARTS
 function renderAnCharts(){
   // Populate line chart year selector
-  const years=[...new Set(TX.map(t=>t.date?.getFullYear()).filter(Boolean))].sort().reverse();
+  const years=[...new Set(TX.map(t=>eDate(t)?.getFullYear()).filter(Boolean))].sort().reverse();
   const ySel=document.getElementById('an-line-year');
   if(ySel){
     const cur=ySel.value;
@@ -5846,8 +5957,9 @@ function renderAnCharts(){
   }
   // expTx: ALL transactions — positive ones in expense categories act as refunds (reduce expense)
   // Exclude isSplatka (credit card repayments) — they are internal transfers, not income
-  const expTx=TX.filter(t=>t.date&&!isCCRepayment(t)&&!t.excluded&&!(t.tags||[]).some(tag=>excludedTags.has(tag)));
-  const incTx=TX.filter(t=>t.amount>0&&t.date&&!isCCRepayment(t)&&!t.excluded);
+  const _anAll=anTx();
+  const expTx=_anAll;
+  const incTx=_anAll.filter(t=>t.amount>0); // konzistencia: aj príjmy rešpektujú vylúčené tagy (ako mesačný pivot)
   renderAnPie(expTx,'an-pie','an-pie-tip','výdavky');
   renderAnPie(incTx,'an-pie-inc','an-pie-inc-tip','príjmy',true);
   renderAnStack(expTx,'an-stack','an-stack-title',false);
@@ -6453,9 +6565,9 @@ function renderSavings(){
   const selYear=document.getElementById('sv-year')?.value;
   const selMStr=document.getElementById('sv-month')?.value;
   const selMonth=selMStr!==''&&selMStr!=null?+selMStr:null;
-  let baseTx=TX;
-  if(selYear) baseTx=baseTx.filter(t=>t.date&&eDate(t).getFullYear()===+selYear);
-  const months=[...new Set(baseTx.map(t=>t.date?mKey(eDate(t)):null).filter(Boolean))].sort();
+  // B4: kanonický filter — eDate, bez splátok KK, excluded a vylúčených tagov; sumy cez txMyAmount
+  let baseTx=anTx(selYear?{year:+selYear}:{});
+  const months=[...new Set(baseTx.map(t=>mKey(eDate(t))).filter(Boolean))].sort();
   // If month selected → show days of that month
   let data,labelFn,useDaily=false;
   if(selYear&&selMonth!==null){
@@ -6464,16 +6576,16 @@ function renderSavings(){
     const dim=new Date(yr,mo+1,0).getDate();
     data=Array.from({length:dim},(_,i)=>{
       const d=String(i+1).padStart(2,'0');
-      const dayTx=baseTx.filter(t=>t.date&&t.date.getMonth()===mo&&t.date.getDate()===i+1);
-      const inc=dayTx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
-      const exp=dayTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+      const dayTx=baseTx.filter(t=>{const d=eDate(t);return d.getMonth()===mo&&d.getDate()===i+1;});
+      const inc=dayTx.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
+      const exp=dayTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
       return{m:yr+'-'+String(mo+1).padStart(2,'0')+'-'+d,inc,exp,saved:inc-exp,label:d+'.'};
     });
   } else {
     data=months.map(m=>{
-      const mTx=baseTx.filter(t=>t.date&&mKey(eDate(t))===m);
-      const inc=mTx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
-      const exp=mTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+      const mTx=baseTx.filter(t=>mKey(eDate(t))===m);
+      const inc=mTx.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
+      const exp=mTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
       return{m,inc,exp,saved:inc-exp,label:m.slice(5)};
     });
   }
@@ -6659,8 +6771,7 @@ function recurManualMatch(recId, yr, mo){
     if(t.amount>=0) return false;
     const d=eDate(t)||t.date; return d&&d>=from&&d<=to;
   }).sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
-  const pinKey='rec_pin_'+recId+'_'+yr+'_'+mo;
-  const curPin=localStorage.getItem(pinKey);
+  const curPin=getRecPin(recId,yr,mo);
   document.getElementById('rm-title').textContent='Priradiť: '+rec.name+' ('+yr+'-'+String(mo).padStart(2,'0')+')';
   document.getElementById('rm-hint').textContent=cands.length+' výdavkových transakcií v tomto mesiaci';
   const list=document.getElementById('rm-list');
@@ -6684,10 +6795,8 @@ function recurManualMatch(recId, yr, mo){
 
 function recurSetPin(txId){
   if(!_rmRecId) return;
-  const pinKey='rec_pin_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
-  const blockKey='rec_block_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
-  localStorage.setItem(pinKey, txId);
-  localStorage.removeItem(blockKey); // clear block if manually pinning
+  setRecPin(_rmRecId,_rmYr,_rmMo,txId);
+  clearRecBlock(_rmRecId,_rmYr,_rmMo); // clear block if manually pinning
   cm('m-recur-match');
   renderRecurring(); renderBudget();
 }
@@ -6740,14 +6849,14 @@ function recurToggleWeeklyTx(txId){
     // Remove it
     if(isInAuto) excl.add(txId);
     const newIncl=incl.filter(id=>id!==txId);
-    localStorage.setItem(_rExclKey(_rmRecId,_rmYr,_rmMo),JSON.stringify([...excl]));
-    localStorage.setItem(_rInclKey(_rmRecId,_rmYr,_rmMo),JSON.stringify(newIncl));
+    _setRecurExcl(_rmRecId,_rmYr,_rmMo,[...excl]);
+    _setRecurIncl(_rmRecId,_rmYr,_rmMo,newIncl);
   } else {
     // Add it
     excl.delete(txId);
     if(!incl.includes(txId)) incl.push(txId);
-    localStorage.setItem(_rExclKey(_rmRecId,_rmYr,_rmMo),JSON.stringify([...excl]));
-    localStorage.setItem(_rInclKey(_rmRecId,_rmYr,_rmMo),JSON.stringify(incl));
+    _setRecurExcl(_rmRecId,_rmYr,_rmMo,[...excl]);
+    _setRecurIncl(_rmRecId,_rmYr,_rmMo,incl);
   }
   // Refresh the modal list
   recurAddTx(_rmRecId,_rmYr,_rmMo);
@@ -6756,19 +6865,17 @@ function recurToggleWeeklyTx(txId){
 
 function recurRestoreWeeklyAuto(recId,yr,mo){
   // Clear all overrides and restore auto-matching
-  localStorage.removeItem(_rExclKey(recId,yr,mo));
-  localStorage.removeItem(_rInclKey(recId,yr,mo));
-  localStorage.removeItem('rec_block_'+recId+'_'+yr+'_'+mo);
+  delete recurMarks.excl[_rmK(recId,yr,mo)];
+  delete recurMarks.incl[_rmK(recId,yr,mo)];
+  clearRecBlock(recId,yr,mo);
   renderRecurring(); renderBudget();
 }
 
 function recurClearPin(){
   if(!_rmRecId) return;
-  const pinKey='rec_pin_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
-  const blockKey='rec_block_'+_rmRecId+'_'+_rmYr+'_'+_rmMo;
-  localStorage.removeItem(pinKey);
-  // Set block key so auto-match is also suppressed
-  localStorage.setItem(blockKey,'1');
+  clearRecPin(_rmRecId,_rmYr,_rmMo);
+  // Block so auto-match is also suppressed
+  setRecBlock(_rmRecId,_rmYr,_rmMo);
   cm('m-recur-match');
   renderRecurring(); renderBudget();
 }
@@ -6837,26 +6944,26 @@ function findRecurTxAll(rec,yr,mo){
 const MO_NAMES=['január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'];
 
 // Per-occurrence helpers for weekly recurring
-function _rExclKey(recId,yr,mo){return 'rec_excl_'+recId+'_'+yr+'_'+mo;}
-function _rInclKey(recId,yr,mo){return 'rec_incl_'+recId+'_'+yr+'_'+mo;}
-function getRecurExcl(recId,yr,mo){try{return new Set(JSON.parse(localStorage.getItem(_rExclKey(recId,yr,mo))||'[]'));}catch(e){return new Set();}}
-function getRecurIncl(recId,yr,mo){try{return JSON.parse(localStorage.getItem(_rInclKey(recId,yr,mo))||'[]');}catch(e){return[];}}
+function getRecurExcl(recId,yr,mo){return new Set(recurMarks.excl[_rmK(recId,yr,mo)]||[]);}
+function getRecurIncl(recId,yr,mo){return [...(recurMarks.incl[_rmK(recId,yr,mo)]||[])];}
+function _setRecurExcl(recId,yr,mo,arr){recurMarks.excl[_rmK(recId,yr,mo)]=arr;saveD();}
+function _setRecurIncl(recId,yr,mo,arr){recurMarks.incl[_rmK(recId,yr,mo)]=arr;saveD();}
 
 function recurExclTx(recId,yr,mo,txId){
   const s=getRecurExcl(recId,yr,mo);
   s.add(txId);
-  localStorage.setItem(_rExclKey(recId,yr,mo),JSON.stringify([...s]));
+  _setRecurExcl(recId,yr,mo,[...s]);
   renderRecurring();renderBudget();
 }
 function recurInclTx(recId,yr,mo,txId){
   const s=getRecurIncl(recId,yr,mo);
-  if(!s.includes(txId)){s.push(txId);localStorage.setItem(_rInclKey(recId,yr,mo),JSON.stringify(s));}
+  if(!s.includes(txId)){s.push(txId);_setRecurIncl(recId,yr,mo,s);}
   renderRecurring();renderBudget();
 }
 function recurClearWeekly(recId,yr,mo){
-  localStorage.removeItem(_rExclKey(recId,yr,mo));
-  localStorage.removeItem(_rInclKey(recId,yr,mo));
-  localStorage.setItem('rec_block_'+recId+'_'+yr+'_'+mo,'1');
+  delete recurMarks.excl[_rmK(recId,yr,mo)];
+  delete recurMarks.incl[_rmK(recId,yr,mo)];
+  setRecBlock(recId,yr,mo);
   renderRecurring();renderBudget();
 }
 
@@ -6925,10 +7032,8 @@ function renderRecurring(){
     const mesEq=calcHistoricalMesEq(rec); // historical avg, falls back to rec.amount/period
     const cat=rec.category?CAT[rec.category]:null;
     const catBadge=cat?`<span style="font-size:10px;color:${cat.c};flex-shrink:0;white-space:nowrap">${cat.l}</span>`:'';
-    const pinKey='rec_pin_'+rec.id+'_'+yr+'_'+mo;
-    const blockKey='rec_block_'+rec.id+'_'+yr+'_'+mo;
-    const isBlocked=!!localStorage.getItem(blockKey);
-    const pinnedId=localStorage.getItem(pinKey);
+    const isBlocked=isRecBlocked(rec.id,yr,mo);
+    const pinnedId=getRecPin(rec.id,yr,mo);
     const pinnedTx=pinnedId?TX.find(t=>t.id===pinnedId):null;
 
     // WEEKLY: per-occurrence management
@@ -7719,8 +7824,9 @@ function gdLockDrive(){
 function gdShowCidInput(){ gdToggleCidUI(false); }
 
 function gdToggleCidUI(saved){
-  document.getElementById('gd-cid-set').style.display  = saved?'block':'none';
-  document.getElementById('gd-cid-form').style.display = saved?'none':'block';
+  const s=document.getElementById('gd-cid-set'), f=document.getElementById('gd-cid-form');
+  if(s) s.style.display = saved?'block':'none';
+  if(f) f.style.display = saved?'none':'block';
 }
 
 function gdStat(msg, type) {
@@ -7784,7 +7890,8 @@ async function gdSave() {
       customCats, builtinCats: [...BUILTIN_CATS], visCols,
       detFieldsHidden: [...detFieldsHidden],
       ccLimit: document.getElementById('cc-lim')?.value || '',
-      editLog: editLog.slice(0, 500), ibanNames
+      editLog: editLog.slice(0, 500), ibanNames,
+      excludedTags: [...excludedTags], recurMarks, colWidths
     };
     const file = await gdFindFile();
     const fid = file?.id || null;
@@ -7824,6 +7931,7 @@ async function gdLoad() {
     const data = await r.json();
     TX = (data.tx || []).map(dTx);
     deletedTX = (data.deletedTX || []).map(dTx);
+    migrateDebtLinks(TX); migrateDebtLinks(deletedTX);
     budgets = data.budgets || {};
     budgetLimits = data.budgetLimits || [];
     openingBalance = data.openingBalance || 0;
@@ -7836,6 +7944,10 @@ async function gdLoad() {
     if (data.ibanNames) { ibanNames = data.ibanNames; }
     else { ibanNames = (await Store.get('ibanNames')) || {}; } // stará záloha → zachovaj existujúce
     if (data.editLog) editLog = data.editLog;
+    excludedTags = new Set(data.excludedTags || []);
+    recurMarks = data.recurMarks || {pins:{},blocks:{},excl:{},incl:{}};
+    recurMarks.pins=recurMarks.pins||{};recurMarks.blocks=recurMarks.blocks||{};recurMarks.excl=recurMarks.excl||{};recurMarks.incl=recurMarks.incl||{};
+    if (data.colWidths) colWidths = data.colWidths;
     if (data.ccLimit) { const el = document.getElementById('cc-lim'); if (el) el.value = data.ccLimit; }
     if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
     document.getElementById('txc').textContent = TX.length + ' transakcií';
@@ -7845,6 +7957,8 @@ async function gdLoad() {
     await Store.set('rules', rules); await Store.set('customcats', customCats);
     await Store.set('builtincats', [...BUILTIN_CATS]); await Store.set('cols', visCols);
     await Store.set('editlog', editLog.slice(0, 500)); await Store.set('ibanNames', ibanNames);
+    await Store.set('exctags', [...excludedTags]); await Store.set('recurmarks', recurMarks);
+    await Store.set('colWidths', colWidths);
     updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
     const ts = new Date(data.exported).toLocaleString('sk-SK', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
     gdStat(`Obnovené ✓ (záloha z ${ts})`, 'ok');
@@ -7854,12 +7968,8 @@ async function gdLoad() {
 
 function gdInitUI() {
   const cid = localStorage.getItem('fintb_gd_cid') || '';
-  if (cid) {
-    gdToggleCidUI(true);
-  } else {
-    document.getElementById('gd-cid-inp').value = '';
-    gdToggleCidUI(false);
-  }
+  gdToggleCidUI(!!cid);
+  if (!cid) { const el = document.getElementById('gd-pin-inp'); if (el) el.value = ''; } // gd-cid-inp bol stale id z pred-PIN éry — padal init na čerstvom profile
   const ts = localStorage.getItem('fintb_gd_last');
   if (ts) gdStat(`Posledná záloha: ${ts}`, 'ok');
 }
