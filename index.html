@@ -360,7 +360,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v82</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v83</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('import')">↑ Import</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -7438,30 +7438,41 @@ function _refreshLinkedSection(tx){
   if(tx.amount<0){
     const returns=TX.filter(t=>getDebtLinks(t).some(l=>l.expTxId===tx.id)&&t.amount>0);
     const sharedPeople=tx.shared?.people||[];
-    const linkedPersonNames=new Set(returns.flatMap(r=>getDebtLinks(r).filter(l=>l.expTxId===tx.id).map(l=>l.personName)));
-    const unlinked=sharedPeople.filter(p=>p.name&&!linkedPersonNames.has(p.name));
+    // Koľko už splatila každá osoba (súčet všetkých jej splátok k tejto pohľadávke)
+    const paidByPerson={};
+    returns.forEach(r=>getDebtLinks(r).filter(l=>l.expTxId===tx.id).forEach(l=>{
+      const amt=typeof l.amount==='number'?l.amount:Math.abs(r.amount);
+      const nm=l.personName||'—';
+      paidByPerson[nm]=(paidByPerson[nm]||0)+amt;
+    }));
+    // Osoby, čo ešte dlhujú (nesplatili celú svoju časť) → ostávajú v zozname aj po čiastočnej
+    // splátke, takže tá istá osoba môže splácať viacerými platbami v rôznych sumách.
+    const owing=sharedPeople.filter(p=>{
+      const paid=paidByPerson[p.name]||0;
+      return !p.amount || paid < p.amount-0.01;
+    });
 
-    if(returns.length||unlinked.length){
+    if(returns.length||owing.length){
       wrap.style.display='block'; title.textContent='Súvisiace platby';
-      // Each return may have multiple links to this pohľadávka (different persons)
+      // Existujúce splátky (každá môže mať viac linkov na túto pohľadávku)
       let html=returns.flatMap(r=>{
         const links=getDebtLinks(r).filter(l=>l.expTxId===tx.id);
         return links.map(link=>{
           const linkAmt=typeof link.amount==='number'?link.amount:null;
-          const personNote=link.personName?` <span style="font-size:9px;color:var(--mu)">(${link.personName})</span>`:'';
+          const personNote=link.personName?` <span style="font-size:9px;color:var(--mu)">(${esc(link.personName)})</span>`:'';
           return _linkedTxRow(r,'↩',linkAmt,personNote);
         });
       }).join('');
-      // Unlinked persons — offer to link income tx (±2 months)
-      if(unlinked.length){
+      // Ponuka priradiť (ďalšiu) platbu osobám, čo ešte dlhujú
+      if(owing.length){
         const expDate=eDate(tx);
         const rangeStart=expDate?new Date(expDate.getFullYear(),expDate.getMonth()-2,1):null;
         const rangeEnd=expDate?new Date(expDate.getFullYear(),expDate.getMonth()+3,0):null;
-        // Show all recent income txs (incl. already linked ones — user may need to add partial)
-        const alreadyLinkedToThisDebt=new Set(TX.flatMap(t=>getDebtLinks(t).filter(l=>l.expTxId===tx.id&&l.personName===p.name).map(()=>t.id)));
+        // income tx už priradené k TEJTO pohľadávke (nech sa tá istá platba nepriradí 2×)
+        const linkedToThisDebt=new Set(TX.filter(t=>getDebtLinks(t).some(l=>l.expTxId===tx.id)).map(t=>t.id));
         const recentIncome=TX.filter(t=>{
           if(t.amount<=0) return false;
-          if(alreadyLinkedToThisDebt.has(t.id)) return false; // already assigned to THIS debt+person
+          if(linkedToThisDebt.has(t.id)) return false;
           if(!rangeStart) return true;
           const d=eDate(t); return d&&d>=rangeStart&&d<=rangeEnd;
         }).sort((a,b)=>(eDate(b)||0)-(eDate(a)||0)).slice(0,50);
@@ -7472,16 +7483,22 @@ function _refreshLinkedSection(tx){
           const alreadyUsed=Math.abs(avail-t.amount)>0.01;
           const availStr=alreadyUsed?' (voľné: '+fabs(avail)+')':'';
           const usedMark=alreadyUsed?'⚠ ':'';
-          return`<option value="${t.id}">${usedMark}${desc} · ${ds} · ${fabs(t.amount)}${availStr}</option>`;
+          return`<option value="${t.id}">${usedMark}${esc(desc)} · ${ds} · ${fabs(t.amount)}${availStr}</option>`;
         }).join('');
-        html+=unlinked.map(p=>`
+        html+=owing.map(p=>{
+          const paid=paidByPerson[p.name]||0;
+          const note=paid>0.01
+            ? ` <span style="font-size:9px;color:var(--mu)">(splatené ${fabs(paid)}${p.amount?' z '+fabs(p.amount):''})</span>`
+            : (p.amount?` <span style="font-size:9px;color:var(--mu)">(${fabs(p.amount)})</span>`:'');
+          return`
           <div style="display:flex;align-items:center;gap:6px;padding:5px 0;font-size:11px;border-top:1px solid var(--bd)">
-            <span style="color:var(--mu);flex-shrink:0">○ ${p.name}${p.amount?' ('+fabs(p.amount)+')':''}</span>
-            <select class="cs2" style="flex:1;font-size:10px" onchange="linkIncomeTxFromExpense('${tx.id}','${p.name}',this)">
+            <span style="color:var(--mu);flex-shrink:0">○ ${esc(p.name)}${note}</span>
+            <select class="cs2" style="flex:1;font-size:10px" onchange="linkIncomeTxFromExpense('${tx.id}','${escA(p.name)}',this)">
               <option value="">+ Priradiť platbu…</option>
               ${incOpts}
             </select>
-          </div>`).join('');
+          </div>`;
+        }).join('');
       }
       list.innerHTML=html;
     } else { wrap.style.display='none'; }
@@ -7509,8 +7526,13 @@ function linkIncomeTxFromExpense(expTxId, personName, sel){
   const existing=getDebtLinks(incTx).filter(l=>!(l.expTxId===expTxId&&l.personName===personName));
   const expTx=TX.find(t=>t.id===expTxId);
   const p=expTx?.shared?.people?.find(p=>p.name===personName);
+  // koľko už osoba splatila (z iných platieb než táto) → priraď len zostatok jej časti
+  const alreadyPaid=TX.filter(t=>t.id!==incTxId).reduce((s,t)=>
+    s+getDebtLinks(t).filter(l=>l.expTxId===expTxId&&l.personName===personName)
+      .reduce((ss,l)=>ss+(typeof l.amount==='number'?l.amount:Math.abs(t.amount)),0),0);
+  const remaining=p?.amount?Math.max(0,p.amount-alreadyPaid):null;
   const avail=txMyAmount(incTx);
-  const linkAmt=p?.amount?Math.min(p.amount,avail):avail;
+  const linkAmt=remaining!=null?Math.min(remaining,avail):avail;
   incTx.debtLinks=[...existing,{expTxId,personName,amount:linkAmt}];
   delete incTx.debtLink;
   // Auto-clear category — a debtLink return shouldn't have its own category
