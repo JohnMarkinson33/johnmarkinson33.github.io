@@ -360,7 +360,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v83</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v86</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('import')">↑ Import</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -583,6 +583,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <button class="icon-b" id="bulk-mode-btn" onclick="toggleBulkMode()" title="Hromadná editácia" style="color:var(--mu)">☑</button>
     <button class="icon-b" onclick="openCatEditModal()" title="Nová kategória" style="color:var(--acc)">＋🏷</button>
     <span style="color:var(--mu);font-size:10px;margin-left:4px" id="txcnt"></span>
+    <span id="uncat-badge" onclick="filterUncat()" style="display:none;cursor:pointer;font-size:10px;margin-left:6px;padding:2px 9px;border-radius:10px;background:rgba(224,160,60,.18);color:#e0a03c;border:1px solid rgba(224,160,60,.5);font-weight:600" title="Klikni pre zobrazenie nezaradených transakcií"></span>
   </div>
   <div style="overflow-x:auto">
     <div class="tx-table-wrap">
@@ -1266,7 +1267,10 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       Celková suma: <strong id="split-total-lbl" style="color:var(--txt)"></strong>
     </div>
     <div id="split-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
-    <button class="btn" onclick="splitAddRow()" style="width:100%;font-size:11px;padding:6px">+ Pridať riadok</button>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn" onclick="splitAddRow()" style="flex:1;font-size:11px;padding:6px">+ Pridať riadok</button>
+      <button class="btn" onclick="splitDivideEqually()" style="flex:1;font-size:11px;padding:6px;color:var(--acc2)" title="Rozdeliť sumu rovnomerne medzi všetky riadky">÷ Rovnomerne</button>
+    </div>
     <div id="split-remainder" style="font-size:11px;margin-top:10px;text-align:right;min-height:18px"></div>
     <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
       <button class="btn" onclick="splitClearSplits()" style="margin-right:auto;font-size:11px">× Zrušiť split</button>
@@ -1995,6 +1999,26 @@ function getDebtLinks(tx){
   return [];
 }
 function isDebtLink(tx){ return getDebtLinks(tx).length>0; }
+// 1c: "skutočne nezaradené" = bez kategórie, nerozdelené na splity, NIE vrátka viazaná na
+// pohľadávku (tie sú zámerne bez kategórie), nie CC splátka a nie zámerne vylúčené.
+function isGenuinelyUncat(t){
+  return !t.category
+    && !(t.splits&&t.splits.length)
+    && !isDebtLink(t)
+    && !isCCRepayment(t)
+    && !t.excluded;
+}
+function uncatCount(){ return TX.filter(isGenuinelyUncat).length; }
+function updateUncatBadge(){
+  const el=document.getElementById('uncat-badge'); if(!el) return;
+  const n=uncatCount();
+  if(n>0){ el.style.display='inline-block'; el.textContent='⚠ '+n+(n===1?' nezaradená':(n<5?' nezaradené':' nezaradených')); }
+  else { el.style.display='none'; }
+}
+function filterUncat(){
+  const el=document.getElementById('f-cat'); if(el) el.value='__null';
+  renderTx();
+}
 function debtLinkAmount(tx){
   return getDebtLinks(tx).reduce((s,l)=>s+(typeof l.amount==='number'?l.amount:tx.amount),0);
 }
@@ -2869,12 +2893,34 @@ function updateTagFilter(){
     tags.map(t=>`<option value="${esc(t)}"${t===cur?' selected':''}>${esc(t)}</option>`).join('');
 }
 
+// 1b: tagy prítomné v aktuálne zvolenom období pivotu (rok / rok+mesiac) → počet TX
+function _tagsInPeriod(){
+  const counts={};
+  TX.forEach(t=>{
+    const d=eDate(t); if(!d) return;
+    if(d.getFullYear()!==anYear) return;
+    if(anView==='monthly' && d.getMonth()!==anMonth) return;
+    if(isCCRepayment(t)) return; // konzistentné s pivotom
+    (t.tags||[]).forEach(tag=>{ counts[tag]=(counts[tag]||0)+1; });
+  });
+  return counts;
+}
+
 function renderExclTagChips(){
   const el=document.getElementById('an-excl-tags'); if(!el) return;
-  const allTags=[...getAllTags()].sort();
-  el.innerHTML=allTags.map(tag=>{
+  const counts=_tagsInPeriod();
+  const inPeriod=Object.keys(counts);
+  // tagy v období + aktuálne vylúčené (aj mimo obdobia — nech ich vieš odznačiť)
+  const tagsToShow=[...new Set([...inPeriod, ...excludedTags])].sort((a,b)=>(counts[b]||0)-(counts[a]||0)||a.localeCompare(b));
+  if(!tagsToShow.length){ el.innerHTML='<span style="font-size:10px;color:var(--mu)">Žiadne tagy v tomto období</span>'; return; }
+  el.innerHTML=tagsToShow.map(tag=>{
     const active=excludedTags.has(tag);
-    return `<span onclick="toggleExclTag('${escA(tag)}',this)" style="cursor:pointer;font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid ${active?'var(--red)':'var(--bd)'};background:${active?'rgba(224,92,92,.15)':'transparent'};color:${active?'var(--red)':'var(--mu)'};text-decoration:${active?'line-through':'none'}" title="${active?'Zahrnuté v analýze':'Klikni pre vylúčenie z výpočtu'}">🏷 ${esc(tag)}</span>`;
+    const cnt=counts[tag]||0;
+    const inThis=cnt>0;
+    const meta=inThis?` <span style="opacity:.55">(${cnt})</span>`:` <span style="opacity:.5;font-style:italic">mimo</span>`;
+    const fade=inThis?'':'opacity:.55;';
+    const ttl=inThis?(active?'Zahrnúť späť do výpočtu':'Vylúčiť z výpočtu ('+cnt+' tx v tomto období)'):'Vylúčený tag mimo zvoleného obdobia — klikni pre zahrnutie';
+    return `<span onclick="toggleExclTag('${escA(tag)}',this)" style="cursor:pointer;font-size:10px;padding:2px 8px;border-radius:10px;${fade}border:1px solid ${active?'var(--red)':'var(--bd)'};background:${active?'rgba(224,92,92,.15)':'transparent'};color:${active?'var(--red)':'var(--mu)'};text-decoration:${active?'line-through':'none'}" title="${ttl}">🏷 ${esc(tag)}${meta}</span>`;
   }).join('');
 }
 
@@ -3471,7 +3517,7 @@ function renderTx(){
   txFilters={q,src,cat,mon,typ};
   fTx=TX.filter(t=>{
     if(src&&t.source!==src)return false;
-    if(cat==='__null'&&t.category)return false;
+    if(cat==='__null'&&!isGenuinelyUncat(t))return false;
     if(cat&&cat!=='__null'){
       // Include transactions in selected category OR any of its subcategories
       const _fCatIds=new Set([cat,...getSubcatIds(cat)]);
@@ -3489,6 +3535,7 @@ function renderTx(){
     return true;
   }).sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
   document.getElementById('txcnt').textContent=fTx.length+' txn';
+  updateUncatBadge();
   txPage=1; txLoadedCount=txPgSize; renderTxPage(); renderPgBtns();
   const cv=COLS_DEF.filter(c=>visCols.includes(c.id));
   document.getElementById('tx-hd').innerHTML=cv.map(c=>{
@@ -5508,6 +5555,7 @@ function renderPivot(){
   if(anView==='monthly') renderMonthlyPivot();
   else renderYearlyPivot();
   renderAnCharts();
+  renderExclTagChips(); // tagy musia odrážať aktuálne obdobie (rok/mesiac) — refresh pri každej zmene
 }
 
 function renderMonthlyPivot(){
@@ -8186,6 +8234,25 @@ function splitAddRow() {
   const rows = splitGetRows();
   rows.push({ category: null, amount: '' });
   splitRenderRows(rows);
+  splitUpdateRemainder();
+}
+
+// 2a: rozdelí efektívnu sumu rovnomerne medzi všetky riadky; posledný dostane zvyšok,
+// takže súčet presne sedí (žiadny zaokrúhľovací rozdiel na centy). Kategórie ostávajú.
+function splitDivideEqually() {
+  const tx = TX.find(t => t.id === _splitTxId);
+  if (!tx) return;
+  const total = Math.abs(txMyAmount(tx));
+  const rows = splitGetRows();
+  const n = rows.length;
+  if (n < 1) return;
+  const per = Math.floor((total / n) * 100) / 100;
+  let assigned = 0;
+  rows.forEach((r, i) => {
+    if (i === n - 1) r.amount = Math.round((total - assigned) * 100) / 100;
+    else { r.amount = per; assigned += per; }
+  });
+  splitRenderRows(rows.map(r => ({ category: r.category, amount: r.amount })));
   splitUpdateRemainder();
 }
 
