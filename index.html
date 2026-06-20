@@ -360,7 +360,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v86</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v99</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('import')">↑ Import</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -368,6 +368,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <button class="nb" onclick="go('rules')">Pravidlá</button>
     <button class="nb" onclick="go('analyza')">Analýza</button>
     <button class="nb" onclick="go('budget')">Budget</button>
+    <button class="nb" onclick="go('goals')">Ciele</button>
     <button class="nb" onclick="go('prehlady')">Prehľady</button>
   </nav>
   <div class="hdr-right">
@@ -811,8 +812,13 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <option value="monthly">Mesačný</option>
       <option value="yearly">Ročný</option>
     </select>
-    <select id="bg-mon" onchange="renderBudget()" style="min-width:130px"></select>
+    <span id="bg-mon-nav" style="display:inline-flex;align-items:center;gap:3px">
+      <button class="btn" onclick="bgMonStep(-1)" style="padding:5px 9px" title="Predchádzajúci mesiac">◄</button>
+      <select id="bg-mon" onchange="renderBudget()" style="min-width:120px"></select>
+      <button class="btn" onclick="bgMonStep(1)" style="padding:5px 9px" title="Nasledujúci mesiac">►</button>
+    </span>
     <select id="bg-yr" onchange="renderBudget()" style="min-width:90px;display:none"></select>
+    <button class="btn" id="bg-move-btn" onclick="openMoveMoney()" style="padding:5px 12px;font-size:11px" title="Presunúť rozpočet medzi kategóriami v tomto mesiaci">↔ Presun</button>
   </div>
   <!-- Flex budget summary bar -->
   <div id="bg-flex-summary" style="display:none;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 16px;margin-bottom:14px">
@@ -845,6 +851,18 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         <button class="btn prim" onclick="saveDrillLimit()" style="font-size:11px;padding:5px 12px">Uložiť limit</button>
         <button class="btn danger" onclick="removeDrillLimit()" style="font-size:11px;padding:5px 10px">✕ Zmazať</button>
       </div>
+      <div id="bdr-rollover-row" style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:11px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+          <input type="checkbox" id="bdr-rollover" onchange="document.getElementById('bdr-rollover-start-wrap').style.display=this.checked?'inline-flex':'none'">
+          <span title="Nevyčerpaný zostatok sa prenáša do ďalších mesiacov (aj prečerpanie ako dlh)"><span style="color:var(--acc2)">↻</span> Prenášať zostatok (rollover)</span>
+        </label>
+        <span id="bdr-rollover-start-wrap" style="display:none;align-items:center;gap:5px;flex-wrap:wrap">
+          <span style="color:var(--mu)">od</span>
+          <input type="month" id="bdr-rollover-start" style="font-size:11px;padding:3px 6px;background:var(--s2);border:1px solid var(--bd);color:var(--txt);border-radius:4px">
+          <span style="color:var(--mu)">po</span>
+          <input type="month" id="bdr-rollover-end" title="Nechaj prázdne = beží stále. Vyplň = rollover skončí týmto mesiacom (prenos za predošlé mesiace zostane)." style="font-size:11px;padding:3px 6px;background:var(--s2);border:1px solid var(--bd);color:var(--txt);border-radius:4px">
+        </span>
+      </div>
       <div id="bdr-limit-info" style="font-size:10px;color:var(--mu);margin-top:6px"></div>
     </div>
     <div id="bdr-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
@@ -853,6 +871,93 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         <thead><tr><th>Dátum</th><th>Obchodník</th><th>Popis</th><th style="text-align:right">Suma</th></tr></thead>
         <tbody id="bdr-body"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- MOVE MONEY MODAL -->
+<div class="modal-bg" id="m-move-money">
+  <div class="modal" style="width:400px;max-width:calc(100vw - 32px)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="st" style="margin:0">↔ Presunúť rozpočet</div>
+      <button class="btn" style="padding:3px 10px;font-size:11px" onclick="cm('m-move-money')">✕ Zavrieť</button>
+    </div>
+    <div id="mv-month-info" style="font-size:10px;color:var(--mu);margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:11px">
+      <span style="color:var(--mu);width:22px;flex-shrink:0">z</span>
+      <select id="mv-from" class="inp" style="flex:1"></select>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:11px">
+      <span style="color:var(--mu);width:22px;flex-shrink:0">do</span>
+      <select id="mv-to" class="inp" style="flex:1"></select>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <input type="number" id="mv-amount" class="inp" placeholder="Suma €" style="flex:1" min="0" step="5">
+      <button class="btn prim" onclick="saveMoveMoney()" style="font-size:11px;padding:6px 14px">Presunúť</button>
+    </div>
+    <div id="mv-list"></div>
+  </div>
+</div>
+
+<!-- CIELE -->
+<div id="pg-goals" class="page">
+  <div style="margin-bottom:16px">
+    <div style="font-family:var(--H);font-size:20px;margin-bottom:4px">Ciele</div>
+    <div style="color:var(--mu);font-size:11px">Sporiace ciele · rezerva, dovolenka, väčšie nákupy</div>
+  </div>
+  <button class="btn prim" onclick="openGoalModal()" style="margin-bottom:14px">+ Nový cieľ</button>
+  <div id="goals-list"></div>
+</div>
+
+<!-- GOAL MODAL -->
+<div class="modal-bg" id="m-goal">
+  <div class="modal" style="width:400px;max-width:calc(100vw - 32px)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="st" id="goal-modal-title" style="margin:0">Nový cieľ</div>
+      <button class="btn" style="padding:3px 10px;font-size:11px" onclick="cm('m-goal')">✕ Zavrieť</button>
+    </div>
+    <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Názov</label>
+    <input type="text" id="goal-name" class="inp" placeholder="napr. Dovolenka 2026" style="width:100%;margin-bottom:10px">
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Cieľová suma €</label>
+        <input type="number" id="goal-target" class="inp" placeholder="2000" style="width:100%" min="0" step="10">
+      </div>
+      <div style="flex:1" id="goal-init-wrap">
+        <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Počiatočný vklad €</label>
+        <input type="number" id="goal-init" class="inp" placeholder="0" style="width:100%" min="0" step="10">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-end">
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Termín (voliteľné)</label>
+        <input type="month" id="goal-deadline" class="inp" style="width:100%">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Farba</label>
+        <input type="color" id="goal-color" value="#4a9fd4" style="width:48px;height:36px;border:1px solid var(--bd);border-radius:6px;background:var(--s2);cursor:pointer">
+      </div>
+    </div>
+    <div id="goal-contribs-section" style="display:none;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-top:6px;border-top:1px solid var(--bd)">Príspevky</div>
+      <div id="goal-contribs-list" style="margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input type="number" id="gc-amount" class="inp" placeholder="Suma €" style="width:90px" step="10" title="Kladná = vklad, záporná = výber">
+        <input type="date" id="gc-date" class="inp" style="width:140px">
+        <input type="text" id="gc-note" class="inp" placeholder="Poznámka (voliteľné)" style="flex:1;min-width:120px">
+        <button class="btn prim" onclick="addGoalContrib()" style="font-size:11px;padding:6px 12px">+ Vklad</button>
+      </div>
+      <div style="font-size:10px;color:var(--mu);margin-top:4px">Kladná suma = vklad, záporná = výber.</div>
+    </div>
+    <div id="goal-link-tx-section" style="display:none;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-top:6px;border-top:1px solid var(--bd)">Priradiť transakciu</div>
+      <input type="text" id="gtx-search" placeholder="Hľadaj obchodníka / popis…" oninput="_renderGoalTxSearch()" class="inp" style="width:100%;margin-bottom:6px">
+      <div id="gtx-results" style="max-height:200px;overflow-y:auto"></div>
+      <div style="font-size:10px;color:var(--mu);margin-top:4px">Zobrazené nepriradené transakcie. Priradenie neovplyvní kategóriu ani analýzu.</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn prim" onclick="saveGoal()" style="flex:1">Uložiť</button>
+      <button class="btn danger" id="goal-del-btn" onclick="deleteGoal()" style="display:none">🗑 Zmazať</button>
     </div>
   </div>
 </div>
@@ -1110,6 +1215,10 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <div style="margin-bottom:10px">
         <button id="md-excl-btn" onclick="toggleExcluded()" style="font-size:11px;padding:5px 12px;border-radius:5px;border:1px solid var(--bd);background:transparent;color:var(--mu);cursor:pointer;width:100%;text-align:left" title="Vylúči transakciu zo všetkých analýz, grafov a štatistík">⊘ Vylúčiť z analýz</button>
       </div>
+      <div id="md-goal-row" style="margin-bottom:12px;padding:10px;background:var(--s2);border-radius:5px">
+        <div style="font-size:11px;font-weight:600;margin-bottom:6px">🎯 Sporiaci cieľ</div>
+        <div id="md-goal-body"></div>
+      </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:var(--s2);border-radius:5px" id="md-splatka-row" style="display:none">
         <input type="checkbox" id="md-splatka" style="width:15px;height:15px;accent-color:var(--grn);flex-shrink:0" onchange="autoSaveDet()">
         <label for="md-splatka" style="font-size:12px;cursor:pointer;flex:1">
@@ -1356,6 +1465,8 @@ function scheduleSave() {
     await S('editlog', editLog.slice(0,500)); // keep last 500 edits
     await S('budgets', budgets);
     await S('budgetlimits', budgetLimits);
+    await S('budgetmoves', budgetMoves);
+    await S('goals', goals);
     await S('ob', openingBalance);
     await S('rules', rules);
     await S('customcats', customCats);
@@ -1400,6 +1511,8 @@ async function loadAll() {
   if(editLogRaw&&editLogRaw.length) editLog=editLogRaw;
   budgets = (await Store.get('budgets')) || {};
   budgetLimits = (await Store.get('budgetlimits')) || [];
+  budgetMoves = (await Store.get('budgetmoves')) || [];
+  goals = (await Store.get('goals')) || [];
   recurDefs = (await Store.get('recurDefs')) || [];
   recurMarks = (await Store.get('recurmarks')) || {};
   recurMarks.pins=recurMarks.pins||{}; recurMarks.blocks=recurMarks.blocks||{};
@@ -1443,7 +1556,7 @@ async function loadAll() {
 }
 
 // ==================== STATE ====================
-let TX=[], deletedTX=[], editLog=[], budgets={}, budgetLimits=[], openingBalance=0, rules=[], customCats=[], visCols=['date','main','place','source','cat','amount'];
+let TX=[], deletedTX=[], editLog=[], budgets={}, budgetLimits=[], budgetMoves=[], goals=[], openingBalance=0, rules=[], customCats=[], visCols=['date','main','place','source','cat','amount'];
 let colWidths={};  // persisted column widths for resizing
 let ibanNames={};  // {iban: displayName} global contact book
 let _crCol=null,_crX=0,_crW=0; // column resize state
@@ -2185,6 +2298,7 @@ function go(nm) {
     if (nm==='rules') renderRules();
     if (nm==='analyza'){renderExclTagChips(); renderPivot();}
     if (nm==='budget') renderBudget();
+    if (nm==='goals') renderGoals();
     if (nm==='prehlady') initPrehlady();
   }catch(e){
     console.error('go('+nm+')',e);
@@ -3749,6 +3863,7 @@ function openDet(id){
   }
   // Shared / debtLink sections
   _openDetShared(tx);
+  _openDetGoal(tx);  // 5b-2: priradenie k sporiacemu cieľu
   // Date field
   const dateEl=document.getElementById('md-date');
   const flagEl=document.getElementById('md-date-flag');
@@ -4551,7 +4666,7 @@ async function importRules(inp){
 function exportBackup(){
   const data={
     version:5, exported:new Date().toISOString(),
-    tx:TX.map(sTx), deletedTX:deletedTX.map(sTx), budgets, budgetLimits, openingBalance, rules, recurDefs,
+    tx:TX.map(sTx), deletedTX:deletedTX.map(sTx), budgets, budgetLimits, budgetMoves, goals, openingBalance, rules, recurDefs,
     customCats, builtinCats:[...BUILTIN_CATS], visCols,
     detFieldsHidden:[...detFieldsHidden],
     ccLimit:document.getElementById('cc-lim')?.value||'',
@@ -4574,7 +4689,7 @@ async function importBackup(inp){
     TX=(data.tx||[]).map(dTx);
     deletedTX=(data.deletedTX||[]).map(dTx);
     migrateDebtLinks(TX); migrateDebtLinks(deletedTX);
-    budgets=data.budgets||{}; budgetLimits=data.budgetLimits||[]; openingBalance=data.openingBalance||0;
+    budgets=data.budgets||{}; budgetLimits=data.budgetLimits||[]; budgetMoves=data.budgetMoves||[]; goals=data.goals||[]; openingBalance=data.openingBalance||0;
     recurDefs=data.recurDefs||[]; rules=data.rules||[]; customCats=data.customCats||[];
     if(data.builtinCats){BUILTIN_CATS.length=0;data.builtinCats.forEach(c=>BUILTIN_CATS.push(c));}
     visCols=data.visCols||['date','main','place','source','cat','amount'];
@@ -4590,7 +4705,7 @@ async function importBackup(inp){
     if(openingBalance){const el=document.getElementById('ob');if(el)el.value=openingBalance;}
     document.getElementById('txc').textContent=TX.length+' transakcií';
     await Store.set('tx',TX.map(sTx)); await Store.set('deleted',deletedTX.map(sTx));
-    await Store.set('budgets',budgets); await Store.set('budgetlimits',budgetLimits);
+    await Store.set('budgets',budgets); await Store.set('budgetlimits',budgetLimits); await Store.set('budgetmoves',budgetMoves); await Store.set('goals',goals);
     await Store.set('recurDefs',recurDefs); await Store.set('ob',openingBalance);
     await Store.set('rules',rules); await Store.set('cols',visCols);
     await Store.set('customcats',customCats); await Store.set('builtincats',[...BUILTIN_CATS]);
@@ -4705,6 +4820,252 @@ function setBgFlexView(v,btn){
   renderFlexBudget();
 }
 
+// ── GOALS / SAVINGS (balíček 5) ──
+let _editGoalId=null;
+// Migrácia starého modelu (saved / linkedCat) → contributions. Zruší auto-prepojenie na celú kategóriu.
+function _ensureContribs(g){
+  if(!Array.isArray(g.contributions)){
+    g.contributions=(g.saved>0)?[{id:'c_'+Math.random().toString(36).slice(2),amount:g.saved,date:localDateKey(new Date()),source:'manual',note:'počiatočný stav'}]:[];
+  }
+  delete g.saved; delete g.linkedCat;
+  return g.contributions;
+}
+// Našetrené = súčet príspevkov (vklady kladné, výbery záporné) + presuny rozpočtového prebytku
+function _goalBudgetMoves(g){
+  return (budgetMoves||[]).filter(m=>m.to==='goal:'+g.id);
+}
+function _goalSaved(g){
+  if(!g) return 0;
+  const manual=Array.isArray(g.contributions)?g.contributions.reduce((s,c)=>s+(c.amount||0),0):(g.saved||0);
+  const budget=_goalBudgetMoves(g).reduce((s,m)=>s+(m.amount||0),0);
+  return manual+budget;
+}
+function renderGoals(){
+  const list=document.getElementById('goals-list'); if(!list) return;
+  if(!goals||!goals.length){ list.innerHTML='<div style="color:var(--mu);font-size:12px;padding:24px;text-align:center;background:var(--s2);border:1px solid var(--bd);border-radius:10px">Zatiaľ žiadne ciele.<br>Pridaj prvý tlačidlom „+ Nový cieľ" vyššie.</div>'; return; }
+  const now=new Date();
+  list.innerHTML=goals.map(g=>{
+    const saved=_goalSaved(g), target=g.target||0;
+    const pct=target>0?Math.min(100,saved/target*100):0;
+    const remaining=Math.max(0,target-saved);
+    const done=target>0&&saved>=target-0.005;
+    const col=g.color||'#4a9fd4';
+    const nContrib=Array.isArray(g.contributions)?g.contributions.length:(g.saved>0?1:0);
+    let tempoStr='';
+    if(g.deadline&&!done){
+      const [dy,dm]=g.deadline.split('-').map(Number);
+      const monthsLeft=(dy-now.getFullYear())*12+(dm-1-now.getMonth());
+      if(monthsLeft>0) tempoStr=`treba ${fabs(remaining/monthsLeft)}/mes · ${monthsLeft} mes. do termínu`;
+      else if(monthsLeft===0) tempoStr=`termín tento mesiac`;
+      else tempoStr=`⚠ termín ${g.deadline} prešiel`;
+    }
+    return `<div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;margin-bottom:12px;cursor:pointer" onclick="openGoalModal('${escA(g.id)}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
+        <span style="font-weight:700;font-size:14px;color:${col};min-width:0;overflow:hidden;text-overflow:ellipsis">${done?'✓ ':''}${esc(g.name)}</span>
+        <span style="font-family:var(--M);font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0">${fabs(saved)} / ${fabs(target)}</span>
+      </div>
+      <div style="height:10px;background:var(--bg);border-radius:5px;overflow:hidden;margin-bottom:6px">
+        <div style="height:100%;width:${pct}%;background:${done?'var(--grn)':col};border-radius:5px;transition:width .4s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);gap:8px;flex-wrap:wrap">
+        <span>${done?'Cieľ splnený! 🎉':'zostáva '+fabs(remaining)+' · '+Math.round(pct)+' %'}${nContrib?' · '+nContrib+'×':''}</span>
+        <span style="text-align:right">${tempoStr}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openGoalModal(id){
+  _editGoalId=id||null;
+  const g=id?goals.find(x=>x.id===id):null;
+  document.getElementById('goal-name').value=g?.name||'';
+  document.getElementById('goal-target').value=g?.target||'';
+  document.getElementById('goal-deadline').value=g?.deadline||'';
+  document.getElementById('goal-color').value=g?.color||'#4a9fd4';
+  document.getElementById('goal-del-btn').style.display=id?'inline-block':'none';
+  document.getElementById('goal-modal-title').textContent=id?'Upraviť cieľ':'Nový cieľ';
+  // Nový cieľ: počiatočný vklad viditeľný, sekcia príspevkov skrytá. Edit: naopak.
+  document.getElementById('goal-init-wrap').style.display=id?'none':'block';
+  document.getElementById('goal-init').value='';
+  document.getElementById('goal-contribs-section').style.display=id?'block':'none';
+  document.getElementById('goal-link-tx-section').style.display=id?'block':'none';
+  if(id&&g){ _ensureContribs(g); _renderGoalContribs(g); const s=document.getElementById('gtx-search'); if(s) s.value=''; _renderGoalTxSearch(); }
+  document.getElementById('m-goal').classList.add('on');
+}
+function _renderGoalTxSearch(){
+  const box=document.getElementById('gtx-results'); if(!box||!_editGoalId) return;
+  const q=(document.getElementById('gtx-search')?.value||'').toLowerCase().trim();
+  let list=(TX||[]).filter(t=>{
+    if(_txGoal(t.id)) return false; // už priradené k niektorému cieľu
+    if(!q) return true;
+    const m=(t.merchantOverride||t.merchant||'').toLowerCase(), d=(t.description||'').toLowerCase(), n=(t.noteOverride||'').toLowerCase();
+    return m.indexOf(q)>=0||d.indexOf(q)>=0||n.indexOf(q)>=0;
+  });
+  list=list.sort((a,b)=>eDate(b)-eDate(a)).slice(0,15);
+  if(!list.length){ box.innerHTML='<div style="font-size:10px;color:var(--mu);padding:6px">Žiadne nepriradené transakcie'+(q?' pre „'+esc(q)+'"':'')+'.</div>'; return; }
+  box.innerHTML=list.map(t=>{
+    const amt=Math.abs(txMyAmount(t));
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11px;border-bottom:1px solid var(--bd)">
+      <span style="color:var(--mu);width:62px;flex-shrink:0">${fd(eDate(t))}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(t.merchantOverride||t.merchant||'—')}</span>
+      <span style="font-family:var(--M);flex-shrink:0;color:${t.amount>=0?'var(--grn)':''}">${fabs(amt)}</span>
+      <button class="btn prim" onclick="linkTxToGoal('${escA(t.id)}','${escA(_editGoalId)}');openGoalModal('${escA(_editGoalId)}')" style="padding:2px 8px;font-size:10px;flex-shrink:0">+ Pridať</button>
+    </div>`;
+  }).join('');
+}
+function _renderGoalContribs(g){
+  const box=document.getElementById('goal-contribs-list'); if(!box) return;
+  const CATm=getCAT();
+  const manual=(g.contributions||[]).map(c=>({...c}));
+  const budget=_goalBudgetMoves(g).map(m=>({id:'bm_'+m.id,amount:m.amount,date:(m.month||'')+'-01',source:'budget',note:'z kategórie '+(CATm[m.from]?.l||m.from)}));
+  const cs=manual.concat(budget);
+  if(!cs.length){ box.innerHTML='<div style="font-size:11px;color:var(--mu);padding:6px 0">Zatiaľ žiadne príspevky. Pridaj prvý nižšie.</div>'; return; }
+  const srcLabel={manual:'ručný',tx:'transakcia',budget:'z rozpočtu'};
+  const fdStr=d=>(typeof d==='string'&&d.includes('-'))?d.split('-').reverse().join('.'):'';
+  box.innerHTML=cs.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(c=>{
+    const pos=(c.amount||0)>=0;
+    const srcIcon=c.source==='tx'?'🔗 ':(c.source==='budget'?'📊 ':'');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11px;border-bottom:1px solid var(--bd)">
+      <span style="color:var(--mu);width:74px;flex-shrink:0">${fdStr(c.date)}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${srcIcon}${esc(c.note||srcLabel[c.source]||'')}</span>
+      <span style="font-family:var(--M);font-weight:600;color:${pos?'var(--grn)':'var(--red)'};flex-shrink:0">${pos?'+':'−'}${fabs(Math.abs(c.amount||0))}</span>
+      <button class="btn danger" onclick="delGoalContrib('${escA(c.id)}')" style="padding:1px 6px;font-size:10px;flex-shrink:0">✕</button>
+    </div>`;
+  }).join('');
+}
+function addGoalContrib(){
+  if(!_editGoalId) return;
+  const g=goals.find(x=>x.id===_editGoalId); if(!g) return;
+  _ensureContribs(g);
+  const amount=parseFloat(document.getElementById('gc-amount').value)||0;
+  if(!amount){ alert('Zadaj sumu vkladu (alebo zápornú pre výber).'); return; }
+  const date=document.getElementById('gc-date').value||localDateKey(new Date());
+  const note=document.getElementById('gc-note').value.trim();
+  g.contributions.push({id:'c_'+Math.random().toString(36).slice(2),amount,date,source:'manual',note});
+  saveD(); _renderGoalContribs(g);
+  document.getElementById('gc-amount').value=''; document.getElementById('gc-note').value='';
+  renderGoals();
+}
+function delGoalContrib(cid){
+  if(!_editGoalId) return;
+  const g=goals.find(x=>x.id===_editGoalId); if(!g) return;
+  if(typeof cid==='string'&&cid.indexOf('bm_')===0){ // presun rozpočtu → zmaž budgetMove (vráti aj kategórii)
+    const mid=cid.slice(3);
+    budgetMoves=(budgetMoves||[]).filter(m=>m.id!==mid);
+  } else {
+    if(!Array.isArray(g.contributions)) return;
+    g.contributions=g.contributions.filter(c=>c.id!==cid);
+  }
+  saveD(); _renderGoalContribs(g); renderGoals();
+}
+function saveGoal(){
+  const name=document.getElementById('goal-name').value.trim();
+  const target=parseFloat(document.getElementById('goal-target').value)||0;
+  const deadline=document.getElementById('goal-deadline').value||null;
+  const color=document.getElementById('goal-color').value||'#4a9fd4';
+  if(!name){ alert('Zadaj názov cieľa.'); return; }
+  if(target<=0){ alert('Zadaj cieľovú sumu (väčšiu ako 0).'); return; }
+  if(_editGoalId){
+    const g=goals.find(x=>x.id===_editGoalId);
+    if(g){ g.name=name; g.target=target; g.deadline=deadline; g.color=color; _ensureContribs(g); }
+  } else {
+    const init=parseFloat(document.getElementById('goal-init').value)||0;
+    const contributions=init>0?[{id:'c_'+Math.random().toString(36).slice(2),amount:init,date:localDateKey(new Date()),source:'manual',note:'počiatočný vklad'}]:[];
+    goals.push({id:'g_'+Math.random().toString(36).slice(2),name,target,deadline,color,contributions});
+  }
+  saveD(); cm('m-goal'); renderGoals();
+}
+function deleteGoal(){
+  if(!_editGoalId) return;
+  if(!confirm('Naozaj zmazať tento cieľ?')) return;
+  goals=goals.filter(x=>x.id!==_editGoalId);
+  saveD(); cm('m-goal'); renderGoals();
+}
+
+// 5b-2: linkovanie konkrétnych transakcií k cieľu
+function _txGoal(txId){
+  if(!Array.isArray(goals)) return null;
+  for(const g of goals){
+    if(Array.isArray(g.contributions)&&g.contributions.some(c=>c.source==='tx'&&c.txId===txId)) return g;
+  }
+  return null;
+}
+function _openDetGoal(tx){
+  const body=document.getElementById('md-goal-body'); if(!body) return;
+  const linked=_txGoal(tx.id);
+  if(linked){
+    const c=linked.contributions.find(c=>c.source==='tx'&&c.txId===tx.id);
+    body.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:11px;flex-wrap:wrap">
+      <span style="flex:1;min-width:0">Priradené k cieľu <strong style="color:${linked.color||'var(--acc)'}">${esc(linked.name)}</strong> (vklad +${fabs(Math.abs(c?.amount||0))})</span>
+      <button class="btn danger" onclick="unlinkTxFromGoal('${escA(tx.id)}')" style="font-size:10px;padding:3px 8px;flex-shrink:0">Odobrať</button>
+    </div>`;
+  } else if(!goals||!goals.length){
+    body.innerHTML='<div style="font-size:10px;color:var(--mu)">Zatiaľ nemáš žiadne ciele — vytvor ho v záložke Ciele.</div>';
+  } else {
+    const full=Math.abs(txMyAmount(tx));
+    const opts=goals.map(g=>`<option value="${escA(g.id)}">${esc(g.name)}</option>`).join('');
+    body.innerHTML=`<div style="display:flex;align-items:center;gap:6px;font-size:11px;flex-wrap:wrap">
+      <select id="md-goal-sel" class="inp" style="flex:1;min-width:110px">${opts}</select>
+      <input type="number" id="md-goal-amt" class="inp" value="${full.toFixed(2)}" step="10" min="0" max="${full.toFixed(2)}" style="width:84px" title="Koľko z tejto transakcie ide do cieľa (max ${fabs(full)})">
+      <button class="btn prim" onclick="linkTxToGoal('${escA(tx.id)}',document.getElementById('md-goal-sel').value,parseFloat(document.getElementById('md-goal-amt').value))" style="font-size:10px;padding:5px 10px;flex-shrink:0">Priradiť</button>
+    </div>
+    <div style="font-size:10px;color:var(--mu);margin-top:4px">Môžeš dať celú sumu (${fabs(full)}) alebo časť. Neovplyvní kategóriu ani analýzu — cieľ je len evidencia navrch.</div>`;
+  }
+}
+function linkTxToGoal(txId, goalId, amount){
+  const tx=TX.find(t=>t.id===txId), g=goals.find(x=>x.id===goalId);
+  if(!tx||!g) return;
+  _ensureContribs(g);
+  const full=Math.abs(txMyAmount(tx));
+  let amt=(amount===undefined||amount===null||isNaN(amount))?full:amount;
+  if(amt<=0){ alert('Zadaj kladnú sumu.'); return; }
+  if(amt>full+0.005) amt=full; // strop = moja reálna časť transakcie
+  unlinkTxFromGoal(txId, true); // zabráň duplicite — najprv odober prípadné predošlé priradenie
+  const partial=amt<full-0.005;
+  g.contributions.push({id:'c_'+Math.random().toString(36).slice(2),amount:amt,date:localDateKey(eDate(tx)||tx.date||new Date()),source:'tx',txId,note:(tx.merchantOverride||tx.merchant||'transakcia')+(partial?' (časť)':'')});
+  saveD(); _openDetGoal(tx); renderGoals();
+}
+function unlinkTxFromGoal(txId, silent){
+  if(!Array.isArray(goals)) return;
+  goals.forEach(g=>{ if(Array.isArray(g.contributions)) g.contributions=g.contributions.filter(c=>!(c.source==='tx'&&c.txId===txId)); });
+  if(!silent){ saveD(); const tx=TX.find(t=>t.id===txId); if(tx) _openDetGoal(tx); renderGoals(); }
+}
+
+// ROLLOVER (4b): čisté výdavky kategórie (vrátane podkategórií) v danom mesiaci
+function _catMonthSpent(catId, yr, mo){ // mo 1-indexed
+  const txs=anTx({year:yr,month:mo-1});
+  const ids=new Set([catId,...getSubcatIds(catId)]);
+  let spent=0;
+  txs.forEach(t=>{ if(t.amount>=0) return;
+    getTxCatAmounts(t).forEach(({category,amount})=>{
+      if(amount<0 && ids.has(category||'__none')) spent+=Math.abs(amount);
+    });
+  });
+  return spent;
+}
+// Nazbieraný zostatok z minulých mesiacov (od rolloverStart po cieľový mesiac − 1).
+// Záporný = prenesený dlh (rozhodnutie 2a). Počíta sa za behu z histórie, nikde sa neukladá.
+// Presuny rozpočtu pre kategóriu v danom mesiaci (do/z kategórie aj do cieľa)
+function _movesForCat(catId, mon){
+  let mIn=0, mOut=0;
+  (budgetMoves||[]).forEach(m=>{ if(m.month!==mon) return; if(m.to===catId) mIn+=m.amount; if(m.from===catId) mOut+=m.amount; });
+  return {in:mIn, out:mOut};
+}
+function _rolloverCarry(limitObj, yr, mo){ // mo 1-indexed (cieľový mesiac)
+  if(!limitObj.rollover) return 0;
+  const start=limitObj.rolloverStart||(yr+'-01');
+  let [cy,cm]=start.split('-').map(Number);
+  if(!cy||!cm) return 0;
+  let carry=0, guard=0;
+  while((cy<yr||(cy===yr&&cm<mo)) && guard++<240){
+    const monKey=cy+'-'+String(cm).padStart(2,'0');
+    const mv=_movesForCat(limitObj.catId, monKey);
+    // nevyčerpaný zostatok mesiaca = limit + presunuté dnu − presunuté von − minuté
+    carry += (limitObj.amount + mv.in - mv.out - _catMonthSpent(limitObj.catId, cy, cm));
+    cm++; if(cm>12){cm=1;cy++;}
+  }
+  return carry;
+}
+
 function renderFlexBudget(){
   const bgMon=document.getElementById('bg-mon')?.value;
   if(!bgMon){
@@ -4761,13 +5122,19 @@ function renderFlexBudget(){
       if(amount<0) bc[category||'__none']=(bc[category||'__none']||0)+Math.abs(amount);
     });
   });
+  // 4a-2: Uncategorized bucket — výdavky bez kategórie (mimo rozpočtu, nie CC/vrátky/splity)
+  const uncatTxs=txs.filter(t=>t.amount<0&&isGenuinelyUncat(t)&&!fixedTxIds.has(t.id)&&Math.abs(txMyAmount(t))>0.005);
+  const uncatSpent=uncatTxs.reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
+  const uncatN=uncatTxs.length;
   const flexItems=budgetLimits.filter(l=>l.type==='monthly'&&l.flexType!=='irregular').map(l=>{
     const cat=catd.find(c=>c.id===l.catId);
     if(!cat) return null;
     const spent=(bc[l.catId]||0)+getSubcatIds(l.catId).reduce((s,sid)=>s+(bc[sid]||0),0);
     // Detect conflict: subcat also has its own limit
     const conflictSubs=getSubcatIds(l.catId).filter(sid=>budgetLimits.some(bl=>bl.catId===sid&&bl.type==='monthly'&&bl.flexType!=='irregular')); // B7: precedencia &&/|| označovala konflikt vždy
-    return{cat,limit:l.amount,spent,conflict:conflictSubs.length>0};
+    const mv=_movesForCat(l.catId,bgMon);
+    const rollActive=!!l.rollover && (!l.rolloverEnd || bgMon<=l.rolloverEnd); // ukončenie: po rolloverEnd už neaktívny
+    return{cat,limit:l.amount,spent,conflict:conflictSubs.length>0,rollover:rollActive,carry:rollActive?_rolloverCarry(l,yr,mo):0,movedIn:mv.in,movedOut:mv.out};
   }).filter(Boolean);
   const flexTotal=flexItems.reduce((s,x)=>s+x.spent,0);
   const flexLimitTotal=flexItems.reduce((s,x)=>s+x.limit,0);
@@ -4829,8 +5196,32 @@ function renderFlexBudget(){
 
   const secHdr=(title,sub)=>`<div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;padding:10px 0 6px;border-bottom:1px solid var(--bd);margin-bottom:8px;display:flex;justify-content:space-between"><span>${title}</span><span style="font-weight:400;font-size:10px">${sub||''}</span></div>`;
 
+  // BUDGET vs ACTUAL — porovnanie plán vs skutočnosť (nezávislé od prepínača)
+  const _bvaPlan=plannedFixed+flexLimitTotal+plannedIrreg;
+  const _bvaAct=actualFixed+flexTotal+irregMonthSpent;
+  const _bvaDiff=_bvaPlan-_bvaAct; // + = pod plánom (ušetril), − = nad plánom
+  const _bvaRow=(lbl,pl,ac,bold)=>{
+    const d=pl-ac;
+    return `<div style="display:flex;font-size:11px;padding:${bold?'6px 0 0':'3px 0'};${bold?'margin-top:4px;border-top:1px solid var(--bd);font-weight:700':''}">
+      <span style="flex:1;${bold?'':'color:var(--mu)'}">${lbl}</span>
+      <span style="width:64px;text-align:right;font-family:var(--M)">${fabs(pl)}</span>
+      <span style="width:64px;text-align:right;font-family:var(--M)">${fabs(ac)}</span>
+      <span style="width:74px;text-align:right;font-family:var(--M);font-weight:600;color:${d>=-0.005?'var(--grn)':'var(--red)'}">${d>=-0.005?'+':'−'}${fabs(Math.abs(d))}</span>
+    </div>`;
+  };
+  let html=`<div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;margin-bottom:14px">
+    <div style="font-size:10px;font-weight:700;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">📊 Plán vs Skutočnosť — ${bgMon}</div>
+    <div style="display:flex;font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;padding-bottom:4px;border-bottom:1px solid var(--bd)">
+      <span style="flex:1"></span><span style="width:64px;text-align:right">Plán</span><span style="width:64px;text-align:right">Skutočn.</span><span style="width:74px;text-align:right">Rozdiel</span>
+    </div>
+    ${_bvaRow('Fixné',plannedFixed,actualFixed)}
+    ${_bvaRow('Flexible',flexLimitTotal,flexTotal)}
+    ${(plannedIrreg>0||irregMonthSpent>0)?_bvaRow('Nepravidelné',plannedIrreg,irregMonthSpent):''}
+    ${_bvaRow('SPOLU',_bvaPlan,_bvaAct,true)}
+    <div style="font-size:10px;color:${_bvaDiff>=-0.005?'var(--grn)':'var(--red)'};margin-top:6px">${_bvaDiff>=-0.005?'✓ Si '+fabs(_bvaDiff)+' pod plánom':'⚠ Prekročil si plán o '+fabs(Math.abs(_bvaDiff))}</div>
+  </div>`;
   // FIXED SECTION
-  let html=secHdr('🔒 Fixné',fabs(fixedTotal)+' €/mes');
+  html+=secHdr('🔒 Fixné',fabs(fixedTotal)+' €/mes');
   if(fixedItems.length===0) html+=`<div style="color:var(--mu);font-size:11px;padding:8px 0">Žiadne definície. Pridaj ich v záložke Prehľady → Pravidelné platby.</div>`;
   fixedItems.forEach(({rec,isPaid,inPayMonth,lastTx,mesEq,actualAmt,cat})=>{
     const d=lastTx?fd(eDate(lastTx)||lastTx.date):'';
@@ -4871,17 +5262,32 @@ function renderFlexBudget(){
   // FLEXIBLE SECTION
   html+=secHdr('📊 Flexible',fabs(flexTotal)+' / '+fabs(flexLimitTotal)+' €');
   if(flexItems.length===0) html+=`<div style="color:var(--mu);font-size:11px;padding:8px 0">Nastav mesačné limity v Klasickom zobrazení.</div>`;
-  flexItems.sort((a,b)=>(b.spent/b.limit)-(a.spent/a.limit)).forEach(({cat,limit,spent})=>{
-    const pct=limit>0?Math.min(100,spent/limit*100):0;
-    const rawPct=limit>0?spent/limit*100:0;
+  flexItems.sort((a,b)=>(b.spent/b.limit)-(a.spent/a.limit)).forEach(({cat,limit,spent,conflict,rollover,carry,movedIn,movedOut})=>{
+    const movedNet=(movedIn||0)-(movedOut||0);
+    const avail=limit+(rollover?carry:0)+movedNet;     // dostupné: limit + prenesené + presun
+    const pct=avail>0?Math.min(100,spent/avail*100):(spent>0?100:0);
+    const rawPct=avail>0?spent/avail*100:0;
     const col=rawPct>=100?'#e05c5c':rawPct>=80?'#f0a040':cat.c;
+    const remaining=avail-spent;
+    const overspent=remaining<-0.005;
+    const remCol=overspent?'#e05c5c':rawPct>=80?'#f0a040':'var(--grn)';
+    const parts=[];
+    if(rollover) parts.push(`prenesené ${carry>=0?'+':'−'}${fabs(Math.abs(carry))}`);
+    if(Math.abs(movedNet)>0.005) parts.push(`presunuté ${movedNet>=0?'+':'−'}${fabs(Math.abs(movedNet))}`);
+    const infoStr=parts.length?parts.concat([`limit ${fabs(limit)}`,`minuté ${fabs(spent)}`]).join(' · '):`minuté ${fabs(spent)} z ${fabs(limit)}`;
+    const canSweep=rollover&&remaining>0.005&&(goals||[]).length>0;
+    const sweepBtn=canSweep?`<button class="btn" onclick="event.stopPropagation();openMoveMoney('${cat.id}',${remaining.toFixed(2)})" style="font-size:9px;padding:1px 7px" title="Presunúť celý prebytok (${fabs(remaining)}) do cieľa">→ celý prebytok do cieľa</button>`:'';
     html+=`<div style="margin-bottom:10px;cursor:pointer" onclick="openBudgetDrill('${cat.id}','${cat.l}','${bgMon}',false)">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px">
-        <span style="color:${cat.c};font-weight:600">■ ${cat.l}${conflict?'<span title="Podkategória má vlastný limit — možné dvojité počítanie" style="font-size:9px;color:var(--acc2);cursor:help;margin-left:3px">⚠</span>':''}</span>
-        <span style="color:${rawPct>100?'var(--red)':'var(--txt)'};font-family:var(--M)">${fabs(spent)} <span style="color:var(--mu)">/ ${fabs(limit)}</span>${rawPct>100?` <span style="color:var(--red);font-size:10px">+${fabs(spent-limit)}</span>`:''}</span>
+        <span style="color:${cat.c};font-weight:600">${rollover?'<span title="Rollover — prenáša zostatok" style="color:var(--acc2)">↻</span> ':''}${Math.abs(movedNet)>0.005?'<span title="Presun rozpočtu tento mesiac" style="color:var(--acc2)">↔</span> ':''}■ ${cat.l}${conflict?'<span title="Podkategória má vlastný limit — možné dvojité počítanie" style="font-size:9px;color:var(--acc2);cursor:help;margin-left:3px">⚠</span>':''}</span>
+        <span style="font-family:var(--M);font-weight:700;color:${remCol};white-space:nowrap">${overspent?'prekročené o '+fabs(Math.abs(remaining)):'zostáva '+fabs(remaining)}</span>
       </div>
       <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .3s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;gap:8px">
+        <span>${sweepBtn}</span>
+        <span style="font-size:9px;color:var(--mu);text-align:right">${infoStr}</span>
       </div>
     </div>`;
   });
@@ -4893,17 +5299,59 @@ function renderFlexBudget(){
       const pct=limit>0?Math.min(100,spent/limit*100):0;
       const rawPct=limit>0?spent/limit*100:0;
       const col=rawPct>=100?'#e05c5c':rawPct>=80?'#f0a040':cat.c;
+      const remaining=limit-spent;                     // 4a: koľko ešte z ročného budgetu
+      const overspent=remaining<-0.005;
+      const remCol=overspent?'#e05c5c':rawPct>=80?'#f0a040':'var(--grn)';
       html+=`<div style="margin-bottom:10px;cursor:pointer" onclick="openBudgetDrill('${cat.id}','${cat.l}','${yr}',true)">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px">
           <span style="color:${cat.c};font-weight:600">■ ${cat.l}</span>
-          <span style="font-family:var(--M);color:var(--mu)">${fabs(spent)} / ${fabs(limit)} ročne</span>
+          <span style="font-family:var(--M);font-weight:700;color:${remCol};white-space:nowrap">${overspent?'prekročené o '+fabs(Math.abs(remaining)):'zostáva '+fabs(remaining)}</span>
         </div>
         <div style="height:6px;background:var(--s2);border-radius:3px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:${col};border-radius:3px"></div>
         </div>
-        <div style="font-size:9px;color:var(--mu);margin-top:2px">mesačný ekvivalent: ${fabs(mesEq)}</div>
+        <div style="font-size:9px;color:var(--mu);margin-top:2px;display:flex;justify-content:space-between">
+          <span>≈ ${fabs(mesEq)}/mes</span><span>minuté ${fabs(spent)} z ${fabs(limit)} ročne</span>
+        </div>
       </div>`;
     });
+  }
+
+  // MOVING MONEY — prehľad presunov tento mesiac (grafický tok z → do)
+  const monthMoves=(budgetMoves||[]).filter(m=>m.month===bgMon);
+  if(monthMoves.length){
+    html+=secHdr('↔ Presuny rozpočtu','tento mesiac');
+    monthMoves.forEach(m=>{
+      const cf=CAT[m.from];
+      const toGoal=(typeof m.to==='string'&&m.to.indexOf('goal:')===0)?(goals||[]).find(x=>x.id===m.to.slice(5)):null;
+      const ct=toGoal?null:CAT[m.to];
+      const toHtml=toGoal
+        ? `<span style="display:inline-flex;align-items:center;gap:3px">🎯 <span style="color:${toGoal.color||'var(--acc)'}">${esc(toGoal.name)}</span></span>`
+        : `<span style="display:inline-flex;align-items:center;gap:3px"><span style="color:${ct?.c||'var(--mu)'}">■</span>${esc(ct?.l||m.to)}</span>`;
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:var(--s2);border:1px solid var(--bd);border-radius:6px;margin-bottom:5px;font-size:11px">
+        <span style="flex:1;display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:3px"><span style="color:${cf?.c||'var(--mu)'}">■</span>${esc(cf?.l||m.from)}</span>
+          <span style="color:var(--acc2);font-size:14px;font-weight:700">→</span>
+          ${toHtml}
+        </span>
+        <span style="font-family:var(--M);font-weight:700;color:var(--acc2);flex-shrink:0">${fabs(m.amount)}</span>
+        <button class="btn danger" onclick="event.stopPropagation();deleteMoveMoney('${escA(m.id)}')" style="padding:2px 7px;font-size:10px;flex-shrink:0" title="Zrušiť presun">✕</button>
+      </div>`;
+    });
+  }
+
+  // UNCATEGORIZED BUCKET (4a-2) — nezaradené výdavky nech "neutekajú" z prehľadu
+  if(uncatN>0){
+    const uw=uncatN===1?'výdavok':(uncatN<5?'výdavky':'výdavkov');
+    html+=secHdr('❓ Nezaradené','mimo rozpočtu');
+    html+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:rgba(224,160,60,.1);border:1px solid rgba(224,160,60,.35);border-radius:6px;margin-bottom:6px;cursor:pointer" onclick="go('transactions');setTimeout(filterUncat,60)" title="Klikni pre zobrazenie a zaradenie">
+      <span style="font-size:18px;flex-shrink:0">⚠</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#e0a03c">${uncatN} ${uw} bez kategórie</div>
+        <div style="font-size:10px;color:var(--mu)">nie sú v žiadnom rozpočte — klikni pre zaradenie</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;font-family:var(--M);font-weight:700;font-size:13px;color:#e0a03c">${fabs(uncatSpent)}</div>
+    </div>`;
   }
 
   // CHARTS section
@@ -5231,6 +5679,18 @@ function renderBudget(){
     }
   }
 }
+function bgMonStep(dir){ // dir=-1 predchádzajúci, +1 nasledujúci mesiac
+  const s=document.getElementById('bg-mon'); if(!s||!s.value) return;
+  let [y,m]=s.value.split('-').map(Number);
+  m+=dir; if(m<1){m=12;y--;} if(m>12){m=1;y++;}
+  const key=y+'-'+String(m).padStart(2,'0');
+  if(!Array.from(s.options).some(o=>o.value===key)){ // mesiac bez transakcií — pridaj ho (zoradene zostupne)
+    const opt=document.createElement('option'); opt.value=key; opt.textContent=key;
+    const after=Array.from(s.options).find(o=>o.value<key);
+    if(after) s.insertBefore(opt, after); else s.appendChild(opt);
+  }
+  s.value=key; renderBudget();
+}
 function _renderBudgetCore(){
   ensureBudgetMonths();
   // Flex vs Classic mode
@@ -5245,6 +5705,7 @@ function _renderBudgetCore(){
     if(flexSummary) flexSummary.style.display='block';
     if(bgViewSel) bgViewSel.style.display='none';
     if(fvToggle) fvToggle.style.display='flex';
+    const nav=document.getElementById('bg-mon-nav'); if(nav) nav.style.display='inline-flex';
   } else {
     if(flexGrid) flexGrid.style.display='none';
     if(classGrid) classGrid.style.display='grid';
@@ -5265,7 +5726,8 @@ function _renderBudgetCore(){
   const view=document.getElementById('bg-view')?.value||'monthly';
   const bgMon=document.getElementById('bg-mon');
   const bgYr=document.getElementById('bg-yr');
-  if(bgMon) bgMon.style.display=view==='monthly'?'':'none';
+  const bgMonNav=document.getElementById('bg-mon-nav');
+  if(bgMonNav) bgMonNav.style.display=view==='monthly'?'inline-flex':'none';
   if(bgYr)  bgYr.style.display=view==='yearly'?'':'none';
   const catd=getCatD().filter(c=>c.id!=='sporenie');
   let txs,periodLabel;
@@ -5395,6 +5857,17 @@ function openBudgetDrill(catId,catLabel,period,isYearly){
   if(ltSel) ltSel.value=limitType;
   if(ltFlex) ltFlex.value=existingLimit?.flexType||'flexible';
   if(ltVal) ltVal.value=existingLimit?.amount||'';
+  // Rollover (4b)
+  const ltRoll=document.getElementById('bdr-rollover');
+  const ltRollStart=document.getElementById('bdr-rollover-start');
+  const ltRollWrap=document.getElementById('bdr-rollover-start-wrap');
+  const ltRollRow=document.getElementById('bdr-rollover-row');
+  if(ltRoll) ltRoll.checked=!!existingLimit?.rollover;
+  if(ltRollStart) ltRollStart.value=existingLimit?.rolloverStart||(period&&period.includes('-')?period:''); // default = zobrazený mesiac (od zapnutia)
+  const ltRollEnd=document.getElementById('bdr-rollover-end');
+  if(ltRollEnd) ltRollEnd.value=existingLimit?.rolloverEnd||'';
+  if(ltRollWrap) ltRollWrap.style.display=existingLimit?.rollover?'inline-flex':'none';
+  if(ltRollRow) ltRollRow.style.display=limitType==='monthly'?'flex':'none'; // rollover len pre mesačné/flexible
   if(ltInfo){
     if(existingLimit) ltInfo.textContent=existingLimit.amount?`Aktuálny limit: ${fabs(existingLimit.amount)} (${limitType==='monthly'?'mesačný':'ročný'})`:'Kategória sledovaná (bez limitu)';
     else ltInfo.textContent='Žiadna sekcia — vyber sekciu a ulož';
@@ -5419,11 +5892,15 @@ function saveDrillLimit(){
   const flexType=document.getElementById('bdr-flex-type')?.value||'flexible';
   const rawVal=document.getElementById('bdr-limit-val')?.value;
   const amount=rawVal===''||rawVal===null?null:parseFloat(rawVal)||0;
+  // Rollover len pre mesačné flexible
+  const rollover=type==='monthly'&&flexType==='flexible'&&!!document.getElementById('bdr-rollover')?.checked;
+  const rolloverStart=rollover?(document.getElementById('bdr-rollover-start')?.value||null):null;
+  const rolloverEnd=rollover?(document.getElementById('bdr-rollover-end')?.value||null):null;
   const existing=budgetLimits.findIndex(l=>l.catId===_drillCatId&&l.type===type);
-  if(existing>=0){budgetLimits[existing].amount=amount;budgetLimits[existing].flexType=flexType;}
-  else budgetLimits.push({id:'bl_'+Math.random().toString(36).slice(2),catId:_drillCatId,type,amount,flexType});
+  if(existing>=0){budgetLimits[existing].amount=amount;budgetLimits[existing].flexType=flexType;budgetLimits[existing].rollover=rollover;budgetLimits[existing].rolloverStart=rolloverStart;budgetLimits[existing].rolloverEnd=rolloverEnd;}
+  else budgetLimits.push({id:'bl_'+Math.random().toString(36).slice(2),catId:_drillCatId,type,amount,flexType,rollover,rolloverStart,rolloverEnd});
   const ltInfo=document.getElementById('bdr-limit-info');
-  if(ltInfo) ltInfo.textContent=amount?`✓ Uložené: ${fabs(amount)} (${type==='monthly'?'mesačný':'ročný'})`:'✓ Kategória zaradená (bez limitu)';
+  if(ltInfo) ltInfo.textContent=amount?`✓ Uložené: ${fabs(amount)} (${type==='monthly'?'mesačný':'ročný'})${rollover?' · ↻ rollover':''}`:'✓ Kategória zaradená (bez limitu)';
   saveD(); renderBudget();
 }
 
@@ -5433,6 +5910,64 @@ function saveFlexLimitInline(catId, type, flexType, val){
   if(existing>=0){budgetLimits[existing].amount=amount;budgetLimits[existing].flexType=flexType;}
   else budgetLimits.push({id:'bl_'+Math.random().toString(36).slice(2),catId,type,amount,flexType});
   saveD(); renderBudget();
+}
+
+// ── Moving money between categories (4b) ──
+function openMoveMoney(prefillFrom, prefillAmount){
+  const bgMon=document.getElementById('bg-mon')?.value;
+  if(!bgMon){ alert('Najprv vyber mesiac.'); return; }
+  const cats=budgetLimits.filter(l=>l.type==='monthly'&&l.flexType!=='irregular').map(l=>getCAT()[l.catId]).filter(Boolean);
+  if(cats.length<1){ alert('Na presun potrebuješ aspoň jednu kategóriu s mesačným limitom.'); return; }
+  const hasGoals=(goals||[]).length>0;
+  if(cats.length<2&&!hasGoals){ alert('Na presun potrebuješ aspoň 2 kategórie — alebo kategóriu a cieľ.'); return; }
+  const catOpts=cats.map(c=>`<option value="${escA(c.id)}">${esc(c.l)}</option>`).join('');
+  const goalOpts=(goals||[]).map(g=>`<option value="goal:${escA(g.id)}">🎯 ${esc(g.name)}</option>`).join('');
+  const fromS=document.getElementById('mv-from'), toS=document.getElementById('mv-to');
+  fromS.innerHTML=catOpts; // z = len kategórie
+  toS.innerHTML=catOpts+(goalOpts?`<optgroup label="Ciele">${goalOpts}</optgroup>`:''); // do = kategórie + ciele
+  if(toS.options.length>1) toS.selectedIndex=1;
+  if(prefillFrom){ // rýchly presun prebytku kategórie do cieľa
+    fromS.value=prefillFrom;
+    const goalOpt=Array.from(toS.options).find(o=>o.value.indexOf('goal:')===0);
+    if(goalOpt) toS.value=goalOpt.value;
+  }
+  document.getElementById('mv-month-info').textContent='Mesiac '+bgMon+' — presun upraví dostupný rozpočet kategórie (a ak je cieľom cieľ, pripíše doň) len v tomto mesiaci.';
+  document.getElementById('mv-amount').value=(prefillAmount&&prefillAmount>0)?prefillAmount.toFixed(2):'';
+  _renderMoveList(bgMon);
+  document.getElementById('m-move-money').classList.add('on');
+}
+function _mvToLabel(to){
+  const CAT=getCAT();
+  if(typeof to==='string'&&to.indexOf('goal:')===0){ const g=(goals||[]).find(x=>x.id===to.slice(5)); return '🎯 '+esc(g?.name||'cieľ'); }
+  return esc(CAT[to]?.l||to);
+}
+function _renderMoveList(bgMon){
+  const list=document.getElementById('mv-list'); if(!list) return;
+  const moves=(budgetMoves||[]).filter(m=>m.month===bgMon);
+  if(!moves.length){ list.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">Žiadne presuny v tomto mesiaci</div>'; return; }
+  const CAT=getCAT();
+  list.innerHTML='<div style="font-size:10px;color:var(--mu);margin:12px 0 4px;text-transform:uppercase;letter-spacing:1px">Presuny tento mesiac</div>'+
+    moves.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:11px;border-top:1px solid var(--bd)">
+      <span style="flex:1;min-width:0">${esc(CAT[m.from]?.l||m.from)} <span style="color:var(--acc2)">→</span> ${_mvToLabel(m.to)}</span>
+      <span style="font-family:var(--M);font-weight:600;flex-shrink:0">${fabs(m.amount)}</span>
+      <button class="btn danger" onclick="deleteMoveMoney('${escA(m.id)}')" style="padding:2px 8px;font-size:10px;flex-shrink:0">✕</button>
+    </div>`).join('');
+}
+function saveMoveMoney(){
+  const bgMon=document.getElementById('bg-mon')?.value; if(!bgMon) return;
+  const from=document.getElementById('mv-from').value;
+  const to=document.getElementById('mv-to').value;
+  const amount=parseFloat(document.getElementById('mv-amount').value)||0;
+  if(!from||!to){ alert('Vyber zdroj aj cieľ presunu.'); return; }
+  if(from===to){ alert('Vyber dve rôzne destinácie.'); return; }
+  if(amount<=0){ alert('Zadaj kladnú sumu.'); return; }
+  budgetMoves.push({id:'mv_'+Math.random().toString(36).slice(2),from,to,amount,month:bgMon});
+  saveD(); _renderMoveList(bgMon); document.getElementById('mv-amount').value=''; renderBudget(); if(typeof renderGoals==='function') renderGoals();
+}
+function deleteMoveMoney(id){
+  budgetMoves=(budgetMoves||[]).filter(m=>m.id!==id);
+  const bgMon=document.getElementById('bg-mon')?.value;
+  saveD(); _renderMoveList(bgMon); renderBudget(); if(typeof renderGoals==='function') renderGoals();
 }
 
 function removeDrillLimit(){
@@ -8004,7 +8539,7 @@ async function gdSave() {
     const payload = {
       version: 5, exported: new Date().toISOString(),
       tx: TX.map(sTx), deletedTX: deletedTX.map(sTx),
-      budgets, budgetLimits, openingBalance, rules, recurDefs,
+      budgets, budgetLimits, budgetMoves, goals, openingBalance, rules, recurDefs,
       customCats, builtinCats: [...BUILTIN_CATS], visCols,
       detFieldsHidden: [...detFieldsHidden],
       ccLimit: document.getElementById('cc-lim')?.value || '',
@@ -8052,6 +8587,8 @@ async function gdLoad() {
     migrateDebtLinks(TX); migrateDebtLinks(deletedTX);
     budgets = data.budgets || {};
     budgetLimits = data.budgetLimits || [];
+    budgetMoves = data.budgetMoves || [];
+    goals = data.goals || [];
     openingBalance = data.openingBalance || 0;
     recurDefs = data.recurDefs || [];
     rules = data.rules || [];
@@ -8070,7 +8607,7 @@ async function gdLoad() {
     if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
     document.getElementById('txc').textContent = TX.length + ' transakcií';
     await Store.set('tx', TX.map(sTx)); await Store.set('deleted', deletedTX.map(sTx));
-    await Store.set('budgets', budgets); await Store.set('budgetlimits', budgetLimits);
+    await Store.set('budgets', budgets); await Store.set('budgetlimits', budgetLimits); await Store.set('budgetmoves', budgetMoves); await Store.set('goals', goals);
     await Store.set('recurDefs', recurDefs); await Store.set('ob', openingBalance);
     await Store.set('rules', rules); await Store.set('customcats', customCats);
     await Store.set('builtincats', [...BUILTIN_CATS]); await Store.set('cols', visCols);
