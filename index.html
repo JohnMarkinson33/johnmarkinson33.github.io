@@ -177,6 +177,9 @@ canvas{display:block;width:100%;max-width:100%}
 .tbl tr:hover td.sticky-r{background:var(--s2)}
 @media(max-width:700px){
   .tbl th.sticky-r,.tbl td.sticky-r{position:static;background:transparent}
+  /* Transakcie: na mobile skry tabuľku a zobraz karty (kompletná tx vrátane kategórie bez scrollovania) */
+  .tx-table-scroll{display:none}
+  #tx-cards{display:block}
   .tbl tr:hover td.sticky-r{background:transparent}
 }
 .tbl th{text-align:left;padding:7px 9px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mu);border-bottom:1px solid var(--bd);font-weight:500}
@@ -331,6 +334,19 @@ input[type=color]{width:36px;height:32px;border:1px solid var(--bd);border-radiu
 .drow-sub{padding-left:14px}
 /* Category quick badge (tx table) */
 .cat-qb{display:inline-block;border:1px solid;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;transition:opacity .15s;vertical-align:middle}
+/* Mobilné karty transakcií — na desktope skryté (min-width), na mobile zapnuté media query vyššie */
+@media(min-width:701px){#tx-cards{display:none}}
+.tx-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.tx-card:active{background:var(--s2)}
+.tx-card.sel{outline:2px solid var(--acc);outline-offset:-2px}
+.txc-row1{display:flex;align-items:center;gap:9px}
+.txc-name{flex:1;min-width:0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.txc-amt{flex-shrink:0;font-family:var(--M);font-weight:700;font-size:15px}
+.txc-amt.pos{color:var(--grn)}.txc-amt.neg{color:var(--red)}
+.txc-meta{font-size:11px;color:var(--mu);margin-top:3px}
+.txc-sub{font-size:11px;color:var(--mu);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
+.txc-cat{margin-top:9px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.txc-cat .cat-qb{max-width:none;font-size:11px;padding:3px 9px}
 .cat-qb:hover,.cat-qb:active{opacity:.7}
 tr.tx-shared>td:first-child{border-left:3px solid var(--acc2)}
 tr.tx-debtlink>td:first-child{border-left:3px solid var(--grn)}
@@ -360,7 +376,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v99</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v104</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('import')">↑ Import</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -432,6 +448,8 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 <!-- DASHBOARD -->
 <div id="pg-dashboard" class="page">
   <div class="sr" id="sr"></div>
+  <div id="dash-forecast"></div>
+  <div id="dash-upcoming"></div>
   <div class="cs">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
       <div class="st" style="margin:0">VÝDAVKY V ČASE</div>
@@ -586,11 +604,12 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <span style="color:var(--mu);font-size:10px;margin-left:4px" id="txcnt"></span>
     <span id="uncat-badge" onclick="filterUncat()" style="display:none;cursor:pointer;font-size:10px;margin-left:6px;padding:2px 9px;border-radius:10px;background:rgba(224,160,60,.18);color:#e0a03c;border:1px solid rgba(224,160,60,.5);font-weight:600" title="Klikni pre zobrazenie nezaradených transakcií"></span>
   </div>
-  <div style="overflow-x:auto">
+  <div class="tx-table-scroll" style="overflow-x:auto">
     <div class="tx-table-wrap">
     <table class="tbl" id="tx-tbl" style="min-width:500px"><thead><tr id="tx-hd"></tr></thead><tbody id="tx-bd"></tbody></table>
   </div>
   </div>
+  <div id="tx-cards"></div>
   <div class="pg" id="pg-btns"></div>
   <div id="load-more-wrap" style="display:none;text-align:center;margin-top:10px">
     <button class="btn" onclick="txLoadMore()" style="font-size:11px;padding:6px 20px">Zobraziť viac ↓</button>
@@ -1019,6 +1038,8 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         <button class="btn prim" style="font-size:11px;padding:5px 12px" onclick="openRecurEdit(null)">+ Pridať</button>
       </div>
     </div>
+    <!-- Auto-detected suggestions (6a) -->
+    <div id="recur-suggestions" style="display:none"></div>
     <!-- Monthly status cards -->
     <div id="recur-status" style="margin-bottom:14px"></div>
     <!-- Definitions list -->
@@ -1076,7 +1097,11 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <input type="text" class="mi" id="re-name" placeholder="napr. Netflix, UPC Internet...">
     <div class="ml">Kľúčové slovo (pre matching transakcií)</div>
     <input type="text" class="mi" id="re-kw" placeholder="napr. netflix, upc, slovensky telekom...">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0">
+    <div class="ml">Typ platby</div>
+    <select class="mi" id="re-dir" style="margin-bottom:8px">
+      <option value="expense">Výdavok</option>
+      <option value="income">Príjem (napr. výplata)</option>
+    </select>    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0">
       <div>
         <div class="ml" id="re-amt-lbl">Suma (€)</div>
         <input type="number" class="mi" id="re-amt" placeholder="0.00" step="0.01" min="0">
@@ -1475,6 +1500,7 @@ function scheduleSave() {
     await S('dethidden', [...detFieldsHidden]);
     await S('cclim', document.getElementById('cc-lim')?.value || '');
     await S('recurDefs', recurDefs);
+    await S('recurignored', recurIgnored);
     await S('recurmarks', recurMarks);
     await S('exctags', [...excludedTags]);
     const dot = document.getElementById('save-dot');
@@ -1514,6 +1540,7 @@ async function loadAll() {
   budgetMoves = (await Store.get('budgetmoves')) || [];
   goals = (await Store.get('goals')) || [];
   recurDefs = (await Store.get('recurDefs')) || [];
+  recurIgnored = (await Store.get('recurignored')) || [];
   recurMarks = (await Store.get('recurmarks')) || {};
   recurMarks.pins=recurMarks.pins||{}; recurMarks.blocks=recurMarks.blocks||{};
   recurMarks.excl=recurMarks.excl||{}; recurMarks.incl=recurMarks.incl||{};
@@ -1563,6 +1590,7 @@ let _crCol=null,_crX=0,_crW=0; // column resize state
 let bulkMode=false, bulkSelected=new Set(); // bulk select mode
 let _cpBulkMode=false; // cat picker called from bulk action bar
 let recurDefs=[];
+let recurIgnored=[];
 let recurMarks={pins:{},blocks:{},excl:{},incl:{}}; // per-month recurring overrides (Store + zálohy)
 function _rmK(recId,yr,mo){return recId+'_'+yr+'_'+mo;}
 function getRecPin(recId,yr,mo){return recurMarks.pins[_rmK(recId,yr,mo)]||null;}
@@ -2363,7 +2391,113 @@ function rDash() {
     <div class="sc b"><div class="sc-l">Kreditka — ${nm+1}/${ny}</div><div class="sc-v" style="color:var(--acc3)">${fabs(ccSpent)}</div><div class="sc-s">${ccNow.filter(t=>t.amount<0).length} txn</div></div>
     ${hasInv?`<div class="sc p"><div class="sc-l">Investície / Sporenie</div><div class="sc-v" style="color:var(--pur)">${fabs(invDisplay)}</div><div class="sc-s">tento mesiac: ${fabs(invThisM)}</div></div>`:`<div class="sc y"><div class="sc-l">Celkovo</div><div class="sc-v" style="color:var(--acc2)">${TX.length}</div><div class="sc-s">transakcií</div></div>`}
   `;
-  rTimeChart(); rCatChart(); rTopM(); rCycSec(); rBalanceChart();
+  rTimeChart(); rCatChart(); rTopM(); rCycSec(); rBalanceChart(); renderForecast(); renderUpcoming();
+}
+
+// ── CASHFLOW FORECAST (6b) — koľko zostane do konca mesiaca ──
+function renderForecast(){
+  const box=document.getElementById('dash-forecast'); if(!box) return;
+  if(!TX.length){ box.innerHTML=''; return; }
+  const now=new Date(), nm=now.getMonth(), ny=now.getFullYear(), today=now.getDate();
+  const daysInMonth=new Date(ny,nm+1,0).getDate();
+  const daysLeft=Math.max(0,daysInMonth-today);
+  const accB=openingBalance+TX.filter(t=>t.source==='account').reduce((s,t)=>s+t.amount,0);
+  const mk=ny+'-'+String(nm+1).padStart(2,'0');
+  // pravidelné platby tento mesiac, ktoré ešte NEPRIŠLI (deň > dnes, nenapárované)
+  let upExp=0,upInc=0,upExpN=0,upIncN=0;
+  recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=mk)&&(!r.endMonth||r.endMonth>=mk)&&isPaymentMonth(r,ny,nm+1)).forEach(r=>{
+    const day=r.dayOfMonth||daysInMonth;
+    if(day<=today) return;                 // už mal prísť (alebo dnes) → predpokladáme, že je v zostatku
+    if(getRecPin(r.id,ny,nm+1)) return;    // už napárovaný s transakciou → už v zostatku
+    if(r.isIncome){ upInc+=r.amount; upIncN++; } else { upExp+=r.amount; upExpN++; }
+  });
+  // odhad zostávajúcich flexibilných výdavkov = súčet kladných zvyškov flex limitov
+  const flexLims=budgetLimits.filter(l=>l.type==='monthly'&&l.flexType==='flexible');
+  let flexRem=0;
+  flexLims.forEach(l=>{ const rem=(l.amount||0)-_catMonthSpent(l.catId,ny,nm+1); if(rem>0) flexRem+=rem; });
+  const hasFlexBudget=flexLims.length>0;
+  const projected=accB+upInc-upExp-flexRem;
+  const dLbl=daysLeft===1?'deň':(daysLeft>=2&&daysLeft<=4?'dni':'dní');
+  const row=(lbl,val,cls,sub)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;font-size:12px">
+    <span style="color:var(--mu)">${lbl}${sub?` <span style="font-size:9px">· ${sub}</span>`:''}</span>
+    <span style="font-family:var(--M);font-weight:600;${cls||''}">${val}</span></div>`;
+  box.innerHTML=`<div class="cs" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+      <div class="st" style="margin:0">PREDPOVEĎ — koniec ${nm+1}/${ny}</div>
+      <span style="font-size:10px;color:var(--mu)">zostáva ${daysLeft} ${dLbl}</span>
+    </div>
+    ${row('Aktuálny zostatok účtu',fe(accB),accB>=0?'':'color:var(--red)')}
+    ${upInc>0?row('+ očakávané príjmy',fabs(upInc),'color:var(--grn)',upIncN+'× pravidelné'):''}
+    ${upExp>0?row('− isté výdavky',fabs(upExp),'color:var(--red)',upExpN+'× pravidelné'):''}
+    ${hasFlexBudget?row('− odhad flexibilných',fabs(flexRem),'color:var(--acc2)','zvyšok rozpočtu'):''}
+    <div style="border-top:1px solid var(--bd);margin-top:6px;padding-top:8px;display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-weight:700;font-size:13px">Projektovaný zostatok</span>
+      <span style="font-family:var(--M);font-weight:700;font-size:16px;color:${projected>=0?'var(--grn)':'var(--red)'}">${fe(projected)}</span>
+    </div>
+    ${(!hasFlexBudget&&upExp===0&&upInc===0)?'<div style="font-size:10px;color:var(--mu);margin-top:6px">Pre presnejšiu predpoveď pridaj pravidelné platby (aj výplatu) alebo nastav rozpočet kategórií.</div>':(projected<0?'<div style="font-size:10px;color:var(--red);margin-top:6px">⚠ Pri tejto projekcii môžeš ísť pred koncom mesiaca do mínusu.</div>':'')}
+  </div>`;
+}
+
+// ── NADCHÁDZAJÚCE PLATBY (6c) — čo a kedy príde ──
+function getUpcomingPayments(daysAhead){
+  const now=new Date(); now.setHours(0,0,0,0);
+  const end=new Date(now); end.setDate(end.getDate()+daysAhead);
+  const out=[];
+  (recurDefs||[]).filter(r=>r.active).forEach(r=>{
+    if(r.frequency==='weekly'){
+      const kw=(r.keyword||'').toLowerCase(); if(!kw) return;
+      const matched=(TX||[]).filter(t=>(t.merchantOverride||t.merchant||'').toLowerCase().indexOf(kw)>=0).sort((a,b)=>eDate(b)-eDate(a));
+      if(!matched.length) return;
+      let dt=new Date(eDate(matched[0])); dt.setHours(0,0,0,0);
+      while(dt<now){ dt.setDate(dt.getDate()+7); }
+      while(dt<=end){ out.push({rec:r,date:new Date(dt),isIncome:!!r.isIncome,amount:r.amount}); dt.setDate(dt.getDate()+7); }
+      return;
+    }
+    let d=new Date(now.getFullYear(), now.getMonth(), 1);
+    for(let i=0;i<4;i++){
+      const y=d.getFullYear(), mo=d.getMonth()+1;
+      const mk=y+'-'+String(mo).padStart(2,'0');
+      const inWindow=(!r.startMonth||r.startMonth<=mk)&&(!r.endMonth||r.endMonth>=mk);
+      if(inWindow&&isPaymentMonth(r,y,mo)){
+        const dim=new Date(y,mo,0).getDate();
+        const dt=new Date(y,mo-1,Math.min(r.dayOfMonth||1,dim)); dt.setHours(0,0,0,0);
+        if(dt>=now&&dt<=end&&!getRecPin(r.id,y,mo)) out.push({rec:r,date:dt,isIncome:!!r.isIncome,amount:r.amount});
+      }
+      d.setMonth(d.getMonth()+1);
+    }
+  });
+  return out.sort((a,b)=>a.date-b.date);
+}
+function _daysUntilLabel(dt){
+  const now=new Date(); now.setHours(0,0,0,0);
+  const d=Math.round((dt-now)/86400000);
+  if(d<=0) return 'dnes';
+  if(d===1) return 'zajtra';
+  if(d>=2&&d<=4) return 'o '+d+' dni';
+  return 'o '+d+' dní';
+}
+function renderUpcoming(){
+  const box=document.getElementById('dash-upcoming'); if(!box) return;
+  if(!TX.length){ box.innerHTML=''; return; }
+  const items=getUpcomingPayments(45);
+  if(!items.length){ box.innerHTML=''; return; }
+  const shown=items.slice(0,10);
+  box.innerHTML=`<div class="cs" style="margin-bottom:14px">
+    <div class="st" style="margin:0 0 10px">NADCHÁDZAJÚCE PLATBY</div>
+    ${shown.map(it=>{
+      const dstr=it.date.getDate()+'.'+(it.date.getMonth()+1)+'.';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--bd);font-size:12px">
+        <span style="font-size:13px;flex-shrink:0">${it.isIncome?'⬆️':'⬇️'}</span>
+        <div style="width:84px;flex-shrink:0">
+          <div style="font-weight:600">${dstr}</div>
+          <div style="font-size:9px;color:var(--mu)">${_daysUntilLabel(it.date)}</div>
+        </div>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.rec.name||it.rec.keyword||'—')}</span>
+        <span style="font-family:var(--M);font-weight:600;flex-shrink:0;color:${it.isIncome?'var(--grn)':'var(--red)'}">${it.isIncome?'+':'−'}${fabs(it.amount)}</span>
+      </div>`;
+    }).join('')}
+    ${items.length>shown.length?`<div style="font-size:10px;color:var(--mu);margin-top:8px;text-align:center">… a ďalšie (${items.length-shown.length})</div>`:''}
+  </div>`;
 }
 
 function drawBars(id, dataFn, h) {
@@ -3616,6 +3750,7 @@ function renderTx(){
   if(!TX.length){
     document.getElementById('tx-hd').innerHTML='';
     document.getElementById('tx-bd').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--mu);font-size:12px">Žiadne transakcie</td></tr>';
+    const cb=document.getElementById('tx-cards'); if(cb) cb.innerHTML='<div style="text-align:center;padding:36px;color:var(--mu);font-size:12px">Žiadne transakcie</div>';
     return;
   }
   // Read filters and persist them
@@ -3659,6 +3794,70 @@ function renderTx(){
   }).join('');
 }
 
+// Kategória-chip (zdieľané tabuľkou aj mobilnými kartami) — vracia vnútro bez <td>
+function _catChipInner(tx){
+  if(isDebtLink(tx)){
+    const lnkd=debtLinkAmount(tx);
+    const rem=tx.amount-lnkd;
+    const n=getDebtLinks(tx).length;
+    const lbl=rem>0.01?`↩ Vrátka(${n}) +${fabs(rem)}`:(n>1?`↩ Vrátky (${n})`:'↩ Vrátka');
+    return`<span class="cat-qb" style="border-color:var(--grn);color:var(--grn);cursor:default">${lbl}</span>`;
+  }
+  if(tx.splits&&tx.splits.length){
+    const catD=getCatD();
+    const splitsSum=tx.splits.reduce((s,sp)=>s+Math.abs(sp.amount),0);
+    const effAmt=Math.abs(txMyAmount(tx));
+    const inconsistent=splitsSum>effAmt+0.01;
+    const dots=tx.splits.map(s=>{
+      const c=catD.find(c=>c.id===s.category);
+      return`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c?.c||'var(--mu)'};vertical-align:middle;margin:0 1px" title="${c?.l||'Nezaradené'}: ${fabs(s.amount)}"></span>`;
+    }).join('');
+    const col=inconsistent?'var(--red)':'var(--acc2)';
+    const warn=inconsistent?'⚠ ':'';
+    return`<span class="cat-qb" style="border-color:${col};color:${col}" onclick="event.stopPropagation();openCatPicker('${tx.id}',this)">${warn}✂ ${dots}</span>`;
+  }
+  const catForRow=getCatD().find(c=>c.id===tx.category);
+  const parentCatForRow=catForRow?.parentId?getCatD().find(p=>p.id===catForRow.parentId):null;
+  const lbl=catForRow?(parentCatForRow?`${parentCatForRow.l} › ${catForRow.l}`:catForRow.l):'Nezaradené';
+  const clr=catForRow?catForRow.c:'var(--mu)';
+  const emojiPfx=catForRow?.emoji?`<span style="margin-right:3px">${catForRow.emoji}</span>`:'';
+  const lkIco=tx.categoryLocked?'<span style="font-size:7px;opacity:.6;margin-left:2px" title="Ručne nastavená">🔒</span>':'';
+  return`<span class="cat-qb" style="border-color:${clr};color:${clr}" onclick="event.stopPropagation();openCatPicker('${tx.id}',this)">${emojiPfx}${lbl}${lkIco}</span>`;
+}
+function _txStatusBadges(tx){
+  return (tx.shared?.people?.length?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(100,160,255,.18);color:var(--acc2);margin-left:5px;vertical-align:middle;letter-spacing:.3px">÷ zdieľaná</span>`:'')
+    +(isDebtLink(tx)?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(91,193,124,.18);color:var(--grn);margin-left:5px;vertical-align:middle;letter-spacing:.3px">↩ vrátka</span>`:'')
+    +(tx.excluded?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(180,80,80,.18);color:var(--red);margin-left:5px;vertical-align:middle;letter-spacing:.3px">⊘ vylúčená</span>`:'');
+}
+function _txTagBadges(tx){
+  return (tx.tags||[]).map(tag=>`<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:10px;background:var(--acc)22;color:var(--acc2);margin-left:4px;vertical-align:middle;border:1px solid var(--acc)44">🏷 ${esc(tag)}</span>`).join('');
+}
+// Mobilná karta transakcie (div-based — Chrome Android nepodporuje flex na <tr>)
+function _txCardHTML(tx){
+  const name=tx.merchantOverride||(tx.iban&&ibanNames[tx.iban])||tx.merchant||'—';
+  const sub=tx.noteOverride||tx.place||tx.description||'';
+  const dateStr=fd(tx.dateOverride||tx.date);
+  const dateFlag=tx.dateOverride?' ✎':'';
+  const srcLbl=tx.source==='account'?'účet':'karta';
+  const amtCls=tx.amount>=0?'pos':'neg';
+  const amtStr=(tx.amount>=0?'+':'')+tx.amount.toFixed(2).replace('.',',')+' €';
+  const isSel=bulkSelected.has(tx.id);
+  const catForRow=getCatD().find(c=>c.id===tx.category);
+  const accent=catForRow?.c||'var(--bd)';
+  const click=bulkMode?`onclick="_bulkToggle('${tx.id}')"`:`onclick="openDet('${tx.id}')"`;
+  const checkbox=bulkMode?`<input type="checkbox" ${isSel?'checked':''} style="width:18px;height:18px;cursor:pointer;accent-color:var(--acc);flex-shrink:0;pointer-events:none">`:'';
+  return`<div class="tx-card${isSel?' sel':''}" data-txid="${tx.id}" style="border-left:3px solid ${accent}" ${click}>
+    <div class="txc-row1">
+      ${checkbox}
+      <span class="txc-name">${name}</span>
+      <span class="txc-amt ${amtCls}">${amtStr}</span>
+    </div>
+    <div class="txc-meta">${dateStr}${dateFlag} · ${srcLbl}${_txStatusBadges(tx)}</div>
+    ${sub?`<div class="txc-sub">${sub}</div>`:''}
+    <div class="txc-cat">${_catChipInner(tx)}${_txTagBadges(tx)}</div>
+  </div>`;
+}
+
 function renderTxPage(){
   // When using numbered pagination, show only that page's slice
   const start=(txPage-1)*txPgSize;
@@ -3679,10 +3878,8 @@ function renderTxPage(){
       if(col.id==='main'){
         const d=tx.merchantOverride||(tx.iban&&ibanNames[tx.iban])||tx.merchant||'—';
         const s=tx.noteOverride||tx.place||tx.description||'';
-        const tags=(tx.shared?.people?.length?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(100,160,255,.18);color:var(--acc2);margin-left:5px;vertical-align:middle;letter-spacing:.3px">÷ zdieľaná</span>`:'')
-          +(isDebtLink(tx)?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(91,193,124,.18);color:var(--grn);margin-left:5px;vertical-align:middle;letter-spacing:.3px">↩ vrátka</span>`:'')
-          +(tx.excluded?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(180,80,80,.18);color:var(--red);margin-left:5px;vertical-align:middle;letter-spacing:.3px">⊘ vylúčená</span>`:'');
-        const txTagBadges=(tx.tags||[]).map(tag=>`<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:10px;background:var(--acc)22;color:var(--acc2);margin-left:4px;vertical-align:middle;border:1px solid var(--acc)44">🏷 ${esc(tag)}</span>`).join('');
+        const tags=_txStatusBadges(tx);
+        const txTagBadges=_txTagBadges(tx);
         return`<td><div class="tm"><span class="tm-name">${d}</span>${tags}${txTagBadges}</div>${s?`<div class="ts">${s}</div>`:''}</td>`;
       }
       if(col.id==='recipient')return`<td class="ts">${tx.merchant||'—'}</td>`;
@@ -3693,32 +3890,7 @@ function renderTxPage(){
       if(col.id==='ref')return`<td class="ts">${tx.ref||'—'}</td>`;
       if(col.id==='source')return`<td><span class="src ${tx.source}">${tx.source==='account'?'účet':'karta'}</span></td>`;
       if(col.id==='cat'){
-        if(isDebtLink(tx)){
-          const lnkd=debtLinkAmount(tx);
-          const rem=tx.amount-lnkd;
-          const n=getDebtLinks(tx).length;
-          const lbl=rem>0.01?`↩ Vrátka(${n}) +${fabs(rem)}`:(n>1?`↩ Vrátky (${n})`:'↩ Vrátka');
-          return`<td class="sticky-r"><span class="cat-qb" style="border-color:var(--grn);color:var(--grn);cursor:default">${lbl}</span></td>`;
-        }
-        if(tx.splits&&tx.splits.length){
-          const catD=getCatD();
-          const splitsSum=tx.splits.reduce((s,sp)=>s+Math.abs(sp.amount),0);
-          const effAmt=Math.abs(txMyAmount(tx));
-          const inconsistent=splitsSum>effAmt+0.01;
-          const dots=tx.splits.map(s=>{
-            const c=catD.find(c=>c.id===s.category);
-            return`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c?.c||'var(--mu)'};vertical-align:middle;margin:0 1px" title="${c?.l||'Nezaradené'}: ${fabs(s.amount)}"></span>`;
-          }).join('');
-          const col=inconsistent?'var(--red)':'var(--acc2)';
-          const warn=inconsistent?'⚠ ':'';
-          return`<td class="sticky-r"><span class="cat-qb" style="border-color:${col};color:${col}" onclick="event.stopPropagation();openCatPicker('${tx.id}',this)">${warn}✂ ${dots}</span></td>`;
-        }
-        const parentCatForRow=catForRow?.parentId?getCatD().find(p=>p.id===catForRow.parentId):null;
-        const lbl=catForRow?(parentCatForRow?`${parentCatForRow.l} › ${catForRow.l}`:catForRow.l):'Nezaradené';
-        const clr=catForRow?catForRow.c:'var(--mu)';
-        const emojiPfx=catForRow?.emoji?`<span style="margin-right:3px">${catForRow.emoji}</span>`:'';
-        const lkIco=tx.categoryLocked?'<span style="font-size:7px;opacity:.6;margin-left:2px" title="Ručne nastavená">🔒</span>':'';
-        return`<td class="sticky-r"><span class="cat-qb" style="border-color:${clr};color:${clr}" onclick="event.stopPropagation();openCatPicker('${tx.id}',this)">${emojiPfx}${lbl}${lkIco}</span></td>`;
+        return`<td class="sticky-r">${_catChipInner(tx)}</td>`;
       }
       if(col.id==='amount')return`<td class="ta sticky-r ${tx.amount>=0?'pos':'neg'}">${tx.amount>=0?'+':''}${tx.amount.toFixed(2).replace('.',',')} €</td>`;
       return'<td>—</td>';
@@ -3734,6 +3906,9 @@ function renderTxPage(){
     const rowClick=bulkMode?`onclick="_bulkToggle('${tx.id}')"`:`onclick="openDet('${tx.id}')"`;
     return`<tr data-txid="${tx.id}" class="${tx.shared?.people?.length?'tx-shared':isDebtLink(tx)?'tx-debtlink':tx.excluded?'tx-excluded':''}" style="${rowBg}${selBg}" ${rowClick}>${cells}</tr>`;
   }).join('');
+  // Mobilné karty — rovnaké dáta, iný layout (CSS rozhodne, čo sa zobrazí)
+  const cardBox=document.getElementById('tx-cards');
+  if(cardBox) cardBox.innerHTML=pg.length?pg.map(tx=>_txCardHTML(tx)).join(''):'<div style="text-align:center;padding:36px;color:var(--mu);font-size:12px">Žiadne transakcie</div>';
 }
 
 
@@ -4666,7 +4841,7 @@ async function importRules(inp){
 function exportBackup(){
   const data={
     version:5, exported:new Date().toISOString(),
-    tx:TX.map(sTx), deletedTX:deletedTX.map(sTx), budgets, budgetLimits, budgetMoves, goals, openingBalance, rules, recurDefs,
+    tx:TX.map(sTx), deletedTX:deletedTX.map(sTx), budgets, budgetLimits, budgetMoves, goals, openingBalance, rules, recurDefs, recurIgnored,
     customCats, builtinCats:[...BUILTIN_CATS], visCols,
     detFieldsHidden:[...detFieldsHidden],
     ccLimit:document.getElementById('cc-lim')?.value||'',
@@ -4690,7 +4865,7 @@ async function importBackup(inp){
     deletedTX=(data.deletedTX||[]).map(dTx);
     migrateDebtLinks(TX); migrateDebtLinks(deletedTX);
     budgets=data.budgets||{}; budgetLimits=data.budgetLimits||[]; budgetMoves=data.budgetMoves||[]; goals=data.goals||[]; openingBalance=data.openingBalance||0;
-    recurDefs=data.recurDefs||[]; rules=data.rules||[]; customCats=data.customCats||[];
+    recurDefs=data.recurDefs||[]; recurIgnored=data.recurIgnored||[]; rules=data.rules||[]; customCats=data.customCats||[];
     if(data.builtinCats){BUILTIN_CATS.length=0;data.builtinCats.forEach(c=>BUILTIN_CATS.push(c));}
     visCols=data.visCols||['date','main','place','source','cat','amount'];
     if(data.detFieldsHidden){detFieldsHidden.clear();data.detFieldsHidden.forEach(f=>detFieldsHidden.add(f));}
@@ -4706,7 +4881,7 @@ async function importBackup(inp){
     document.getElementById('txc').textContent=TX.length+' transakcií';
     await Store.set('tx',TX.map(sTx)); await Store.set('deleted',deletedTX.map(sTx));
     await Store.set('budgets',budgets); await Store.set('budgetlimits',budgetLimits); await Store.set('budgetmoves',budgetMoves); await Store.set('goals',goals);
-    await Store.set('recurDefs',recurDefs); await Store.set('ob',openingBalance);
+    await Store.set('recurDefs',recurDefs); await Store.set('recurignored',recurIgnored); await Store.set('ob',openingBalance);
     await Store.set('rules',rules); await Store.set('cols',visCols);
     await Store.set('customcats',customCats); await Store.set('builtincats',[...BUILTIN_CATS]);
     await Store.set('ibanNames',ibanNames); await Store.set('editlog',editLog.slice(0,500));
@@ -5088,7 +5263,7 @@ function renderFlexBudget(){
 
   // --- FIXED: from recurDefs ---
   const bgMonKey=String(yr)+'-'+String(mo).padStart(2,'0');
-  const fixedItems=recurDefs.filter(r=>r.active
+  const fixedItems=recurDefs.filter(r=>r.active&&!r.isIncome
     &&(!r.startMonth||r.startMonth<=bgMonKey)
     &&(!r.endMonth||r.endMonth>=bgMonKey)
   ).map(rec=>{
@@ -5445,7 +5620,7 @@ function renderBudgetCharts(yr, mo, numMonths, flexItems, irregItems, fixedTotal
     const mtxs=anTx({year:myr,month:mmo-1});
     const income=mtxs.filter(t=>t.amount>0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
     let flexSpend=0,irregSpend=0,otherSpend=0;
-    const fixedRecs=recurDefs.filter(r=>r.active&&(!r.startMonth||r.startMonth<=mk)&&(!r.endMonth||r.endMonth>=mk));
+    const fixedRecs=recurDefs.filter(r=>r.active&&!r.isIncome&&(!r.startMonth||r.startMonth<=mk)&&(!r.endMonth||r.endMonth>=mk));
     const fixedMesEq=fixedRecs.reduce((s,r)=>s+calcHistoricalMesEq(r,myr,mmo),0);
     const fixedTxIdsM=new Set(fixedRecs.map(r=>getRecPin(r.id,myr,mmo)).filter(Boolean));
     mtxs.filter(t=>t.amount<0&&!fixedTxIdsM.has(t.id)).forEach(t=>{
@@ -7324,6 +7499,7 @@ function openRecurEdit(id){
   document.getElementById('re-kw').value=r?.keyword||'';
   document.getElementById('re-amt').value=r?.amount||'';
   document.getElementById('re-freq').value=r?.frequency||'monthly';
+  const dirEl=document.getElementById('re-dir'); if(dirEl) dirEl.value=r?.isIncome?'income':'expense';
   document.getElementById('re-day').value=r?.dayOfMonth||'';
   document.getElementById('re-note').value=r?.note||'';
   const catSel=document.getElementById('re-cat');
@@ -7350,6 +7526,7 @@ function saveRecurEdit(){
     id:_editingRecurId||('rec_'+Math.random().toString(36).slice(2)),
     name, keyword:keyword||name.toLowerCase(),
     amount, frequency:document.getElementById('re-freq').value,
+    isIncome:document.getElementById('re-dir')?.value==='income',
     dayOfMonth:parseInt(document.getElementById('re-day').value)||null,
     category:document.getElementById('re-cat').value||null,
     note:document.getElementById('re-note').value||null,
@@ -7613,6 +7790,97 @@ function calcHistoricalMesEq(rec){
   return 0;
 }
 
+// ── RECURRING AUTO-DETEKCIA (6a) — len navrhuje, používateľ má plnú kontrolu ──
+function _recurKey(merchant){
+  // prvé 2 významné slová (dĺžka >1), lowercase — zoskupí Netflix, Google One, nájom…
+  const words=(merchant||'').toLowerCase().replace(/[^\wáäčďéíĺľňóôŕšťúýž ]/g,' ').split(/\s+/).filter(w=>w.length>1);
+  return words.slice(0,2).join(' ');
+}
+function detectRecurring(){
+  const groups={};
+  (TX||[]).forEach(t=>{
+    if(isCCRepayment&&isCCRepayment(t)) return;
+    if(t.excluded) return;
+    const key=_recurKey(t.merchantOverride||t.merchant||'');
+    if(!key) return;
+    (groups[key]=groups[key]||[]).push(t);
+  });
+  const out=[];
+  Object.entries(groups).forEach(([key,txs])=>{
+    if(txs.length<3) return; // min 3 výskyty
+    txs.sort((a,b)=>eDate(a)-eDate(b));
+    const gaps=[];
+    for(let i=1;i<txs.length;i++) gaps.push((eDate(txs[i])-eDate(txs[i-1]))/86400000);
+    const avgGap=gaps.reduce((a,b)=>a+b,0)/gaps.length;
+    let freq=null;
+    if(avgGap>=6&&avgGap<=8.5) freq='weekly';
+    else if(avgGap>=25&&avgGap<=35) freq='monthly';
+    else if(avgGap>=84&&avgGap<=98) freq='quarterly';
+    else if(avgGap>=350&&avgGap<=380) freq='yearly';
+    if(!freq) return;
+    const gapStd=Math.sqrt(gaps.reduce((s,g)=>s+(g-avgGap)**2,0)/gaps.length);
+    if(gapStd>avgGap*0.4) return; // interval príliš rozkolísaný
+    const amts=txs.map(t=>Math.abs(t.amount));
+    const avgAmt=amts.reduce((a,b)=>a+b,0)/amts.length;
+    if(avgAmt<0.5) return;
+    const inRange=amts.filter(a=>Math.abs(a-avgAmt)<=avgAmt*0.15).length;
+    if(inRange<txs.length*0.6) return; // sumy príliš rozkolísané (±15 %)
+    const days=txs.map(t=>eDate(t).getDate()).sort((a,b)=>a-b);
+    const last=txs[txs.length-1];
+    const isIncome=txs.filter(t=>t.amount>0).length>txs.length/2;
+    out.push({key, merchant:(last.merchantOverride||last.merchant||''), amount:Math.round(avgAmt*100)/100, frequency:freq, dayOfMonth:days[Math.floor(days.length/2)], count:txs.length, category:last.category||null, isIncome, lastTs:eDate(last).getTime()});
+  });
+  return out.sort((a,b)=>b.count-a.count);
+}
+function getRecurringSuggestions(){
+  return detectRecurring().filter(c=>{
+    if((recurIgnored||[]).includes(c.key)) return false;
+    // už pokryté existujúcou pravidelnou platbou?
+    const covered=recurDefs.some(r=>{
+      const rk=_recurKey(r.keyword||r.name||'');
+      return rk && (rk===c.key || c.key.indexOf(rk)===0 || rk.indexOf(c.key)===0);
+    });
+    return !covered;
+  });
+}
+function renderRecurSuggestions(){
+  const box=document.getElementById('recur-suggestions'); if(!box) return;
+  const sugg=getRecurringSuggestions();
+  if(!sugg.length){ box.innerHTML=''; box.style.display='none'; return; }
+  box.style.display='block';
+  const freqLbl={monthly:'mesačne',quarterly:'štvrťročne',yearly:'ročne',weekly:'týždenne'};
+  box.innerHTML=`<div style="background:rgba(74,159,212,.08);border:1px solid rgba(74,159,212,.3);border-radius:8px;padding:12px 14px;margin-bottom:14px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:3px">🔍 Navrhované pravidelné platby (${sugg.length})</div>
+    <div style="font-size:10px;color:var(--mu);margin-bottom:10px">Našiel som ich v histórii. <b>Nič sa nepridá automaticky</b> — ty rozhoduješ, čo pridať.</div>
+    ${sugg.slice(0,12).map(c=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--bd);font-size:11px">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.merchant)}</div>
+        <div style="font-size:10px;color:var(--mu)">${fabs(c.amount)} · ${freqLbl[c.frequency]||c.frequency}${c.dayOfMonth?' · ~'+c.dayOfMonth+'. deň':''} · ${c.count}× v histórii${c.isIncome?' · príjem':''}</div>
+      </div>
+      <button class="btn prim" onclick="addRecurFromSuggestion('${escA(c.key)}')" style="font-size:10px;padding:4px 10px;flex-shrink:0">+ Pridať</button>
+      <button class="btn" onclick="ignoreRecurSuggestion('${escA(c.key)}')" style="font-size:10px;padding:4px 8px;flex-shrink:0" title="Skryť tento návrh">Ignorovať</button>
+    </div>`).join('')}
+  </div>`;
+}
+function addRecurFromSuggestion(key){
+  const c=detectRecurring().find(x=>x.key===key); if(!c) return;
+  openRecurEdit(null);
+  setTimeout(()=>{
+    const set=(id,v)=>{const el=document.getElementById(id); if(el) el.value=v;};
+    set('re-name',c.merchant); set('re-kw',c.key); set('re-amt',c.amount);
+    set('re-freq',c.frequency); set('re-day',c.dayOfMonth||'');
+    const dir=document.getElementById('re-dir'); if(dir) dir.value=c.isIncome?'income':'expense';
+    if(c.category){ const cs=document.getElementById('re-cat'); if(cs) cs.value=c.category; }
+    const fe=document.getElementById('re-freq'); if(fe) fe.dispatchEvent(new Event('change'));
+  },120);
+}
+function ignoreRecurSuggestion(key){
+  if(!Array.isArray(recurIgnored)) recurIgnored=[];
+  if(!recurIgnored.includes(key)) recurIgnored.push(key);
+  saveD(); renderRecurSuggestions();
+}
+function restoreRecurSuggestions(){ recurIgnored=[]; saveD(); renderRecurSuggestions(); }
+
 function renderRecurring(){
   const selEl=document.getElementById('recur-mon-sel');
   const savedVal=selEl?.value;
@@ -7623,6 +7891,7 @@ function renderRecurring(){
   const CAT=getCAT();
   const freqLbl={monthly:'mesačne',quarterly:'štvrťročne',yearly:'ročne',weekly:'týždenne'};
   const statusEl=document.getElementById('recur-status'); if(!statusEl) return;
+  renderRecurSuggestions();
 
   if(!recurDefs.length){
     statusEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--mu)">Žiadne pravidelné platby. Klikni "+ Pridať".</div>';
@@ -8539,7 +8808,7 @@ async function gdSave() {
     const payload = {
       version: 5, exported: new Date().toISOString(),
       tx: TX.map(sTx), deletedTX: deletedTX.map(sTx),
-      budgets, budgetLimits, budgetMoves, goals, openingBalance, rules, recurDefs,
+      budgets, budgetLimits, budgetMoves, goals, openingBalance, rules, recurDefs, recurIgnored,
       customCats, builtinCats: [...BUILTIN_CATS], visCols,
       detFieldsHidden: [...detFieldsHidden],
       ccLimit: document.getElementById('cc-lim')?.value || '',
@@ -8591,6 +8860,7 @@ async function gdLoad() {
     goals = data.goals || [];
     openingBalance = data.openingBalance || 0;
     recurDefs = data.recurDefs || [];
+    recurIgnored = data.recurIgnored || [];
     rules = data.rules || [];
     customCats = data.customCats || [];
     if (data.builtinCats) { BUILTIN_CATS.length = 0; data.builtinCats.forEach(c => BUILTIN_CATS.push(c)); }
@@ -8608,7 +8878,7 @@ async function gdLoad() {
     document.getElementById('txc').textContent = TX.length + ' transakcií';
     await Store.set('tx', TX.map(sTx)); await Store.set('deleted', deletedTX.map(sTx));
     await Store.set('budgets', budgets); await Store.set('budgetlimits', budgetLimits); await Store.set('budgetmoves', budgetMoves); await Store.set('goals', goals);
-    await Store.set('recurDefs', recurDefs); await Store.set('ob', openingBalance);
+    await Store.set('recurDefs', recurDefs); await Store.set('recurignored', recurIgnored); await Store.set('ob', openingBalance);
     await Store.set('rules', rules); await Store.set('customcats', customCats);
     await Store.set('builtincats', [...BUILTIN_CATS]); await Store.set('cols', visCols);
     await Store.set('editlog', editLog.slice(0, 500)); await Store.set('ibanNames', ibanNames);
