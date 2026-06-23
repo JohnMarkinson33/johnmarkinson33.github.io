@@ -95,6 +95,13 @@ header{padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;align-it
 .nb{background:none;border:1px solid transparent;color:var(--mu);padding:5px 10px;cursor:pointer;font-family:var(--M);font-size:11px;border-radius:4px;white-space:nowrap;transition:all .15s}
 .nb.on{border-color:var(--acc);color:var(--acc);background:rgba(94,168,216,.1)}
 .nb:hover:not(.on){color:var(--txt);border-color:var(--bd)}
+.sub-nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-bottom:18px;border-bottom:1px solid var(--bd)}
+.sub-nav::-webkit-scrollbar{display:none}
+.snb{background:none;border:none;border-bottom:2px solid transparent;color:var(--mu);padding:9px 15px 10px;cursor:pointer;font-family:var(--M);font-size:12px;white-space:nowrap;transition:color .15s,border-color .15s;margin-bottom:-1px;flex-shrink:0}
+.snb.on{color:var(--acc);border-bottom-color:var(--acc)}
+.snb:hover:not(.on){color:var(--txt)}
+.data-sec{display:none}.data-sec.on{display:block;animation:dsFade .18s ease}
+@keyframes dsFade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 main{padding:16px;max-width:1200px;margin:0 auto;overflow-x:hidden}
 .page{display:none}.page.on{display:block}
 
@@ -367,6 +374,130 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 .ib-text strong{display:block;font-family:var(--H);font-size:13px;margin-bottom:2px}
 .ib-btn{background:var(--acc);color:#0d1117;border:none;padding:7px 14px;border-radius:4px;font-family:var(--H);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .ib-close{background:none;border:none;color:var(--mu);cursor:pointer;font-size:16px;padding:2px 4px;flex-shrink:0}
+
+/* ── Kategórie & pravidlá: zjednotené karty ── */
+.cr-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.cr-search{flex:1;min-width:150px}
+.cr-search input{width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--txt);border-radius:6px;padding:7px 11px;font-family:var(--M);font-size:12px}
+.cr-search input:focus{outline:none;border-color:var(--acc)}
+.cr-more{display:flex;gap:6px;flex-wrap:wrap}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:12px;align-items:start}
+.cr-card{background:var(--s1);border:1px solid var(--bd);border-radius:9px;overflow:hidden;transition:border-color .15s}
+.cr-card:hover{border-color:var(--mu)}
+.cr-head{display:flex;align-items:center;gap:7px;padding:11px 12px;cursor:pointer;user-select:none;border-left:3px solid transparent}
+.cr-head:hover{background:var(--s2)}
+.cr-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;cursor:pointer;transition:transform .1s}
+.cr-dot:hover{transform:scale(1.3)}
+.cr-dot-lg{width:13px;height:13px}
+.cr-emo{margin-right:3px}
+.cr-name{flex:1;font-weight:600;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-badges{display:flex;gap:5px;flex-shrink:0}
+.cr-badge{font-size:10px;color:var(--mu);background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:1px 7px;font-family:var(--M);white-space:nowrap}
+.cr-badge-tx{color:var(--acc);cursor:pointer}
+.cr-badge-tx:hover{border-color:var(--acc)}
+.cr-x{background:none;border:none;color:var(--mu);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:4px;line-height:1;transition:background .12s,color .12s;flex-shrink:0}
+.cr-x:hover{background:var(--s3);color:var(--txt)}
+.cr-add:hover{color:var(--grn)}
+.cr-del:hover{color:var(--red);background:rgba(220,80,80,.13)}
+.cr-caret{color:var(--mu);font-size:10px;width:12px;text-align:center;flex-shrink:0}
+.cr-subs{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 11px}
+.cr-sub{display:inline-flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:3px 5px 3px 9px;font-size:11px;color:var(--txt)}
+.cr-sub .cr-dot{width:8px;height:8px}
+.cr-sub .cr-x{font-size:10px;padding:1px 3px}
+.cr-rules{display:none;border-top:1px solid var(--bd);background:var(--bg);padding:8px 12px 10px}
+.cr-rules.on{display:block;animation:dsFade .15s ease}
+.cr-rules-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;font-size:11px;color:var(--mu);font-family:var(--M)}
+.cr-addrule{background:none;border:1px dashed var(--bd);color:var(--acc);cursor:pointer;font-size:10px;padding:3px 9px;border-radius:5px;font-family:var(--M);transition:background .12s,border-color .12s}
+.cr-addrule:hover{border-color:var(--acc);background:rgba(94,168,216,.1)}
+.cr-rule{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:5px;font-size:11px}
+.cr-rule:hover{background:var(--s2)}
+.cr-rnum{font-family:var(--M);font-size:9px;color:var(--mu);background:var(--s2);border-radius:4px;padding:1px 5px;flex-shrink:0;min-width:26px;text-align:center}
+.cr-rkw{font-weight:600;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+.cr-rfield{color:var(--mu);font-size:10px;white-space:nowrap}
+.cr-ramt{color:var(--acc3);font-size:10px;font-family:var(--M);white-space:nowrap}
+.cr-rtag{font-size:10px;white-space:nowrap}
+.cr-rsp{font-size:9px;color:var(--grn);border:1px solid var(--grn);border-radius:3px;padding:0 3px;white-space:nowrap}
+.cr-ractions{display:flex;gap:0;margin-left:auto;flex-shrink:0}
+.cr-norules{color:var(--mu);font-size:11px;font-style:italic;padding:4px 6px}
+.cr-orphan .cr-head{border-left-color:var(--red)}
+.cr-hl{background:rgba(245,200,90,.22);border-radius:3px;padding:0 2px}
+@media(max-width:700px){.cat-grid{grid-template-columns:1fr}.cr-rkw{max-width:90px}.cr-more .btn{font-size:10px}}
+
+/* ── Správa tagov ── */
+.tg-info{font-size:12px;color:var(--mu);margin-bottom:14px;line-height:1.5}
+.tg-list{display:block;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.tg-row{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--bd);font-size:12px}
+.tg-row:last-child{border-bottom:none}
+.tg-row:hover{border-color:var(--mu)}
+.tg-name{font-weight:600;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.tg-cnt{font-family:var(--M);font-size:10px;color:var(--acc);background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:2px 9px;flex-shrink:0;cursor:pointer;transition:border-color .12s,background .12s}
+.tg-cnt:hover{border-color:var(--acc);background:rgba(94,168,216,.13)}
+.tg-excl{background:none;border:1px solid var(--bd);color:var(--mu);cursor:pointer;font-size:10px;padding:3px 9px;border-radius:5px;white-space:nowrap;flex-shrink:0;transition:all .12s}
+.tg-excl:hover{border-color:var(--mu);color:var(--txt)}
+.tg-excl.on{color:var(--red);border-color:var(--red);background:rgba(220,80,80,.1)}
+.tg-merge{background:var(--s2);border:1px solid var(--bd);color:var(--mu);border-radius:5px;padding:3px 6px;font-size:10px;font-family:var(--M);cursor:pointer;flex-shrink:0;max-width:120px}
+.tg-merge:focus{outline:none;border-color:var(--acc)}
+.tg-editing{border-color:var(--acc)}
+.tg-inp{flex:1;min-width:0;background:var(--bg);border:1px solid var(--acc);color:var(--txt);border-radius:5px;padding:5px 9px;font-family:var(--M);font-size:12px}
+.tg-inp:focus{outline:none}
+.tg-ok{background:var(--grn);border:none;color:#fff;cursor:pointer;font-size:12px;padding:4px 10px;border-radius:5px;flex-shrink:0}
+.tg-hint{font-size:10px;color:var(--mu);flex-shrink:0}
+@media(max-width:700px){.tg-row{flex-wrap:wrap}.tg-name{flex-basis:100%}.tg-hint{display:none}}
+
+/* ── Kategórie & pravidlá: prepínač zobrazenia ── */
+.cr-viewtoggle{display:inline-flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden;flex-shrink:0}
+.cr-vt{background:var(--s1);border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:6px 12px;line-height:1;transition:background .12s,color .12s}
+.cr-vt+.cr-vt{border-left:1px solid var(--bd)}
+.cr-vt.on{background:var(--acc);color:#fff}
+.cr-vt:hover:not(.on){background:var(--s2);color:var(--txt)}
+
+/* ── LIST (accordion) ── */
+.cat-grid.cr-listmode{display:block;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.cat-grid.cr-gridmode{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px}
+.crl-row{border-bottom:1px solid var(--bd);background:var(--s1)}
+.crl-row:last-child{border-bottom:none}
+.crl-head{display:flex;align-items:center;gap:9px;padding:12px 14px;cursor:pointer;user-select:none}
+.crl-head:hover{background:var(--s2)}
+.crl-caret{color:var(--mu);font-size:11px;width:11px;text-align:center;flex-shrink:0}
+.crl-name{flex:1;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.crl-badges{display:flex;gap:6px;flex-shrink:0}
+.crl-badge{font-size:10px;font-family:var(--M);border-radius:20px;padding:2px 9px;white-space:nowrap;border:1px solid var(--bd);color:var(--mu);background:var(--s2)}
+.crl-badge-tx{color:var(--acc);cursor:pointer}
+.crl-badge-tx:hover{border-color:var(--acc);background:rgba(94,168,216,.13)}
+.crl-actions{display:flex;gap:1px;flex-shrink:0;opacity:.5;transition:opacity .12s}
+.crl-row:hover .crl-actions,.crl-row.on .crl-actions{opacity:1}
+.crl-body{display:none;padding:2px 16px 16px 36px;background:var(--bg)}
+.crl-body.on{display:block;animation:dsFade .15s ease}
+.crl-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--mu);font-family:var(--M);display:block;margin:10px 0 6px}
+.crl-lbl-row{display:flex;align-items:center;justify-content:space-between;margin:12px 0 5px}
+.crl-lbl-row .crl-lbl{margin:0}
+
+/* ── GRID dlaždice ── */
+.crg-card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:14px 13px;cursor:pointer;display:flex;flex-direction:column;gap:2px;align-items:flex-start;min-height:116px;transition:border-color .15s,transform .1s,box-shadow .15s}
+.crg-card:hover{border-color:var(--acc);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.crg-top{display:flex;align-items:center;gap:7px;margin-bottom:6px;min-height:20px}
+.crg-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.crg-emoji{font-size:18px;line-height:1}
+.crg-name{font-weight:700;font-size:14px;color:var(--txt);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.crg-meta{font-size:11px;color:var(--mu);font-family:var(--M)}
+.crg-orphan{border-color:var(--red)}
+
+/* ── Výsuvný panel ── */
+.cr-panel-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:470;animation:dsFade .15s ease}
+.cr-panel-bg.on{display:block}
+.cr-panel{position:fixed;top:0;right:0;height:100%;width:440px;max-width:92vw;background:var(--bg);border-left:1px solid var(--bd);box-shadow:-10px 0 50px rgba(0,0,0,.5);z-index:480;transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.cr-panel.on{transform:none}
+.cr-panel-inner{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.crp-head{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--bd);background:var(--s1);flex-shrink:0}
+.crp-title{font-family:var(--H);font-size:17px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.crp-close{background:var(--s2);border:1px solid var(--bd);color:var(--mu);cursor:pointer;font-size:13px;width:30px;height:30px;border-radius:7px;flex-shrink:0}
+.crp-close:hover{color:var(--txt);border-color:var(--mu)}
+.crp-meta{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--bd);flex-shrink:0;flex-wrap:wrap}
+.crp-body{flex:1;overflow-y:auto;padding:4px 18px 28px}
+.crp-sec{margin-top:18px}
+.crp-sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mu);font-family:var(--M)}
+@media(max-width:560px){.cr-panel{width:100vw;max-width:100vw}}
+@media(max-width:700px){.cat-grid.cr-gridmode{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}.crl-actions{opacity:1}}
 </style>
 </head>
 <body>
@@ -376,15 +507,15 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v105</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v116</span></div>
   <nav class="nav">
-    <button class="nb on" onclick="go('import')">↑ Import</button>
+    <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
     <button class="nb" onclick="go('transactions')">Transakcie <span id="badge-unreviewed" style="display:none;background:var(--acc);color:#fff;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:700;margin-left:3px"></span></button>
-    <button class="nb" onclick="go('rules')">Pravidlá</button>
     <button class="nb" onclick="go('analyza')">Analýza</button>
     <button class="nb" onclick="go('budget')">Budget</button>
     <button class="nb" onclick="go('goals')">Ciele</button>
+    <button class="nb" onclick="go('networth')">Majetok</button>
     <button class="nb" onclick="go('prehlady')">Prehľady</button>
   </nav>
   <div class="hdr-right">
@@ -395,7 +526,14 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 <main>
 
 <!-- IMPORT -->
-<div id="pg-import" class="page on">
+<div id="pg-data" class="page on">
+  <div class="sub-nav" id="data-subnav">
+    <button class="snb on" data-sub="import" onclick="dataSub('import')">↑ Import</button>
+    <button class="snb" data-sub="catrules" onclick="dataSub('catrules')">Kategórie &amp; pravidlá</button>
+    <button class="snb" data-sub="tags" onclick="dataSub('tags')">🏷 Tagy</button>
+    <button class="snb" data-sub="backup" onclick="dataSub('backup')">☁ Záloha</button>
+  </div>
+  <div class="data-sec on" id="ds-import">
   <div style="margin-bottom:14px">
     <div style="font-family:var(--H);font-size:22px;margin-bottom:4px">Nahraj výpisy</div>
     <div style="color:var(--mu);font-size:11px">Viacero súborov naraz — duplikáty sa odfiltria automaticky</div>
@@ -443,7 +581,71 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <em style="font-size:9px">Poznámka: Na inštaláciu musí byť súbor otvorený z lokálneho úložiska, nie z e-mailu priamo.</em>
   </div>
   <div class="tx-stat">Načítané: <strong id="txc" style="color:var(--acc)">0 transakcií</strong><button class="btn" style="margin-left:10px;font-size:10px;padding:3px 10px" onclick="clearAll()">Vymazať všetko</button></div>
-</div>
+</div><!-- /ds-import -->
+  <div class="data-sec" id="ds-catrules">
+  <!-- KATEGÓRIE & PRAVIDLÁ (zjednotené karty) -->
+  <div class="sec-title">Kategórie &amp; pravidlá</div>
+  <div class="sec-sub">Spravuj kategórie aj pravidlá na jednom mieste. <strong>#</strong> = globálna precedencia (prvá zhoda v poradí vyhráva, prehadzuj ↑↓). Prepni zobrazenie vpravo: <strong>☰ zoznam</strong> alebo <strong>▦ dlaždice</strong> s detailom v paneli.</div>
+  <div class="cr-toolbar">
+    <button class="btn prim" onclick="openCatEditModal()">+ Kategória</button>
+    <button class="btn prim" onclick="openRuleAdd(null)">+ Pravidlo</button>
+    <div class="cr-search"><input type="text" id="cr-search" placeholder="🔍 Hľadať pravidlo…" oninput="catRulesSearch(this.value)"></div>
+    <div class="cr-viewtoggle" title="Zobrazenie">
+      <button class="cr-vt" data-v="list" onclick="setCrView('list')" title="Zoznam">☰</button>
+      <button class="cr-vt" data-v="grid" onclick="setCrView('grid')" title="Dlaždice">▦</button>
+    </div>
+    <div class="cr-more">
+      <button class="btn" onclick="reapplyRules()" title="Znovu aplikovať všetky pravidlá na existujúce transakcie (uzamknuté ručné kategórie zostanú)">↻ Aplikovať na všetky</button>
+      <button class="btn" onclick="migrateManualCats()" title="Prehľadá transakcie a uzamkne tie kategorizované ručne (nie pravidlom)" style="color:var(--acc2);border-color:var(--acc2)">🔒 Uzamknúť ručné</button>
+      <button class="btn" onclick="document.getElementById('c-imp').click()" title="Import kategórií z CSV">↑ Kat. CSV</button>
+      <input type="file" id="c-imp" accept=".csv" style="display:none" onchange="importCats(this)">
+      <button class="btn" onclick="document.getElementById('r-imp').click()" title="Import pravidiel z CSV/XLSX">↑ Prav. CSV</button>
+      <input type="file" id="r-imp" accept=".csv,.xls,.xlsx" style="display:none" onchange="importRules(this)">
+      <button class="btn" onclick="restoreBuiltinCats()" title="Obnoviť vstavané kategórie">↺ Predvolené</button>
+    </div>
+  </div>
+  <div class="cat-grid" id="cat-grid"></div>
+  <div id="rules-container" style="display:none"></div>
+</div><!-- /ds-catrules -->
+  <div class="data-sec" id="ds-tags">
+    <div class="sec-title">Správa tagov</div>
+    <div class="sec-sub">Premenovanie, zlúčenie a mazanie tagov naprieč všetkými transakciami.</div>
+    <div id="tag-manager"></div>
+  </div><!-- /ds-tags -->
+  <div class="data-sec" id="ds-backup">
+  <!-- BACKUP -->
+  <div class="backup-box">
+    <div class="st" style="margin-bottom:10px">ZÁLOHOVANIE DÁT</div>
+    <div class="bk-row">
+      <button class="btn prim" onclick="exportBackup()">↓ Export zálohy</button>
+      <button class="btn" onclick="document.getElementById('bk-inp').click()">↑ Import zálohy</button>
+      <input type="file" id="bk-inp" accept=".json" style="display:none" onchange="importBackup(this)">
+    </div>
+    <div class="bk-info" id="bk-info">Záloha: <span id="bk-stat">načítavam...</span></div>
+    <hr style="margin:14px 0;border:none;border-top:1px solid var(--bd)">
+    <div class="st" style="margin-bottom:8px">GOOGLE DRIVE SYNC</div>
+    <!-- Drive PIN unlock -->
+    <div id="gd-cid-set" style="display:none;font-size:10px;color:var(--mu);margin-bottom:10px">
+      🔓 Drive odomknutý · <span style="color:var(--acc2);cursor:pointer" onclick="gdLockDrive()">zamknúť</span>
+    </div>
+    <div id="gd-cid-form" style="margin-bottom:10px">
+      <div style="font-size:10px;color:var(--mu);margin-bottom:6px">🔒 Zadaj PIN pre odomknutie Drive sync</div>
+      <div style="display:flex;gap:6px">
+        <input id="gd-pin-inp" type="password" class="inp" placeholder="PIN" maxlength="16"
+          style="width:80px;font-size:14px;font-family:var(--M);text-align:center;letter-spacing:4px"
+          onkeydown="if(event.key==='Enter')gdUnlockPin()">
+        <button class="btn prim" onclick="gdUnlockPin()" style="flex-shrink:0">Odomknúť</button>
+      </div>
+      <div id="gd-pin-err" style="font-size:10px;color:var(--red);margin-top:5px;display:none">Nesprávny PIN</div>
+    </div>
+    <div class="bk-row">
+      <button class="btn prim" onclick="gdSave()">☁ Zálohovať na Drive</button>
+      <button class="btn" onclick="gdLoad()">↓ Obnoviť z Drive</button>
+    </div>
+    <div class="bk-info">Drive: <span id="gd-stat" style="color:var(--mu)">—</span></div>
+  </div>
+  </div><!-- /ds-backup -->
+</div><!-- /pg-data -->
 
 <!-- DASHBOARD -->
 <div id="pg-dashboard" class="page">
@@ -615,88 +817,6 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <div id="load-more-wrap" style="display:none;text-align:center;margin-top:10px">
     <button class="btn" onclick="txLoadMore()" style="font-size:11px;padding:6px 20px">Zobraziť viac ↓</button>
   </div>
-</div>
-
-<!-- RULES -->
-<div id="pg-rules" class="page">
-  <!-- BACKUP -->
-  <div class="backup-box">
-    <div class="st" style="margin-bottom:10px">ZÁLOHOVANIE DÁT</div>
-    <div class="bk-row">
-      <button class="btn prim" onclick="exportBackup()">↓ Export zálohy</button>
-      <button class="btn" onclick="document.getElementById('bk-inp').click()">↑ Import zálohy</button>
-      <input type="file" id="bk-inp" accept=".json" style="display:none" onchange="importBackup(this)">
-    </div>
-    <div class="bk-info" id="bk-info">Záloha: <span id="bk-stat">načítavam...</span></div>
-    <hr style="margin:14px 0;border:none;border-top:1px solid var(--bd)">
-    <div class="st" style="margin-bottom:8px">GOOGLE DRIVE SYNC</div>
-    <!-- Drive PIN unlock -->
-    <div id="gd-cid-set" style="display:none;font-size:10px;color:var(--mu);margin-bottom:10px">
-      🔓 Drive odomknutý · <span style="color:var(--acc2);cursor:pointer" onclick="gdLockDrive()">zamknúť</span>
-    </div>
-    <div id="gd-cid-form" style="margin-bottom:10px">
-      <div style="font-size:10px;color:var(--mu);margin-bottom:6px">🔒 Zadaj PIN pre odomknutie Drive sync</div>
-      <div style="display:flex;gap:6px">
-        <input id="gd-pin-inp" type="password" class="inp" placeholder="PIN" maxlength="16"
-          style="width:80px;font-size:14px;font-family:var(--M);text-align:center;letter-spacing:4px"
-          onkeydown="if(event.key==='Enter')gdUnlockPin()">
-        <button class="btn prim" onclick="gdUnlockPin()" style="flex-shrink:0">Odomknúť</button>
-      </div>
-      <div id="gd-pin-err" style="font-size:10px;color:var(--red);margin-top:5px;display:none">Nesprávny PIN</div>
-    </div>
-    <div class="bk-row">
-      <button class="btn prim" onclick="gdSave()">☁ Zálohovať na Drive</button>
-      <button class="btn" onclick="gdLoad()">↓ Obnoviť z Drive</button>
-    </div>
-    <div class="bk-info">Drive: <span id="gd-stat" style="color:var(--mu)">—</span></div>
-  </div>
-  <hr class="divider">
-  <!-- CUSTOM CATEGORIES -->
-  <div class="sec-title">Kategórie</div>
-  <div class="sec-sub">Všetky kategórie vrátane vstavaných sú editovateľné. Zabudované vieš obnoviť tlačidlom nižšie.</div>
-  <div class="cat-add-row">
-    <button class="btn prim" onclick="openCatEditModal()">+ Nová kategória</button>
-    <button class="btn" onclick="document.getElementById('c-imp').click()">↑ Import CSV</button>
-    <input type="file" id="c-imp" accept=".csv" style="display:none" onchange="importCats(this)">
-    <button class="btn" onclick="restoreBuiltinCats()">↺ Obnoviť predvolené</button>
-  </div>
-  <div class="cat-grid" id="cat-grid"></div>
-  <hr class="divider">
-  <!-- RULES -->
-  <div class="sec-title">Pravidlá kategorizácie</div>
-  <div class="sec-sub">Definuj kľúčové slová → kategória. Vlastné pravidlá majú prednosť pred vstavanými. Prvé zhoda v zozname vyhráva.</div>
-  <div class="rule-add">
-    <input type="text" id="r-kw" class="inp rule-kw" placeholder="kľúčové slovo (napr. tesco)">
-    <select id="r-field">
-      <option value="any">Kdekoľvek v texte</option>
-      <option value="merchant">Obchodník / Príjemca</option>
-      <option value="place">Obchodné miesto</option>
-      <option value="description">Popis transakcie</option>
-      <option value="info">Informácia pre príjemcu</option>
-      <option value="iban">IBAN</option>
-      <option value="vs">Variabilný symbol</option>
-      <option value="ref">Referencia</option>
-    </select>
-    <select id="r-amt-op" title="Podmienka sumy" onchange="document.getElementById('r-amt-val').style.display=this.value?'':'none'">
-      <option value="">± akákoľvek suma</option>
-      <option value="lt">suma &lt;</option>
-      <option value="gt">suma &gt;</option>
-      <option value="eq">suma =</option>
-    </select>
-    <input type="number" id="r-amt-val" class="inp" placeholder="€" style="width:80px;display:none" min="0" step="0.01">
-    <select id="r-cat"></select>
-    <label style="display:flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap;cursor:pointer" title="Iba pre kreditnú kartu — zaradí transakciu ako splátku">
-      <input type="checkbox" id="r-splatka" style="accent-color:var(--grn)"> Splátka KK
-    </label>
-    <button class="btn prim" onclick="addRule()">+ Pridať</button>
-  </div>
-  <div class="row" style="margin-bottom:16px">
-    <button class="btn" onclick="document.getElementById('r-imp').click()">↑ Import pravidiel z CSV/XLSX</button>
-    <input type="file" id="r-imp" accept=".csv,.xls,.xlsx" style="display:none" onchange="importRules(this)">
-    <button class="btn" onclick="reapplyRules()" title="Znovu aplikovať všetky pravidlá na existujúce transakcie">↻ Aplikovať na všetky transakcie</button>
-    <button class="btn" onclick="migrateManualCats()" title="Prehľadá všetky transakcie a uzamkne tie, ktoré boli kategorizované ručne (nie pravidlom)" style="color:var(--acc2);border-color:var(--acc2)">🔒 Uzamknúť ručné kategórie</button>
-  </div>
-  <div id="rules-container"></div>
 </div>
 
 <!-- ANALÝZA -->
@@ -982,9 +1102,56 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   </div>
 </div>
 
+<!-- MAJETOK / NET WORTH -->
+<div id="pg-networth" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <h2 style="margin:0;font-size:18px">Čistý majetok</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="document.getElementById('xtb-file').click()" title="Nahraj XTB xlsx export — automaticky aktualizuje hodnotu položky XTB">📥 Import z XTB</button>
+      <button class="btn prim" onclick="openNetWorthItem(null)">+ Pridať položku</button>
+    </div>
+    <input type="file" id="xtb-file" accept=".xlsx" style="display:none" onchange="importXTB(this.files[0]);this.value=''">
+  </div>
+  <div id="nw-summary"></div>
+  <div id="nw-chart-sec" style="margin-top:14px"></div>
+  <div id="nw-assets" style="margin-top:14px"></div>
+  <div id="nw-liabilities" style="margin-top:14px"></div>
+  <div id="nw-invest" style="margin-top:14px"></div>
+  <div id="nw-empty"></div>
+</div>
+<div class="modal-bg" id="m-nwitem">
+  <div class="modal" style="width:380px;max-width:calc(100vw - 32px)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="st" id="nw-modal-title" style="margin:0">Nová položka</div>
+      <button class="btn" style="padding:3px 10px;font-size:11px" onclick="cm('m-nwitem')">✕ Zavrieť</button>
+    </div>
+    <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Názov</label>
+    <input type="text" id="nw-name" class="inp" placeholder="napr. XTB portfólio, Hypotéka…" style="width:100%;margin-bottom:10px">
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Typ</label>
+        <select id="nw-side" class="inp" onchange="_nwKindOpts()" style="width:100%">
+          <option value="asset">Aktívum (čo mám)</option>
+          <option value="liability">Pasívum (čo dlhujem)</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Kategória</label>
+        <select id="nw-kind" class="inp" style="width:100%"></select>
+      </div>
+    </div>
+    <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:3px">Hodnota (€)</label>
+    <input type="number" id="nw-value" class="inp" placeholder="0.00" step="0.01" style="width:100%;margin-bottom:6px">
+    <div id="nw-invest-hint" style="display:none;font-size:10px;color:var(--mu);margin-bottom:10px">Pri investíciách ti pri prehľade ukážem vložené (zo súčtu tvojich tokov) oproti tejto hodnote = zisk/strata.</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn prim" onclick="saveNetWorthItem()" style="flex:1">Uložiť</button>
+      <button class="btn danger" id="nw-del-btn" onclick="deleteNetWorthItem()" style="display:none">🗑 Zmazať</button>
+    </div>
+  </div>
+</div>
+
 <!-- PREHĽADY -->
-<div id="pg-prehlady" class="page">
-  <div style="margin-bottom:16px">
+<div id="pg-prehlady" class="page">  <div style="margin-bottom:16px">
     <div style="font-family:var(--H);font-size:20px;margin-bottom:4px">Prehľady</div>
     <div style="color:var(--mu);font-size:11px">Porovnanie období · Príjmy vs Výdavky · Opakujúce sa platby</div>
   </div>
@@ -1301,6 +1468,10 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 </div>
 
 <!-- RULE EDIT MODAL -->
+<!-- KATEGÓRIA: výsuvný panel (grid view) -->
+<div class="cr-panel-bg" id="cr-panel-bg" onclick="closeCrPanel()"></div>
+<aside class="cr-panel" id="cr-panel" aria-hidden="true"><div class="cr-panel-inner" id="cr-panel-inner"></div></aside>
+
 <div class="modal-bg" id="m-rule-edit">
   <div class="modal" style="width:400px">
     <button class="mc" onclick="cm('m-rule-edit')">✕</button>
@@ -1493,6 +1664,9 @@ function scheduleSave() {
     await S('budgetlimits', budgetLimits);
     await S('budgetmoves', budgetMoves);
     await S('goals', goals);
+    await S('networthitems', netWorthItems);
+    await S('networthsnaps', netWorthSnapshots);
+    await S('fundnames', fundNames);
     await S('ob', openingBalance);
     await S('rules', rules);
     await S('customcats', customCats);
@@ -1540,6 +1714,9 @@ async function loadAll() {
   budgetLimits = (await Store.get('budgetlimits')) || [];
   budgetMoves = (await Store.get('budgetmoves')) || [];
   goals = (await Store.get('goals')) || [];
+  netWorthItems = (await Store.get('networthitems')) || [];
+  netWorthSnapshots = (await Store.get('networthsnaps')) || [];
+  fundNames = (await Store.get('fundnames')) || {};
   recurDefs = (await Store.get('recurDefs')) || [];
   recurIgnored = (await Store.get('recurignored')) || [];
   recurMarks = (await Store.get('recurmarks')) || {};
@@ -1584,7 +1761,7 @@ async function loadAll() {
 }
 
 // ==================== STATE ====================
-let TX=[], deletedTX=[], editLog=[], budgets={}, budgetLimits=[], budgetMoves=[], goals=[], openingBalance=0, rules=[], customCats=[], visCols=['date','main','place','source','cat','amount'];
+let TX=[], deletedTX=[], editLog=[], budgets={}, budgetLimits=[], budgetMoves=[], goals=[], netWorthItems=[], netWorthSnapshots=[], fundNames={}, openingBalance=0, rules=[], customCats=[], visCols=['date','main','place','source','cat','amount'];
 let colWidths={};  // persisted column widths for resizing
 let ibanNames={};  // {iban: displayName} global contact book
 let _crCol=null,_crX=0,_crW=0; // column resize state
@@ -2324,16 +2501,32 @@ function go(nm) {
       setV('f-mon',txFilters.mon); setV('f-typ',txFilters.typ);
       updateTagFilter(); renderTx();
     }
-    if (nm==='rules') renderRules();
+    if (nm==='data') dataSub(_dataSub||'import');
     if (nm==='analyza'){renderExclTagChips(); renderPivot();}
     if (nm==='budget') renderBudget();
     if (nm==='goals') renderGoals();
+    if (nm==='networth') renderNetWorth();
     if (nm==='prehlady') initPrehlady();
   }catch(e){
     console.error('go('+nm+')',e);
     const pg=document.getElementById('pg-'+nm);
     if(pg) pg.insertAdjacentHTML('beforeend','<div style="color:var(--red);font-size:12px;padding:20px;text-align:center">⚠ Chyba pri otvorení: '+(e&&e.message||e)+'</div>');
   }
+}
+
+// ---- Sub-navigácia v zlúčenom tabe "Dáta" (Import / Kategórie & pravidlá / Tagy / Záloha) ----
+let _dataSub='import';
+function dataSub(name){
+  _dataSub=name;
+  document.querySelectorAll('#pg-data .data-sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('#data-subnav .snb').forEach(b=>b.classList.remove('on'));
+  const sec=document.getElementById('ds-'+name); if(sec) sec.classList.add('on');
+  const btn=document.querySelector(`#data-subnav .snb[data-sub="${name}"]`); if(btn) btn.classList.add('on');
+  try{
+    if(name==='catrules') renderRules();
+    if(name==='tags' && typeof renderTagManager==='function') renderTagManager();
+    if(name==='backup' && typeof updateBkInfo==='function') updateBkInfo();
+  }catch(e){ console.error('dataSub('+name+')',e); }
 }
 
 // ==================== FORMAT ====================
@@ -2621,6 +2814,342 @@ function _drawProjection(data){
     positionFn:(e,rect)=>({left:Math.min((e.clientX||0)-rect.left+12,W-160),top:8}),
     borderColorFn:idx=>data[idx]&&data[idx].endBalance>=0?grd:red,
   });
+}
+
+// ════════ MAJETOK / NET WORTH (7a) ════════
+const NW_KINDS={
+  asset:[['savings','💰 Sporenie'],['investment','📈 Investície'],['cash','💵 Hotovosť'],['property','🏠 Nehnuteľnosť'],['other','📦 Iné aktívum']],
+  liability:[['creditcard','💳 Kreditná karta'],['loan','🏦 Pôžička'],['mortgage','🏡 Hypotéka'],['other','📦 Iný záväzok']]
+};
+function _nwKindLabel(side,kind){ const f=(NW_KINDS[side]||[]).find(k=>k[0]===kind); return f?f[1]:'📦 Iné'; }
+function _nwAccountValue(){ return openingBalance+TX.filter(t=>t.source==='account').reduce((s,t)=>s+t.amount,0); }
+function _nwInvestedTotal(){
+  const invCats=getCatD().filter(c=>c.isInvestment).map(c=>c.id);
+  if(!invCats.length) return 0;
+  return Math.abs(TX.filter(t=>t.date&&invCats.includes(t.category)).reduce((s,t)=>s+t.amount,0));
+}
+function _nwTotals(){
+  const acc=_nwAccountValue();
+  let assets=acc, liab=0;
+  (netWorthItems||[]).forEach(it=>{ if(it.side==='liability') liab+=(+it.value||0); else assets+=(+it.value||0); });
+  return {account:acc, assets, liabilities:liab, net:assets-liab};
+}
+function _nwSnapshotNow(){
+  const t=_nwTotals(), now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const invItems=(netWorthItems||[]).filter(i=>i.side==='asset'&&i.kind==='investment');
+  const invValue=invItems.reduce((s,i)=>s+(+i.value||0),0);
+  const invested=_nwInvestedTotal();
+  const ex=(netWorthSnapshots||[]).find(s=>s.ym===ym);
+  if(ex){ ex.net=t.net; ex.assets=t.assets; ex.liabilities=t.liabilities; ex.invValue=invValue; ex.invested=invested; }
+  else { if(!Array.isArray(netWorthSnapshots)) netWorthSnapshots=[]; netWorthSnapshots.push({ym, net:t.net, assets:t.assets, liabilities:t.liabilities, invValue, invested}); }
+}
+function _nwKindOpts(){
+  const side=document.getElementById('nw-side')?.value||'asset';
+  const sel=document.getElementById('nw-kind'); if(!sel) return;
+  const prev=sel.value;
+  sel.innerHTML=NW_KINDS[side].map(k=>`<option value="${k[0]}">${k[1]}</option>`).join('');
+  if(NW_KINDS[side].some(k=>k[0]===prev)) sel.value=prev;
+  const hint=document.getElementById('nw-invest-hint');
+  const updHint=()=>{ if(hint) hint.style.display=(side==='asset'&&sel.value==='investment')?'block':'none'; };
+  sel.onchange=updHint; updHint();
+}
+let _nwEditId=null, _nwPosAgg=[], _nwInvSnaps=[];
+function openNetWorthItem(id){
+  _nwEditId=id;
+  const it=id?(netWorthItems||[]).find(x=>x.id===id):null;
+  document.getElementById('nw-modal-title').textContent=it?'Upraviť položku':'Nová položka';
+  document.getElementById('nw-name').value=it?.name||'';
+  document.getElementById('nw-side').value=it?.side||'asset';
+  _nwKindOpts();
+  document.getElementById('nw-kind').value=it?.kind||(it?.side==='liability'?'loan':'savings');
+  _nwKindOpts();
+  document.getElementById('nw-value').value=it?(+it.value||0):'';
+  document.getElementById('nw-del-btn').style.display=id?'inline-block':'none';
+  document.getElementById('m-nwitem').classList.add('on');
+}
+function saveNetWorthItem(){
+  const name=(document.getElementById('nw-name').value||'').trim();
+  const side=document.getElementById('nw-side').value;
+  const kind=document.getElementById('nw-kind').value;
+  const value=parseFloat(document.getElementById('nw-value').value);
+  if(!name){ alert('Zadaj názov položky.'); return; }
+  if(isNaN(value)){ alert('Zadaj hodnotu.'); return; }
+  if(!Array.isArray(netWorthItems)) netWorthItems=[];
+  if(_nwEditId){ const it=netWorthItems.find(x=>x.id===_nwEditId); if(it){ it.name=name; it.side=side; it.kind=kind; it.value=value; } }
+  else netWorthItems.push({id:'nw_'+Math.random().toString(36).slice(2), name, side, kind, value});
+  _nwSnapshotNow(); saveD(); cm('m-nwitem'); renderNetWorth();
+}
+function deleteNetWorthItem(){
+  if(!_nwEditId) return;
+  if(!confirm('Zmazať túto položku?')) return;
+  netWorthItems=netWorthItems.filter(x=>x.id!==_nwEditId);
+  _nwSnapshotNow(); saveD(); cm('m-nwitem'); renderNetWorth();
+}
+function renderNetWorth(){
+  const t=_nwTotals();
+  // summary
+  const sumEl=document.getElementById('nw-summary');
+  if(sumEl) sumEl.innerHTML=`<div class="cs" style="text-align:center;padding:20px">
+    <div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Čistý majetok</div>
+    <div style="font-family:var(--M);font-weight:700;font-size:30px;color:${t.net>=0?'var(--grn)':'var(--red)'}">${fe(t.net)}</div>
+    <div style="display:flex;justify-content:center;gap:24px;margin-top:12px;font-size:12px">
+      <div><div style="color:var(--mu);font-size:10px">Aktíva</div><div style="font-family:var(--M);font-weight:600;color:var(--grn)">${fabs(t.assets)}</div></div>
+      <div><div style="color:var(--mu);font-size:10px">Pasíva</div><div style="font-family:var(--M);font-weight:600;color:var(--red)">${fabs(t.liabilities)}</div></div>
+    </div>
+  </div>`;
+  // chart
+  _renderNwChart();
+  // assets list (účet auto + ručné aktíva)
+  const assetItems=(netWorthItems||[]).filter(i=>i.side==='asset');
+  const liabItems=(netWorthItems||[]).filter(i=>i.side==='liability');
+  const _row=(it)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--bd);font-size:12px;cursor:pointer" onclick="openNetWorthItem('${it.id}')">
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${_nwKindLabel(it.side,it.kind)} · ${esc(it.name)}</span>
+      <span style="font-family:var(--M);font-weight:600;flex-shrink:0;color:${it.side==='liability'?'var(--red)':'var(--txt)'}">${it.side==='liability'?'−':''}${fabs(+it.value||0)}</span>
+    </div>`;
+  const aEl=document.getElementById('nw-assets');
+  if(aEl) aEl.innerHTML=`<div class="cs">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="st" style="margin:0">AKTÍVA</div><span style="font-family:var(--M);font-weight:700;color:var(--grn)">${fabs(t.assets)}</span></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--bd);font-size:12px">
+      <span style="flex:1">🏦 Bežný účet <span style="font-size:9px;color:var(--mu)">· automaticky</span></span>
+      <span style="font-family:var(--M);font-weight:600;color:${t.account>=0?'var(--txt)':'var(--red)'}">${fe(t.account)}</span>
+    </div>
+    ${assetItems.map(_row).join('')}
+  </div>`;
+  const lEl=document.getElementById('nw-liabilities');
+  if(lEl) lEl.innerHTML=liabItems.length?`<div class="cs">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="st" style="margin:0">PASÍVA</div><span style="font-family:var(--M);font-weight:700;color:var(--red)">−${fabs(t.liabilities)}</span></div>
+    ${liabItems.map(_row).join('')}
+  </div>`:'';
+  // investície agregát
+  const invItems=assetItems.filter(i=>i.kind==='investment');
+  const invEl=document.getElementById('nw-invest');
+  if(invEl){
+    if(invItems.length){
+      const invested=_nwInvestedTotal();
+      const value=invItems.reduce((s,i)=>s+(+i.value||0),0);
+      const gain=value-invested;
+      const invSnaps=(netWorthSnapshots||[]).filter(s=>s.invValue!=null).slice().sort((a,b)=>a.ym<b.ym?-1:1);
+      _nwInvSnaps=invSnaps;
+      const allPos=invItems.flatMap(i=>i.xtbPositions||[]);
+      const aggMap={};
+      allPos.forEach(p=>{ if(!aggMap[p.symbol]) aggMap[p.symbol]={symbol:p.symbol,marketValue:0,grossPL:0,volume:0,count:0,purchaseValue:0,marketPrice:0,firstBuy:null,lastBuy:null}; const a=aggMap[p.symbol]; a.marketValue+=p.marketValue||0; a.grossPL+=p.grossPL||0; a.volume+=p.volume||0; a.count+=p.count||0; a.purchaseValue+=p.purchaseValue||0; if(p.marketPrice) a.marketPrice=p.marketPrice; if(p.firstBuy!=null&&(a.firstBuy==null||p.firstBuy<a.firstBuy)) a.firstBuy=p.firstBuy; if(p.lastBuy!=null&&(a.lastBuy==null||p.lastBuy>a.lastBuy)) a.lastBuy=p.lastBuy; });
+      const agg=Object.values(aggMap).sort((a,b)=>b.marketValue-a.marketValue);
+      agg.forEach(p=>{ p.avgBuyPrice=p.volume>0?p.purchaseValue/p.volume:0; });
+      _nwPosAgg=agg;
+      const xtbItem=invItems.find(i=>i.xtbUpdated);
+      const updNote=xtbItem?` <span style="font-size:9px;color:var(--mu)">· XTB aktualizované ${fd(new Date(xtbItem.xtbUpdated))}</span>`:'';
+      invEl.innerHTML=`<div class="cs">
+        <div class="st" style="margin:0 0 8px">📈 INVESTÍCIE${updNote}</div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span style="color:var(--mu)">Vložené (zo súčtu tvojich tokov)</span><span style="font-family:var(--M)">${fabs(invested)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span style="color:var(--mu)">Aktuálna hodnota</span><span style="font-family:var(--M)">${fabs(value)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0 0;border-top:1px solid var(--bd);font-size:13px;font-weight:700"><span>Zisk / strata</span><span style="font-family:var(--M);color:${gain>=0?'var(--grn)':'var(--red)'}">${gain>=0?'+':'−'}${fabs(Math.abs(gain))}${invested>0?' ('+(gain>=0?'+':'−')+Math.abs(gain/invested*100).toFixed(1)+'%)':''}</span></div>
+        ${invSnaps.length>=2?`<div onclick="var l=document.getElementById('nw-inv-chart');l.style.display=l.style.display==='none'?'block':'none';this.querySelector('.arr3').textContent=l.style.display==='none'?'▾':'▴';if(l.style.display!=='none')_renderInvChart()" style="cursor:pointer;margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);font-size:11px;color:var(--acc2);display:flex;justify-content:space-between"><span>📈 Vývoj hodnoty (${invSnaps.length} mes.)</span><span class="arr3">▾</span></div>
+        <div id="nw-inv-chart" style="display:none;margin-top:8px"><div style="position:relative"><canvas id="c-inv" height="180"></canvas><div id="c-inv-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:7px 10px;font-size:11px;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.4)"></div></div>
+          <div style="display:flex;gap:16px;justify-content:center;margin-top:6px;font-size:9px;color:var(--mu)"><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#5bc17c;margin-right:4px"></span>hodnota</span><span><span style="display:inline-block;width:10px;height:0;border-top:2px dashed #7a9ab5;margin-right:4px;vertical-align:middle"></span>vložené</span></div>
+        </div>`:''}
+        ${agg.length?`<div onclick="var l=document.getElementById('nw-pos-list');l.style.display=l.style.display==='none'?'block':'none';this.querySelector('.arr').textContent=l.style.display==='none'?'▾':'▴';if(l.style.display!=='none')_drawNwPie(_nwPosAgg)" style="cursor:pointer;margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);font-size:11px;color:var(--acc2);display:flex;justify-content:space-between"><span>Rozpis pozícií (${agg.length})</span><span class="arr">▾</span></div>
+        <div id="nw-pos-list" style="display:none;margin-top:4px">
+          ${agg.length>=2?`<div style="position:relative;margin:8px 0"><canvas id="c-nw-pie" height="210"></canvas><div id="c-nw-pie-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:7px 11px;font-size:11px;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.4)"></div></div>`:''}
+          ${agg.map((p,i)=>{const nm=fundNames[p.symbol]; const pct=p.purchaseValue>0?(p.grossPL/p.purchaseValue*100):0; const fmtD=ts=>ts?fd(new Date(ts)):'—'; const hasD=p.count!=null&&p.count>0; return `<div>
+            <div ${hasD?`onclick="var d=document.getElementById('nw-pd-${i}');d.style.display=d.style.display==='none'?'block':'none'"`:''} style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11px;border-top:1px solid var(--bd)${hasD?';cursor:pointer':''}">
+              <div style="flex:1;min-width:0">
+                <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${hasD?'<span style="opacity:.4;font-size:9px;margin-right:3px">▸</span>':''}${nm?esc(nm):esc(p.symbol)}<span onclick="event.stopPropagation();setFundName('${escA(p.symbol)}')" style="cursor:pointer;margin-left:5px;opacity:.5;font-size:10px" title="Zadať/upraviť názov fondu">✎</span></div>
+                ${nm?`<div style="font-size:9px;color:var(--mu);padding-left:${hasD?'14px':'0'}">${esc(p.symbol)}</div>`:''}
+              </div>
+              <span style="font-family:var(--M);flex-shrink:0">${fabs(p.marketValue)}</span>
+              <span style="font-family:var(--M);width:84px;text-align:right;flex-shrink:0;color:${p.grossPL>=0?'var(--grn)':'var(--red)'}">${p.grossPL>=0?'+':'−'}${fabs(Math.abs(p.grossPL))}</span>
+            </div>
+            ${hasD?`<div id="nw-pd-${i}" style="display:none;padding:4px 0 10px 14px;font-size:10px;color:var(--mu)"><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 14px">
+              <span>Objem: <b style="color:var(--txt);font-family:var(--M)">${p.volume.toFixed(4)}</b></span>
+              <span>Počet nákupov: <b style="color:var(--txt)">${p.count}</b></span>
+              <span>Priem. nákup. cena: <b style="color:var(--txt);font-family:var(--M)">${fabs(p.avgBuyPrice)}</b></span>
+              <span>Aktuálna cena: <b style="color:var(--txt);font-family:var(--M)">${fabs(p.marketPrice)}</b></span>
+              <span>Vložené: <b style="color:var(--txt);font-family:var(--M)">${fabs(p.purchaseValue)}</b></span>
+              <span>Výnos: <b style="color:${p.grossPL>=0?'var(--grn)':'var(--red)'};font-family:var(--M)">${pct>=0?'+':''}${pct.toFixed(1)}%</b></span>
+              <span>Prvý nákup: <b style="color:var(--txt)">${fmtD(p.firstBuy)}</b></span>
+              <span>Posledný nákup: <b style="color:var(--txt)">${fmtD(p.lastBuy)}</b></span>
+            </div></div>`:''}
+          </div>`}).join('')}
+          ${agg.length&&!agg.some(p=>p.count>0)?'<div style="font-size:10px;color:var(--mu);padding:8px 0 2px;border-top:1px solid var(--bd);margin-top:4px">💡 Pre podrobnosti nákupov (objem, počet, ceny, dátumy) znova nahraj XTB export tlačidlom „📥 Import z XTB" hore — pozície uložené staršou verziou ich ešte nemajú.</div>':''}
+        </div>`:''}
+        ${invested===0?'<div style="font-size:10px;color:var(--mu);margin-top:6px">Tip: označ kategóriu investícií ako investičnú (💹 v úprave kategórie), nech viem dopočítať vložené.</div>':''}
+      </div>`;
+    } else invEl.innerHTML='';
+  }
+  // empty
+  const emptyEl=document.getElementById('nw-empty');
+  if(emptyEl) emptyEl.innerHTML=(netWorthItems||[]).length?'':'<div style="text-align:center;padding:24px;color:var(--mu);font-size:12px">Zatiaľ len bežný účet. Pridaj sporenie, investície, hotovosť alebo dlhy tlačidlom „+ Pridať položku" — uvidíš svoj kompletný čistý majetok aj jeho vývoj v čase.</div>';
+}
+function _renderNwChart(){
+  const sec=document.getElementById('nw-chart-sec'); if(!sec) return;
+  const snaps=(netWorthSnapshots||[]).slice().sort((a,b)=>a.ym<b.ym?-1:1);
+  if(snaps.length<2){ sec.innerHTML=snaps.length===1?'<div style="font-size:10px;color:var(--mu);text-align:center;padding:4px">Graf vývoja sa zobrazí, keď budeš mať aspoň 2 mesačné snímky. Aktuálny mesiac sa ukladá automaticky pri každej zmene.</div>':''; return; }
+  sec.innerHTML=`<div class="cs"><div class="st" style="margin:0 0 8px">VÝVOJ ČISTÉHO MAJETKU</div>
+    <div style="position:relative"><canvas id="c-nw" height="170"></canvas>
+    <div id="c-nw-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:7px 10px;font-size:11px;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.4)"></div></div></div>`;
+  const cv=document.getElementById('c-nw'); if(!cv) return;
+  const tip=document.getElementById('c-nw-tip'), ctx=cv.getContext('2d');
+  const W=cv.offsetWidth||700,H=170,dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';ctx.scale(dpr,dpr);
+  const vals=snaps.map(s=>s.net), maxV=Math.max(...vals,0), minV=Math.min(...vals,0), range=(maxV-minV)||1;
+  const pd={l:56,r:14,t:14,b:24},cW=W-pd.l-pd.r,cH=H-pd.t-pd.b;
+  const xOf=i=>pd.l+(snaps.length===1?cW/2:(i/(snaps.length-1))*cW);
+  const yOf=v=>pd.t+cH-((v-minV)/range)*cH;
+  const isLight=document.body.classList.contains('light'), grd='#5bc17c', red='#d06868';
+  function draw(hovIdx=-1){
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<=4;i++){ const v=minV+(range*i/4),y=yOf(v);
+      ctx.strokeStyle=isLight?'#d0d8e0':'#1c2733';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(pd.l,y);ctx.lineTo(W-pd.r,y);ctx.stroke();
+      ctx.fillStyle=isLight?'#5a7a95':'#7a9ab5';ctx.font="9px 'DM Mono',monospace";ctx.textAlign='right';ctx.fillText(v.toFixed(0)+'€',pd.l-4,y+3); }
+    if(minV<0&&maxV>0){ const y0=yOf(0);ctx.strokeStyle='rgba(208,104,104,.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(pd.l,y0);ctx.lineTo(W-pd.r,y0);ctx.stroke();ctx.setLineDash([]); }
+    for(let i=0;i<snaps.length-1;i++){ ctx.strokeStyle=(vals[i]>=0&&vals[i+1]>=0)?grd:'#d8a85e';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(xOf(i),yOf(vals[i]));ctx.lineTo(xOf(i+1),yOf(vals[i+1]));ctx.stroke(); }
+    snaps.forEach((s,i)=>{ const x=xOf(i),y=yOf(vals[i]);ctx.fillStyle=vals[i]>=0?grd:red;ctx.beginPath();ctx.arc(x,y,i===hovIdx?5:3.5,0,Math.PI*2);ctx.fill();if(i===hovIdx){ctx.strokeStyle=isLight?'#fff':'#0a0f14';ctx.lineWidth=1.5;ctx.stroke();} });
+    const step=Math.max(1,Math.ceil(snaps.length/8));
+    snaps.forEach((s,i)=>{ if(i%step===0){ const[y,m]=s.ym.split('-');ctx.fillStyle=isLight?'#5a7a95':'#7a9ab5';ctx.font="8px 'DM Mono',monospace";ctx.textAlign='center';ctx.fillText(`${+m}.${y.slice(2)}`,xOf(i),H-4);} });
+  }
+  draw();
+  makePinnable(cv,{tipEl:tip,redrawFn:draw,
+    hitFn:e=>{const rect=cv.getBoundingClientRect();const mx=((e.clientX||e.touches?.[0]?.clientX||0)-rect.left)/rect.width*W;let best=-1,bd=Infinity;snaps.forEach((_,i)=>{const dd=Math.abs(mx-xOf(i));if(dd<bd){bd=dd;best=i;}});return bd<40?best:-1;},
+    tipFn:idx=>{if(idx<0)return null;const s=snaps[idx];const[y,m]=s.ym.split('-');
+      return `<strong>${+m}.${y}</strong><br><span style="color:var(--grn)">aktíva ${fabs(s.assets)}</span><br><span style="color:var(--red)">pasíva ${fabs(s.liabilities)}</span><br><span style="color:${s.net>=0?'var(--grn)':'var(--red)'};font-weight:700">čistý: ${fe(s.net)}</span>`;},
+    positionFn:(e,rect)=>({left:Math.min((e.clientX||0)-rect.left+12,W-150),top:8}),
+    borderColorFn:idx=>snaps[idx]&&snaps[idx].net>=0?grd:red});
+}
+
+// ── XTB IMPORT (7b) — prečíta Equity (hodnotu účtu) + pozície z XTB xlsx ──
+function _xtbNorm(v){ return typeof v==='string'?v.trim().toLowerCase():v; }
+function _xtbDate(v){
+  if(v==null) return null;
+  if(v instanceof Date) return v.getTime();
+  if(typeof v==='number') return Math.round((v-25569)*86400000); // Excel serial → ms
+  const t=Date.parse(v); return isNaN(t)?null:t;
+}
+function parseXTB(wb){
+  let equity=null, balance=null;
+  for(const sn of wb.SheetNames){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:null});
+    for(let i=0;i<rows.length;i++){
+      const row=rows[i]||[];
+      for(let j=0;j<row.length;j++){
+        if(_xtbNorm(row[j])==='equity'&&equity==null){ const b=(rows[i+1]||[])[j]; const n=typeof b==='number'?b:parseFloat(b); if(!isNaN(n)) equity=n; }
+        if(_xtbNorm(row[j])==='balance'&&balance==null){ const b=(rows[i+1]||[])[j]; const n=typeof b==='number'?b:parseFloat(b); if(!isNaN(n)) balance=n; }
+      }
+    }
+    if(equity!=null) break;
+  }
+  const openSheet=wb.SheetNames.find(n=>n.toUpperCase().indexOf('OPEN POSITION')>=0);
+  const posMap={};
+  if(openSheet){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[openSheet],{header:1,raw:true,defval:null});
+    let hdr=-1, col={};
+    for(let i=0;i<rows.length;i++){
+      const nr=(rows[i]||[]).map(_xtbNorm);
+      if(nr.includes('symbol')&&nr.includes('volume')&&(nr.includes('purchase value')||nr.includes('market price'))){ hdr=i; nr.forEach((c,j)=>{ if(c) col[c]=j; }); break; }
+    }
+    if(hdr>=0){
+      for(let i=hdr+1;i<rows.length;i++){
+        const row=rows[i]||[];
+        const posCell=row[col['position']!=null?col['position']:0];
+        if(_xtbNorm(posCell)==='total') break;
+        const sym=col['symbol']!=null?row[col['symbol']]:null;
+        if(!sym) continue;
+        const g=name=>{ const idx=col[name]; if(idx==null) return 0; const v=row[idx]; const n=typeof v==='number'?v:parseFloat(v); return isNaN(n)?0:n; };
+        const pv=g('purchase value'), pl=g('gross p/l'), vol=g('volume'), mp=g('market price');
+        const ot=_xtbDate(col['open time']!=null?row[col['open time']]:null);
+        const s=String(sym).trim();
+        if(!posMap[s]) posMap[s]={symbol:s,purchaseValue:0,grossPL:0,marketValue:0,volume:0,count:0,marketPrice:0,firstBuy:null,lastBuy:null};
+        const P=posMap[s];
+        P.purchaseValue+=pv; P.grossPL+=pl; P.marketValue+=pv+pl; P.volume+=vol; P.count++;
+        if(mp) P.marketPrice=mp;
+        if(ot){ if(P.firstBuy==null||ot<P.firstBuy) P.firstBuy=ot; if(P.lastBuy==null||ot>P.lastBuy) P.lastBuy=ot; }
+      }
+    }
+  }
+  const positions=Object.values(posMap);
+  positions.forEach(p=>{ p.avgBuyPrice=p.volume>0?p.purchaseValue/p.volume:0; });
+  positions.sort((a,b)=>b.marketValue-a.marketValue);
+  return {equity, balance, positions};
+}
+async function importXTB(file){
+  if(!file) return;
+  try{
+    const buf=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=rej; r.readAsArrayBuffer(file); });
+    const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+    const {equity, positions}=parseXTB(wb);
+    if(equity==null){ alert('V súbore sa nepodarilo nájsť hodnotu účtu (Equity). Skontroluj, či je to XTB export.'); return; }
+    if(!Array.isArray(netWorthItems)) netWorthItems=[];
+    let it=netWorthItems.find(x=>x.side==='asset'&&x.kind==='investment'&&/xtb/i.test(x.name||''));
+    if(it){ it.value=Math.round(equity*100)/100; it.xtbPositions=positions; it.xtbUpdated=Date.now(); }
+    else netWorthItems.push({id:'nw_'+Math.random().toString(36).slice(2),name:'XTB',side:'asset',kind:'investment',value:Math.round(equity*100)/100,xtbPositions:positions,xtbUpdated:Date.now()});
+    _nwSnapshotNow(); saveD(); renderNetWorth();
+    alert(`XTB import OK\nHodnota účtu: ${equity.toFixed(2)} €\nPozícií: ${positions.length}`);
+  }catch(err){ alert('Chyba pri čítaní XTB súboru: '+(err&&err.message||err)); }
+}
+function setFundName(symbol){
+  const cur=fundNames[symbol]||'';
+  const name=prompt('Skutočný názov fondu pre '+symbol+':', cur);
+  if(name===null) return;
+  if(name.trim()) fundNames[symbol]=name.trim(); else delete fundNames[symbol];
+  saveD(); renderNetWorth();
+}
+function _fundLabel(symbol){ return fundNames[symbol]||symbol; }
+function _drawNwPie(agg){
+  const cv=document.getElementById('c-nw-pie'); if(!cv||agg.length<1) return;
+  const tip=document.getElementById('c-nw-pie-tip'), ctx=cv.getContext('2d');
+  const W=cv.offsetWidth||300,H=210,dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';ctx.scale(dpr,dpr);
+  const total=agg.reduce((s,p)=>s+Math.max(0,p.marketValue),0); if(!total) return;
+  const PIE=['#4a9fd4','#5bc17c','#d8a85e','#b57cd8','#d06868','#5ec8c8','#c8a45e','#8a9a5e','#7c9fd8','#d87ca8'];
+  const cx=W/2,cy=H/2-6,r=Math.min(cx,cy)-16;
+  const arcs=[];let ang=-Math.PI/2;
+  agg.forEach((p,i)=>{ const sw=(Math.max(0,p.marketValue)/total)*Math.PI*2; arcs.push({p,sw,startAng:ang,col:PIE[i%PIE.length]}); ang+=sw; });
+  const isLight=document.body.classList.contains('light');
+  function draw(hov=-1){
+    ctx.clearRect(0,0,W,H);
+    arcs.forEach((a,i)=>{ const rr=i===hov?r+5:r;
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,rr,a.startAng,a.startAng+a.sw);ctx.closePath();
+      ctx.fillStyle=a.col+(i===hov?'':'cc');ctx.fill();ctx.strokeStyle=isLight?'rgba(255,255,255,.6)':'rgba(13,17,23,.6)';ctx.lineWidth=1;ctx.stroke(); });
+    ctx.beginPath();ctx.arc(cx,cy,r*.55,0,Math.PI*2);ctx.fillStyle=isLight?'#f0f4f8':'#1c1c1c';ctx.fill();
+    ctx.fillStyle=isLight?'#1a2a38':'#edeae4';ctx.font="600 13px 'Syne',sans-serif";ctx.textAlign='center';ctx.fillText(fabs(total),cx,cy-1);
+    ctx.fillStyle=isLight?'#6b8299':'#888';ctx.font="9px 'DM Mono',monospace";ctx.fillText('portfólio',cx,cy+13);
+  }
+  draw();
+  makePinnable(cv,{tipEl:tip,redrawFn:draw,
+    hitFn:e=>{ const rect=cv.getBoundingClientRect(); const mx=(e.clientX||e.touches?.[0]?.clientX||0)-rect.left, my=(e.clientY||e.touches?.[0]?.clientY||0)-rect.top; const dx=mx/rect.width*W-cx, dy=my/rect.height*H-cy; const dist=Math.hypot(dx,dy); if(dist>r||dist<r*.55) return -1; let a=Math.atan2(dy,dx); if(a<-Math.PI/2)a+=Math.PI*2; let acc=-Math.PI/2; for(let i=0;i<arcs.length;i++){ if(a>=acc&&a<acc+arcs[i].sw) return i; acc+=arcs[i].sw; } return -1; },
+    tipFn:idx=>{ if(idx<0)return null; const p=arcs[idx].p; const pct=(p.marketValue/total*100).toFixed(1);
+      return `<strong>${esc(_fundLabel(p.symbol))}</strong><br><span style="color:var(--mu)">${esc(p.symbol)}</span><br>hodnota ${fabs(p.marketValue)} (${pct}%)<br><span style="color:${p.grossPL>=0?'var(--grn)':'var(--red)'}">zisk ${p.grossPL>=0?'+':'−'}${fabs(Math.abs(p.grossPL))}</span>`; },
+    positionFn:(e,rect)=>({left:Math.min((e.clientX||0)-rect.left+12,W-160),top:8}),
+    borderColorFn:idx=>arcs[idx]?arcs[idx].col:'#4a9fd4'});
+}
+function _renderInvChart(){
+  const cv=document.getElementById('c-inv'); if(!cv) return;
+  const snaps=_nwInvSnaps; if(!snaps||snaps.length<2) return;
+  const tip=document.getElementById('c-inv-tip'), ctx=cv.getContext('2d');
+  const W=cv.offsetWidth||700,H=180,dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';ctx.scale(dpr,dpr);
+  const vVals=snaps.map(s=>s.invValue), iVals=snaps.map(s=>s.invested||0);
+  const allV=[...vVals,...iVals,0], maxV=Math.max(...allV), minV=Math.min(...allV), range=(maxV-minV)||1;
+  const pd={l:56,r:14,t:14,b:24},cW=W-pd.l-pd.r,cH=H-pd.t-pd.b;
+  const xOf=i=>pd.l+(snaps.length===1?cW/2:(i/(snaps.length-1))*cW);
+  const yOf=v=>pd.t+cH-((v-minV)/range)*cH;
+  const isLight=document.body.classList.contains('light');
+  function draw(hov=-1){
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<=4;i++){ const v=minV+(range*i/4),y=yOf(v); ctx.strokeStyle=isLight?'#d0d8e0':'#1c2733';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(pd.l,y);ctx.lineTo(W-pd.r,y);ctx.stroke(); ctx.fillStyle=isLight?'#5a7a95':'#7a9ab5';ctx.font="9px 'DM Mono',monospace";ctx.textAlign='right';ctx.fillText(v.toFixed(0)+'€',pd.l-4,y+3); }
+    ctx.strokeStyle='#7a9ab5';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.beginPath();snaps.forEach((s,i)=>{const x=xOf(i),y=yOf(iVals[i]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle='#5bc17c';ctx.lineWidth=2;ctx.beginPath();snaps.forEach((s,i)=>{const x=xOf(i),y=yOf(vVals[i]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+    snaps.forEach((s,i)=>{const x=xOf(i),y=yOf(vVals[i]);ctx.fillStyle='#5bc17c';ctx.beginPath();ctx.arc(x,y,i===hov?5:3.5,0,Math.PI*2);ctx.fill();if(i===hov){ctx.strokeStyle=isLight?'#fff':'#0a0f14';ctx.lineWidth=1.5;ctx.stroke();}});
+    const step=Math.max(1,Math.ceil(snaps.length/8));
+    snaps.forEach((s,i)=>{if(i%step===0){const[y,m]=s.ym.split('-');ctx.fillStyle=isLight?'#5a7a95':'#7a9ab5';ctx.font="8px 'DM Mono',monospace";ctx.textAlign='center';ctx.fillText(`${+m}.${y.slice(2)}`,xOf(i),H-4);}});
+  }
+  draw();
+  makePinnable(cv,{tipEl:tip,redrawFn:draw,
+    hitFn:e=>{const rect=cv.getBoundingClientRect();const mx=((e.clientX||e.touches?.[0]?.clientX||0)-rect.left)/rect.width*W;let best=-1,bd=Infinity;snaps.forEach((_,i)=>{const dd=Math.abs(mx-xOf(i));if(dd<bd){bd=dd;best=i;}});return bd<40?best:-1;},
+    tipFn:idx=>{if(idx<0)return null;const s=snaps[idx];const[y,m]=s.ym.split('-');const gain=s.invValue-(s.invested||0);
+      return `<strong>${+m}.${y}</strong><br><span style="color:var(--grn)">hodnota ${fabs(s.invValue)}</span><br><span style="color:var(--mu)">vložené ${fabs(s.invested||0)}</span><br><span style="color:${gain>=0?'var(--grn)':'var(--red)'};font-weight:700">zisk ${gain>=0?'+':'−'}${fabs(Math.abs(gain))}</span>`;},
+    positionFn:(e,rect)=>({left:Math.min((e.clientX||0)-rect.left+12,W-150),top:8}),
+    borderColorFn:()=>'#5bc17c'});
 }
 
 function drawBars(id, dataFn, h) {
@@ -3312,6 +3841,105 @@ let _expandedTagCats = new Set(); // which category bars are expanded
 let _expandedTagIncCats = new Set(); // which income category bars are expanded
 const TAG_PALETTE=['#4a9fd4','#e05c5c','#50c8a0','#f59e0b','#a78bfa','#fb7185'];
 function _tagColor(tag,allTags){return TAG_PALETTE[allTags.indexOf(tag)%TAG_PALETTE.length];}
+
+// ── SPRÁVA TAGOV (záložka Dáta → Tagy) ─────────────────────────────
+let _tgEditing=null;
+function _tagUsage(name){ let n=0; for(const t of TX){ if((t.tags||[]).includes(name)) n++; } return n; }
+
+function renderTagManager(){
+  const host=document.getElementById('tag-manager'); if(!host) return;
+  const tags=[...getAllTags()].sort((a,b)=>a.localeCompare(b,'sk'));
+  if(!tags.length){ host.innerHTML='<div class="empty-state">Zatiaľ žiadne tagy. Pridávaj ich v detaile transakcie alebo hromadne v Transakciách.</div>'; _tgEditing=null; return; }
+  const rows=tags.map(tag=>{
+    const cnt=_tagUsage(tag);
+    const excl=excludedTags.has(tag);
+    if(tag===_tgEditing){
+      return `<div class="tg-row tg-editing">
+        <input type="text" id="tg-rename-inp" class="tg-inp" value="${esc(tag)}" onkeydown="tgRenameKey(event)">
+        <button class="tg-ok" onclick="tgConfirmRename()" title="Uložiť">✓</button>
+        <button class="cr-x" onclick="tgCancelRename()" title="Zrušiť">✕</button>
+        <span class="tg-hint">Premenuj na existujúci tag = zlúčenie</span>
+      </div>`;
+    }
+    const others=tags.filter(t=>t!==tag);
+    const mergeSel = others.length?`<select class="tg-merge" title="Zlúčiť tento tag do iného" onchange="if(this.value){tgMerge('${escA(tag)}',this.value);}">
+        <option value="">🔗 zlúčiť…</option>
+        ${others.map(t=>`<option value="${escA(t)}">${esc(t)}</option>`).join('')}
+      </select>`:'';
+    return `<div class="tg-row">
+      <span class="tg-name">${esc(tag)}</span>
+      <button class="tg-cnt" title="zobraziť transakcie s týmto tagom" onclick="filterByTag('${escA(tag)}')">${cnt}×</button>
+      <button class="tg-excl${excl?' on':''}" onclick="toggleExclTag('${escA(tag)}');renderTagManager()" title="${excl?'Zahrnúť späť do analýzy':'Vylúčiť z analýzy'}">${excl?'🚫 vylúčený':'⊘ vylúčiť z analýzy'}</button>
+      <button class="cr-x" onclick="tgStartRename('${escA(tag)}')" title="Premenovať">✎</button>
+      ${mergeSel}
+      <button class="cr-x cr-del" onclick="tgDelete('${escA(tag)}')" title="Zmazať tag zo všetkých transakcií">✕</button>
+    </div>`;
+  }).join('');
+  host.innerHTML=`<div class="tg-info">Spolu <strong>${tags.length}</strong> ${tags.length===1?'tag':(tags.length<5?'tagy':'tagov')}. Premenovanie/zlúčenie/zmazanie sa prejaví naprieč všetkými transakciami.</div><div class="tg-list">${rows}</div>`;
+}
+
+function tgStartRename(tag){ _tgEditing=tag; renderTagManager(); setTimeout(()=>{const i=document.getElementById('tg-rename-inp'); if(i){i.focus();i.select();}},40); }
+function tgCancelRename(){ _tgEditing=null; renderTagManager(); }
+function tgRenameKey(e){ if(e.key==='Enter'){e.preventDefault();tgConfirmRename();} else if(e.key==='Escape'){e.preventDefault();tgCancelRename();} }
+function tgConfirmRename(){
+  const inp=document.getElementById('tg-rename-inp'); if(!inp) return;
+  const old=_tgEditing, nw=(inp.value||'').trim();
+  _tgEditing=null;
+  if(!old){ renderTagManager(); return; }
+  if(!nw){ alert('Názov tagu nemôže byť prázdny.'); renderTagManager(); return; }
+  if(nw===old){ renderTagManager(); return; }
+  const exists=getAllTags().has(nw);
+  if(exists && !confirm(`Tag „${nw}" už existuje — premenovaním sa „${old}" zlúči doň. Pokračovať?`)){ renderTagManager(); return; }
+  renameTag(old,nw);
+}
+
+// premenovanie/zlúčenie: oldName → newName naprieč TX aj deletedTX (+ excludedTags, _activeTagTags)
+function renameTag(oldName,newName){
+  newName=(newName||'').trim(); if(!newName||newName===oldName) return;
+  const apply=arr=>arr.forEach(tx=>{
+    if(!tx.tags||!tx.tags.length) return;
+    if(!tx.tags.includes(oldName)) return;
+    tx.tags=[...new Set(tx.tags.map(t=>t===oldName?newName:t))];   // map + dedupe (zlúčenie)
+    if(!tx.tags.length) delete tx.tags;
+  });
+  apply(TX); apply(deletedTX);
+  if(excludedTags.delete(oldName)) excludedTags.add(newName);
+  if(_activeTagTags.delete(oldName)) _activeTagTags.add(newName);
+  saveD(); _afterTagChange();
+}
+function tgMerge(src,dst){
+  if(!dst||src===dst) { renderTagManager(); return; }
+  if(!confirm(`Zlúčiť tag „${src}" do „${dst}"? Všetky transakcie s „${src}" dostanú „${dst}".`)){ renderTagManager(); return; }
+  renameTag(src,dst);
+}
+function tgDelete(name){
+  const cnt=_tagUsage(name);
+  if(!confirm(`Zmazať tag „${name}"${cnt?` z ${cnt} transakci${cnt===1?'e':(cnt<5?'í':'í')}`:''}? Transakcie zostanú, odstráni sa len tag.`)) return;
+  const strip=arr=>arr.forEach(tx=>{
+    if(!tx.tags) return;
+    const before=tx.tags.length;
+    tx.tags=tx.tags.filter(t=>t!==name);
+    if(tx.tags.length!==before && !tx.tags.length) delete tx.tags;
+  });
+  strip(TX); strip(deletedTX);
+  excludedTags.delete(name); _activeTagTags.delete(name);
+  saveD(); _afterTagChange();
+}
+// po zmene tagov prerenderuj všetko závislé
+function _afterTagChange(){
+  renderTagManager();
+  try{ updateTagFilter(); }catch(e){}
+  try{ if(typeof renderTxPage==='function') renderTxPage(); }catch(e){}
+  try{ if(typeof updateBadges==='function') updateBadges(); }catch(e){}
+  try{
+    if(document.getElementById('pg-analyza')?.classList.contains('on')){
+      renderExclTagChips();
+      const tr=document.getElementById('an-tag-report');
+      if(tr && tr.style.display!=='none') renderTagReport(); else renderPivot();
+    }
+  }catch(e){}
+}
+
 
 function renderTagReport(){
   const wrap=document.getElementById('an-tag-report'); if(!wrap) return;
@@ -4421,7 +5049,7 @@ function addRuleFromTx(){
   const kw=tx.merchant||tx.place||'';
   document.getElementById('r-kw').value=kw;
   document.getElementById('r-cat').value=tx.category||'ostatne';
-  cm('m-det'); go('rules');
+  cm('m-det'); go('data'); dataSub('catrules');
 }
 
 function filterByCat(catId){
@@ -4429,6 +5057,14 @@ function filterByCat(catId){
   setTimeout(()=>{
     const sel=document.getElementById('f-cat');
     if(sel){sel.value=catId;renderTx();}
+  },50);
+}
+function filterByTag(tag){
+  go('transactions');
+  setTimeout(()=>{
+    if(typeof updateTagFilter==='function') updateTagFilter();
+    const sel=document.getElementById('f-tag');
+    if(sel){sel.value=tag;renderTx();}
   },50);
 }
 function cm(id){document.getElementById(id).classList.remove('on');}
@@ -4553,79 +5189,267 @@ function initRuleCatSelect(){
 }
 
 function renderRules(){
-  initRuleCatSelect();
-  renderCatGrid();
-  const con = document.getElementById('rules-container');
-  if (!rules.length) {
-    con.innerHTML = '<div class="empty-state">Žiadne vlastné pravidlá. Pridaj ich vyššie.</div>';
-    return;
-  }
-  const CAT = getCAT();
-  const amtLabels={lt:'<',gt:'>',eq:'='};
-  con.innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="rules-tbl" style="min-width:520px">
-    <thead><tr>
-      <th style="width:28px">#</th>
-      <th>Kľúčové slovo</th>
-      <th>Pole</th>
-      <th>Suma</th>
-      <th>Kategória</th>
-      <th>Splátka KK</th>
-      <th></th>
-    </tr></thead>
-    <tbody>${rules.map((r,i)=>{
-      const cat=CAT[r.category]||{l:r.category,c:'#4a6070'};
-      const fieldLabels={any:'kdekoľvek',merchant:'obchodník',place:'miesto',description:'popis',info:'info príjemcu',iban:'IBAN',vs:'VS',ref:'referencia'};
-      const amtStr=r.amtOp&&r.amtVal?`${amtLabels[r.amtOp]} ${fabs(r.amtVal)}`:'—';
-      const fieldStr=fieldLabels[r.field]||r.field;
-      return`<tr>
-        <td class="rule-src">${i+1}</td>
-        <td style="max-width:160px"><span class="kw-badge" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom">${r.keyword}</span></td>
-        <td class="rule-src">${fieldStr}</td>
-        <td class="rule-src">${amtStr}</td>
-        <td style="white-space:nowrap"><span style="color:${cat.c}">■</span> <span style="cursor:pointer" onclick="filterByCat('${r.category}')">${cat.l}</span></td>
-        <td class="rule-src" style="text-align:center">${r.isSplatka?'<span style="color:var(--grn)">✓</span>':'—'}</td>
-        <td style="display:flex;gap:4px;padding:4px 6px">
-          <button class="btn" style="padding:3px 7px;font-size:10px" onclick="openRuleEdit('${r.id}')" title="Upraviť">✎</button>
-          <button class="btn danger" style="padding:3px 8px;font-size:10px" onclick="deleteRule('${r.id}')">✕</button>
-        </td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table></div>`;
+  initRuleCatSelect();      // bezpečné: r-cat už neexistuje, funkcia má guard
+  renderCatGrid();          // karty kategórií vrátane vnorených pravidiel
 }
 
 // ==================== CUSTOM CATEGORIES ====================
-function renderCatGrid(){
-  const catd=getCatD();
-  const roots=catd.filter(c=>!c.parentId);
-  const rows=roots.map(cat=>{
-    const subs=catd.filter(c=>c.parentId===cat.id);
-    const emoji=cat.emoji?`<span style="margin-right:4px">${cat.emoji}</span>`:'';
-    const inv=cat.isInvestment?`<span style="font-size:9px;color:var(--grn);margin-left:3px">💹</span>`:'';
-    // Root row
-    let html=`<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:${subs.length?'6px 6px 0 0':'6px'};font-size:11px;font-weight:600">
-      <div style="width:11px;height:11px;border-radius:50%;background:${cat.c};flex-shrink:0;cursor:pointer" onclick="openCatEditModal(null,'${cat.id}')" title="Upraviť farbu"></div>
-      <span style="flex:1">${emoji}${cat.l}${inv}</span>
-      <button class="cat-chip-del" onclick="openCatEditModal(null,null,'${cat.id}')" title="Pridať podkategóriu" style="color:var(--grn);font-size:13px;font-weight:700;padding:0 4px">+</button>
-      <button class="cat-chip-del" onclick="openCatEditModal(null,'${cat.id}')" title="Upraviť" style="color:var(--mu);font-size:11px">✎</button>
-      <button class="cat-chip-del" onclick="deleteCat('${cat.id}')" title="Zmazať" style="font-size:12px">✕</button>
+// ── Stav: rozbalenie (list), hľadanie, view-mód, otvorený panel ──
+let _catRulesExpanded=new Set();
+let _crSearch='';
+let _crView=(()=>{try{return localStorage.getItem('fintb_crView')||'list';}catch(e){return 'list';}})();
+let _crPanelCat=null;
+const _CR_FIELD_LBL={any:'kdekoľvek',merchant:'obchodník',place:'miesto',description:'popis',info:'info príjemcu',iban:'IBAN',vs:'VS',ref:'referencia'};
+const _CR_AMT_LBL={lt:'<',gt:'>',eq:'='};
+function _plSk(n,one,few,many){ n=Math.abs(n); if(n===1)return one; if(n>=2&&n<=4)return few; return many; }
+
+// Pravidlá smerujúce do kategórie alebo jej podkategórií (so zachovaním globálneho indexu = precedencia)
+function _rulesForCat(rootId){
+  const set=new Set([rootId,...getSubcatIds(rootId)]);
+  const out=[]; rules.forEach((r,i)=>{ if(set.has(r.category)) out.push({r,gi:i}); }); return out;
+}
+function _orphanRules(){
+  const CAT=getCAT(); const out=[];
+  rules.forEach((r,i)=>{ if(!r.category||!CAT[r.category]) out.push({r,gi:i}); }); return out;
+}
+function _txCountForCat(rootId){
+  const set=new Set([rootId,...getSubcatIds(rootId)]);
+  let n=0; for(const t of TX){ if(set.has(t.category)) n++; } return n;
+}
+function _crHL(s,q){ s=esc(s); if(!q) return s;
+  try{ const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig'); return s.replace(re,'<span class="cr-hl">$1</span>'); }catch(e){ return s; }
+}
+function _crRuleRow(r,gi,homeCatId,CAT,q){
+  const tgt=CAT[r.category];
+  const tgtLabel=(r.category&&r.category!==homeCatId)?`<span class="cr-rtag" style="color:${tgt?tgt.c:'var(--mu)'}">↳ ${esc(tgt?tgt.l:r.category)}</span>`:'';
+  const amtStr=(r.amtOp&&r.amtVal)?`<span class="cr-ramt">${_CR_AMT_LBL[r.amtOp]||''} ${fabs(r.amtVal)}</span>`:'';
+  const sp=r.isSplatka?`<span class="cr-rsp" title="Splátka kreditnej karty">KK</span>`:'';
+  return `<div class="cr-rule">
+      <span class="cr-rnum" title="globálna precedencia">#${gi+1}</span>
+      <span class="cr-rkw">${_crHL(r.keyword,q)}</span>
+      <span class="cr-rfield">${_CR_FIELD_LBL[r.field]||r.field||''}</span>
+      ${amtStr}${tgtLabel}${sp}
+      <span class="cr-ractions">
+        <button class="cr-x" onclick="event.stopPropagation();moveRule('${r.id}',-1)" title="Vyššia precedencia">↑</button>
+        <button class="cr-x" onclick="event.stopPropagation();moveRule('${r.id}',1)" title="Nižšia precedencia">↓</button>
+        <button class="cr-x" onclick="event.stopPropagation();openRuleEdit('${r.id}')" title="Upraviť">✎</button>
+        <button class="cr-x cr-del" onclick="event.stopPropagation();deleteRule('${r.id}')" title="Zmazať">✕</button>
+      </span>
     </div>`;
-    // Subcat rows
-    if(subs.length){
-      html+=subs.map((s,i)=>{
-        const se=s.emoji?`<span style="margin-right:4px">${s.emoji}</span>`:'';
-        const last=i===subs.length-1;
-        return`<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 22px;background:var(--s1);border:1px solid var(--bd);border-top:none;border-radius:${last?'0 0 6px 6px':'0'};font-size:11px">
-          <span style="color:var(--mu);font-size:10px;flex-shrink:0">↳</span>
-          <div style="width:9px;height:9px;border-radius:50%;background:${s.c};flex-shrink:0;cursor:pointer" onclick="openCatEditModal(null,'${s.id}')" title="Upraviť farbu"></div>
-          <span style="flex:1;color:var(--mu)">${se}${s.l}</span>
-          <button class="cat-chip-del" onclick="openCatEditModal(null,'${s.id}')" title="Upraviť" style="font-size:11px">✎</button>
-          <button class="cat-chip-del" onclick="deleteCat('${s.id}')" title="Zmazať" style="font-size:12px">✕</button>
-        </div>`;
-      }).join('');
-    }
-    return`<div>${html}</div>`;
-  }).join('');
-  document.getElementById('cat-grid').innerHTML=rows;
+}
+function _crSubChips(subs){
+  return `<div class="cr-subs">`+subs.map(s=>`<span class="cr-sub">
+      <span class="cr-dot" style="background:${s.c}" onclick="event.stopPropagation();openCatEditModal(null,'${s.id}')" title="Upraviť"></span>
+      ${s.emoji?`<span class="cr-emo">${esc(s.emoji)}</span>`:''}${esc(s.l)}
+      <button class="cr-x" onclick="event.stopPropagation();openCatEditModal(null,'${s.id}')" title="Upraviť">✎</button>
+      <button class="cr-x cr-del" onclick="event.stopPropagation();deleteCat('${s.id}')" title="Zmazať">✕</button>
+    </span>`).join('')+`</div>`;
+}
+
+// ── LIST (accordion) riadok ──
+function _crListRow(cat,catd,CAT,q){
+  const subs=catd.filter(c=>c.parentId===cat.id);
+  const allRules=_rulesForCat(cat.id);
+  const matchKw=r=> !q || (r.keyword||'').toLowerCase().includes(q);
+  const nameHit = q? cat.l.toLowerCase().includes(q) : true;
+  const shown = q? allRules.filter(x=>matchKw(x.r)) : allRules;
+  if(q && shown.length===0 && !nameHit) return '';
+  const expanded = q ? true : _catRulesExpanded.has(cat.id);
+  const emoji=cat.emoji?`<span class="cr-emo">${esc(cat.emoji)}</span>`:'';
+  const inv=cat.isInvestment?`<span title="investičná" style="font-size:9px;color:var(--grn);margin-left:3px">💹</span>`:'';
+  const txc=_txCountForCat(cat.id);
+  const cntLabel=q?`(${shown.length}/${allRules.length})`:`(${allRules.length})`;
+  const ruleRows=shown.length? shown.map(x=>_crRuleRow(x.r,x.gi,cat.id,CAT,q)).join('') : `<div class="cr-norules">Žiadne pravidlá pre túto kategóriu.</div>`;
+  return `<div class="crl-row${expanded?' on':''}">
+    <div class="crl-head" onclick="toggleCatRules('${cat.id}')">
+      <span class="crl-caret">${expanded?'▾':'▸'}</span>
+      <span class="cr-dot cr-dot-lg" style="background:${cat.c}" onclick="event.stopPropagation();openCatEditModal(null,'${cat.id}')" title="Upraviť farbu"></span>
+      <span class="crl-name">${emoji}${esc(cat.l)}${inv}</span>
+      <span class="crl-badges">
+        <span class="crl-badge crl-badge-rules" title="počet pravidiel">${allRules.length} ♢</span>
+        ${txc?`<span class="crl-badge crl-badge-tx" title="transakcií — klikni pre filter" onclick="event.stopPropagation();filterByCat('${cat.id}')">${txc}×</span>`:''}
+      </span>
+      <span class="crl-actions">
+        <button class="cr-x cr-add" onclick="event.stopPropagation();openCatEditModal(null,null,'${cat.id}')" title="Pridať podkategóriu">+</button>
+        <button class="cr-x" onclick="event.stopPropagation();openCatEditModal(null,'${cat.id}')" title="Upraviť">✎</button>
+        <button class="cr-x cr-del" onclick="event.stopPropagation();deleteCat('${cat.id}')" title="Zmazať">✕</button>
+      </span>
+    </div>
+    <div class="crl-body${expanded?' on':''}" id="crb-${cat.id}">
+      ${subs.length?`<span class="crl-lbl">Podkategórie</span>${_crSubChips(subs)}`:''}
+      <div class="crl-lbl-row"><span class="crl-lbl">Pravidlá ${cntLabel}</span><button class="cr-addrule" onclick="event.stopPropagation();openRuleAdd('${cat.id}')">+ pravidlo</button></div>
+      ${ruleRows}
+    </div>
+  </div>`;
+}
+function _crOrphanListRow(q,CAT){
+  const matchKw=r=> !q || (r.keyword||'').toLowerCase().includes(q);
+  const orphans=_orphanRules().filter(x=>matchKw(x.r));
+  if(!orphans.length) return '';
+  const expanded = q ? true : _catRulesExpanded.has('__orphan__');
+  return `<div class="crl-row cr-orphan${expanded?' on':''}">
+    <div class="crl-head" onclick="toggleCatRules('__orphan__')">
+      <span class="crl-caret">${expanded?'▾':'▸'}</span>
+      <span class="cr-dot cr-dot-lg" style="background:var(--red)"></span>
+      <span class="crl-name">⚠ Pravidlá bez platnej kategórie</span>
+      <span class="crl-badges"><span class="crl-badge" style="color:var(--red);border-color:var(--red)">${orphans.length}</span></span>
+    </div>
+    <div class="crl-body${expanded?' on':''}" id="crb-__orphan__">
+      <div class="crl-lbl-row"><span class="crl-lbl">Oprav cez ✎ alebo zmaž</span></div>
+      ${orphans.map(x=>_crRuleRow(x.r,x.gi,'__orphan__',CAT,q)).join('')}
+    </div>
+  </div>`;
+}
+
+// ── GRID dlaždica ──
+function _crGridCard(cat){
+  const allRules=_rulesForCat(cat.id);
+  const txc=_txCountForCat(cat.id);
+  const emoji=cat.emoji?`<span class="crg-emoji">${esc(cat.emoji)}</span>`:'';
+  const inv=cat.isInvestment?'💹':'';
+  return `<div class="crg-card" onclick="openCrPanel('${cat.id}')" title="Otvoriť detail">
+    <div class="crg-top"><span class="crg-dot" style="background:${cat.c}"></span>${emoji}</div>
+    <div class="crg-name">${esc(cat.l)} ${inv}</div>
+    <div class="crg-meta">${txc} ${_plSk(txc,'transakcia','transakcie','transakcií')}</div>
+    <div class="crg-meta">${allRules.length} ${_plSk(allRules.length,'pravidlo','pravidlá','pravidiel')}</div>
+  </div>`;
+}
+
+function renderCatGrid(){
+  const host=document.getElementById('cat-grid'); if(!host) return;
+  const catd=getCatD(); const roots=catd.filter(c=>!c.parentId); const CAT=getCAT();
+  const q=_crSearch.trim().toLowerCase();
+  document.querySelectorAll('.cr-viewtoggle .cr-vt').forEach(btn=>btn.classList.toggle('on',btn.dataset.v===_crView));
+
+  if(_crView==='grid'){
+    host.className='cat-grid cr-gridmode';
+    const matchCard=cat=> !q || cat.l.toLowerCase().includes(q) || _rulesForCat(cat.id).some(x=>(x.r.keyword||'').toLowerCase().includes(q));
+    let cards=roots.filter(matchCard).map(_crGridCard).join('');
+    const orph=_orphanRules().filter(x=>!q||(x.r.keyword||'').toLowerCase().includes(q));
+    if(orph.length) cards+=`<div class="crg-card crg-orphan" onclick="openCrPanel('__orphan__')" title="Pravidlá bez platnej kategórie">
+        <div class="crg-top"><span class="crg-dot" style="background:var(--red)"></span>⚠</div>
+        <div class="crg-name">Bez kategórie</div>
+        <div class="crg-meta">${orph.length} ${_plSk(orph.length,'pravidlo','pravidlá','pravidiel')}</div>
+        <div class="crg-meta">vyžaduje opravu</div></div>`;
+    host.innerHTML=cards||`<div class="empty-state">${q?'Žiadne kategórie zodpovedajúce hľadaniu.':'Žiadne kategórie.'}</div>`;
+  } else {
+    host.className='cat-grid cr-listmode';
+    let rows=roots.map(cat=>_crListRow(cat,catd,CAT,q)).join('');
+    rows+=_crOrphanListRow(q,CAT);
+    host.innerHTML=rows||`<div class="empty-state">${q?'Žiadne pravidlá zodpovedajúce hľadaniu.':'Žiadne kategórie.'}</div>`;
+  }
+  _crRefreshPanel();
+}
+
+// rozbalenie list-riadku bez plného re-renderu
+function toggleCatRules(rootId){
+  if(_crSearch.trim()) return;
+  const body=document.getElementById('crb-'+rootId); if(!body) return;
+  const open=body.classList.toggle('on');
+  if(open)_catRulesExpanded.add(rootId); else _catRulesExpanded.delete(rootId);
+  const row=body.closest('.crl-row'); if(row) row.classList.toggle('on',open);
+  const caret=row?.querySelector('.crl-caret'); if(caret) caret.textContent=open?'▾':'▸';
+}
+
+function setCrView(v){
+  _crView=v; try{ localStorage.setItem('fintb_crView',v); }catch(e){}
+  if(v==='list') closeCrPanel();
+  renderCatGrid();
+}
+
+// ── Výsuvný panel (grid view) ──
+function openCrPanel(catId){
+  _crPanelCat=catId; renderCrPanel(catId);
+  document.getElementById('cr-panel-bg')?.classList.add('on');
+  const p=document.getElementById('cr-panel'); if(p){ p.classList.add('on'); p.setAttribute('aria-hidden','false'); }
+}
+function closeCrPanel(){
+  _crPanelCat=null;
+  document.getElementById('cr-panel-bg')?.classList.remove('on');
+  const p=document.getElementById('cr-panel'); if(p){ p.classList.remove('on'); p.setAttribute('aria-hidden','true'); }
+}
+function _crRefreshPanel(){
+  if(!_crPanelCat) return;
+  if(_crPanelCat==='__orphan__'){ if(_orphanRules().length===0){ closeCrPanel(); return; } }
+  else if(!getCAT()[_crPanelCat]){ closeCrPanel(); return; }
+  renderCrPanel(_crPanelCat);
+}
+function renderCrPanel(catId){
+  const inner=document.getElementById('cr-panel-inner'); if(!inner) return;
+  const CAT=getCAT();
+  if(catId==='__orphan__'){
+    const orphans=_orphanRules();
+    inner.innerHTML=`<div class="crp-head">
+        <span class="cr-dot cr-dot-lg" style="background:var(--red)"></span>
+        <span class="crp-title">⚠ Bez kategórie</span>
+        <button class="crp-close" onclick="closeCrPanel()" title="Zavrieť">✕</button>
+      </div>
+      <div class="crp-body">
+        <div class="crp-sec"><div class="crp-sec-hd"><span>Pravidlá (${orphans.length})</span></div>
+        ${orphans.map(x=>_crRuleRow(x.r,x.gi,'__orphan__',CAT,'')).join('')||'<div class="cr-norules">Žiadne.</div>'}</div>
+      </div>`;
+    return;
+  }
+  const cat=CAT[catId]; if(!cat){ closeCrPanel(); return; }
+  const catd=getCatD(); const subs=catd.filter(c=>c.parentId===catId);
+  const allRules=_rulesForCat(catId); const txc=_txCountForCat(catId);
+  const emoji=cat.emoji?`<span class="cr-emo">${esc(cat.emoji)}</span>`:'';
+  inner.innerHTML=`<div class="crp-head">
+      <span class="cr-dot cr-dot-lg" style="background:${cat.c}" onclick="openCatEditModal(null,'${catId}')" title="Upraviť farbu"></span>
+      <span class="crp-title">${emoji}${esc(cat.l)}</span>
+      <button class="cr-x" onclick="openCatEditModal(null,'${catId}')" title="Upraviť kategóriu">✎</button>
+      <button class="crp-close" onclick="closeCrPanel()" title="Zavrieť">✕</button>
+    </div>
+    <div class="crp-meta">
+      ${txc?`<span class="crl-badge crl-badge-tx" onclick="filterByCat('${catId}')" title="zobraziť transakcie">${txc}× ${_plSk(txc,'transakcia','transakcie','transakcií')}</span>`:'<span class="crl-badge crl-badge-rules">0 transakcií</span>'}
+      <span class="crl-badge crl-badge-rules">${allRules.length} ${_plSk(allRules.length,'pravidlo','pravidlá','pravidiel')}</span>
+    </div>
+    <div class="crp-body">
+      <div class="crp-sec">
+        <div class="crp-sec-hd"><span>Podkategórie</span><button class="cr-addrule" onclick="openCatEditModal(null,null,'${catId}')">+ pridať</button></div>
+        ${subs.length?_crSubChips(subs):'<div class="cr-norules">Žiadne podkategórie.</div>'}
+      </div>
+      <div class="crp-sec">
+        <div class="crp-sec-hd"><span>Pravidlá (${allRules.length})</span><button class="cr-addrule" onclick="openRuleAdd('${catId}')">+ pridať</button></div>
+        ${allRules.map(x=>_crRuleRow(x.r,x.gi,catId,CAT,'')).join('')||'<div class="cr-norules">Žiadne pravidlá.</div>'}
+      </div>
+    </div>`;
+}
+
+// vyhľadávanie pravidiel
+function catRulesSearch(v){ _crSearch=v||''; renderCatGrid(); }
+
+// prehadzovanie pravidiel v rámci kategórie/podstromu — premietne sa do globálneho poradia
+function moveRule(ruleId,dir){
+  const gi=rules.findIndex(r=>r.id===ruleId); if(gi<0) return;
+  const cat=rules[gi].category;
+  const root=getCatParentId(cat)||cat||'__orphan__';
+  const CAT=getCAT();
+  const set = root==='__orphan__' ? null : new Set([root,...getSubcatIds(root)]);
+  const idxs=[]; rules.forEach((r,i)=>{ const ok = set? set.has(r.category) : (!r.category||!CAT[r.category]); if(ok) idxs.push(i); });
+  const pos=idxs.indexOf(gi); const tpos=pos+dir;
+  if(tpos<0||tpos>=idxs.length) return;
+  const neighbor=idxs[tpos];
+  const [r]=rules.splice(gi,1);
+  const ni = neighbor>gi ? neighbor-1 : neighbor;
+  if(dir<0) rules.splice(ni,0,r); else rules.splice(ni+1,0,r);
+  if(set) _catRulesExpanded.add(root); else _catRulesExpanded.add('__orphan__');
+  saveD(); renderCatGrid();
+}
+
+// pridanie pravidla cez modal (prefCatId voliteľne predvyplní kategóriu)
+function openRuleAdd(prefCatId){
+  _editRuleId=null;
+  const m=document.getElementById('m-rule-edit');
+  const t=m.querySelector('.mt'); if(t) t.textContent='Nové pravidlo';
+  document.getElementById('rule-kw').value='';
+  document.getElementById('re-field').value='any';
+  document.getElementById('re-amt-op').value='';
+  const av=document.getElementById('re-amt-val'); av.value=''; av.style.display='none';
+  document.getElementById('rule-cat').innerHTML=buildCatSelectHtml(prefCatId||'',true);
+  document.getElementById('re-splatka').checked=false;
+  m.classList.add('on');
+  setTimeout(()=>document.getElementById('rule-kw').focus(),80);
 }
 
 function addCustomCat(){ openCatEditModal(); }
@@ -4734,28 +5558,37 @@ let _editRuleId=null;
 function openRuleEdit(id){
   const r=rules.find(x=>x.id===id);if(!r)return;
   _editRuleId=id;
+  const _mt=document.querySelector('#m-rule-edit .mt'); if(_mt)_mt.textContent='Upraviť pravidlo';
   document.getElementById('rule-kw').value=r.keyword||'';
   document.getElementById('re-field').value=r.field||'any';
   document.getElementById('re-amt-op').value=r.amtOp||'';
   const amtVal=document.getElementById('re-amt-val');
   amtVal.value=r.amtVal||'';
   amtVal.style.display=r.amtOp?'':'none';
-  document.getElementById('rule-cat').innerHTML='<option value="">— bez kategórie</option>'+getCatD().map(c=>`<option value="${c.id}"${c.id===r.category?' selected':''}>${c.l}</option>`).join('');
+  document.getElementById('rule-cat').innerHTML=buildCatSelectHtml(r.category,true);
   document.getElementById('re-splatka').checked=!!r.isSplatka;
   document.getElementById('m-rule-edit').classList.add('on');
   setTimeout(()=>document.getElementById('rule-kw').focus(),80);
 }
 function saveRuleEdit(){
-  const r=rules.find(x=>x.id===_editRuleId);if(!r)return;
   const kw=(document.getElementById('rule-kw').value||'').trim().toLowerCase();
   if(!kw){alert('Zadaj kľúčové slovo');return;}
-  r.keyword=kw;
-  r.field=document.getElementById('re-field').value;
-  r.category=document.getElementById('rule-cat').value;
   const amtOp=document.getElementById('re-amt-op').value;
-  r.amtOp=amtOp||undefined;
-  r.amtVal=amtOp?parseFloat(document.getElementById('re-amt-val').value)||undefined:undefined;
-  r.isSplatka=document.getElementById('re-splatka').checked||undefined;
+  const patch={
+    keyword:kw,
+    field:document.getElementById('re-field').value,
+    category:document.getElementById('rule-cat').value,
+    amtOp:amtOp||undefined,
+    amtVal:amtOp?parseFloat(document.getElementById('re-amt-val').value)||undefined:undefined,
+    isSplatka:document.getElementById('re-splatka').checked||undefined
+  };
+  if(_editRuleId){
+    const r=rules.find(x=>x.id===_editRuleId);
+    if(r) Object.assign(r,patch);
+  } else {
+    // nové pravidlo na vrchol = najvyššia precedencia (konzistentné s pôvodným správaním)
+    rules.unshift(Object.assign({id:'r_'+Math.random().toString(36).slice(2),source:'vlastné'},patch));
+  }
   cm('m-rule-edit');saveD();renderRules();
 }
 
@@ -4964,7 +5797,7 @@ async function importRules(inp){
 function exportBackup(){
   const data={
     version:5, exported:new Date().toISOString(),
-    tx:TX.map(sTx), deletedTX:deletedTX.map(sTx), budgets, budgetLimits, budgetMoves, goals, openingBalance, rules, recurDefs, recurIgnored,
+    tx:TX.map(sTx), deletedTX:deletedTX.map(sTx), budgets, budgetLimits, budgetMoves, goals, netWorthItems, netWorthSnapshots, fundNames, openingBalance, rules, recurDefs, recurIgnored,
     customCats, builtinCats:[...BUILTIN_CATS], visCols,
     detFieldsHidden:[...detFieldsHidden],
     ccLimit:document.getElementById('cc-lim')?.value||'',
@@ -4987,7 +5820,7 @@ async function importBackup(inp){
     TX=(data.tx||[]).map(dTx);
     deletedTX=(data.deletedTX||[]).map(dTx);
     migrateDebtLinks(TX); migrateDebtLinks(deletedTX);
-    budgets=data.budgets||{}; budgetLimits=data.budgetLimits||[]; budgetMoves=data.budgetMoves||[]; goals=data.goals||[]; openingBalance=data.openingBalance||0;
+    budgets=data.budgets||{}; budgetLimits=data.budgetLimits||[]; budgetMoves=data.budgetMoves||[]; goals=data.goals||[]; netWorthItems=data.netWorthItems||[]; netWorthSnapshots=data.netWorthSnapshots||[]; fundNames=data.fundNames||{}; openingBalance=data.openingBalance||0;
     recurDefs=data.recurDefs||[]; recurIgnored=data.recurIgnored||[]; rules=data.rules||[]; customCats=data.customCats||[];
     if(data.builtinCats){BUILTIN_CATS.length=0;data.builtinCats.forEach(c=>BUILTIN_CATS.push(c));}
     visCols=data.visCols||['date','main','place','source','cat','amount'];
@@ -5003,7 +5836,7 @@ async function importBackup(inp){
     if(openingBalance){const el=document.getElementById('ob');if(el)el.value=openingBalance;}
     document.getElementById('txc').textContent=TX.length+' transakcií';
     await Store.set('tx',TX.map(sTx)); await Store.set('deleted',deletedTX.map(sTx));
-    await Store.set('budgets',budgets); await Store.set('budgetlimits',budgetLimits); await Store.set('budgetmoves',budgetMoves); await Store.set('goals',goals);
+    await Store.set('budgets',budgets); await Store.set('budgetlimits',budgetLimits); await Store.set('budgetmoves',budgetMoves); await Store.set('goals',goals); await Store.set('networthitems',netWorthItems); await Store.set('networthsnaps',netWorthSnapshots); await Store.set('fundnames',fundNames);
     await Store.set('recurDefs',recurDefs); await Store.set('recurignored',recurIgnored); await Store.set('ob',openingBalance);
     await Store.set('rules',rules); await Store.set('cols',visCols);
     await Store.set('customcats',customCats); await Store.set('builtincats',[...BUILTIN_CATS]);
@@ -8931,7 +9764,7 @@ async function gdSave() {
     const payload = {
       version: 5, exported: new Date().toISOString(),
       tx: TX.map(sTx), deletedTX: deletedTX.map(sTx),
-      budgets, budgetLimits, budgetMoves, goals, openingBalance, rules, recurDefs, recurIgnored,
+      budgets, budgetLimits, budgetMoves, goals, netWorthItems, netWorthSnapshots, fundNames, openingBalance, rules, recurDefs, recurIgnored,
       customCats, builtinCats: [...BUILTIN_CATS], visCols,
       detFieldsHidden: [...detFieldsHidden],
       ccLimit: document.getElementById('cc-lim')?.value || '',
@@ -8981,6 +9814,9 @@ async function gdLoad() {
     budgetLimits = data.budgetLimits || [];
     budgetMoves = data.budgetMoves || [];
     goals = data.goals || [];
+    netWorthItems = data.netWorthItems || [];
+    netWorthSnapshots = data.netWorthSnapshots || [];
+    fundNames = data.fundNames || {};
     openingBalance = data.openingBalance || 0;
     recurDefs = data.recurDefs || [];
     recurIgnored = data.recurIgnored || [];
@@ -9000,7 +9836,7 @@ async function gdLoad() {
     if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
     document.getElementById('txc').textContent = TX.length + ' transakcií';
     await Store.set('tx', TX.map(sTx)); await Store.set('deleted', deletedTX.map(sTx));
-    await Store.set('budgets', budgets); await Store.set('budgetlimits', budgetLimits); await Store.set('budgetmoves', budgetMoves); await Store.set('goals', goals);
+    await Store.set('budgets', budgets); await Store.set('budgetlimits', budgetLimits); await Store.set('budgetmoves', budgetMoves); await Store.set('goals', goals); await Store.set('networthitems', netWorthItems); await Store.set('networthsnaps', netWorthSnapshots); await Store.set('fundnames', fundNames);
     await Store.set('recurDefs', recurDefs); await Store.set('recurignored', recurIgnored); await Store.set('ob', openingBalance);
     await Store.set('rules', rules); await Store.set('customcats', customCats);
     await Store.set('builtincats', [...BUILTIN_CATS]); await Store.set('cols', visCols);
