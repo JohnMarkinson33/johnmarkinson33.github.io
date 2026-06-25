@@ -498,6 +498,39 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 .crp-sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mu);font-family:var(--M)}
 @media(max-width:560px){.cr-panel{width:100vw;max-width:100vw}}
 @media(max-width:700px){.cat-grid.cr-gridmode{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}.crl-actions{opacity:1}}
+
+/* ── Tag report selector (priateľskejší) ── */
+.tgs-wrap{margin-bottom:16px}
+.tgs-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--mu);margin-bottom:8px;font-family:var(--M)}
+.tgs-clear{background:none;border:1px solid var(--bd);color:var(--mu);cursor:pointer;font-size:10px;padding:3px 9px;border-radius:5px;white-space:nowrap;flex-shrink:0}
+.tgs-clear:hover{color:var(--red);border-color:var(--red)}
+.tgs-chips{display:flex;flex-wrap:wrap;gap:6px}
+.tgs-chip{display:inline-flex;align-items:center;border:1px solid var(--bd);border-radius:14px;overflow:hidden;font-size:11px;color:var(--mu);cursor:pointer;transition:border-color .12s,background .12s}
+.tgs-chip:hover{border-color:var(--mu)}
+.tgs-name{padding:5px 4px 5px 11px;cursor:pointer;white-space:nowrap}
+.tgs-name:hover{filter:brightness(1.25)}
+.tgs-tog{background:rgba(255,255,255,.06);border:none;border-left:1px solid var(--bd);color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:4px 9px;font-weight:700;transition:background .12s}
+.tgs-tog:hover{background:rgba(255,255,255,.16)}
+.tgs-chip.on .tgs-tog{border-left-color:rgba(0,0,0,.15)}
+
+/* ── Pohľadávky redizajn + bulk delenie ── */
+.debt-toggle{display:inline-flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden;font-size:10px}
+.debt-toggle button{background:var(--s1);border:none;color:var(--mu);cursor:pointer;padding:5px 12px;font-family:var(--M);transition:background .12s,color .12s}
+.debt-toggle button+button{border-left:1px solid var(--bd)}
+.debt-toggle button.on{background:var(--acc2);color:#08110f}
+.debt-toggle button:hover:not(.on){background:var(--s2);color:var(--txt)}
+.dw-card{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.dw-card.settled{opacity:.62}
+.dw-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:8px;min-width:0}
+.dw-name{font-size:13px;font-weight:600;color:var(--txt);min-width:0}
+.dw-remain{font-family:var(--M);font-weight:700;color:var(--acc2)}
+.dw-bar{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;margin-top:8px}
+.dw-bar>div{height:100%;background:var(--grn);border-radius:3px;transition:width .3s}
+.dw-sub{font-size:10px;color:var(--mu);margin-top:5px;font-family:var(--M)}
+.dw-item{display:flex;align-items:center;gap:7px;font-size:11px;padding:5px 2px;border-top:1px solid rgba(255,255,255,.05)}
+.dw-settled-grp{margin-top:6px}
+.dw-settled-hd{font-size:11px;color:var(--mu);cursor:pointer;padding:8px 2px;font-family:var(--M);user-select:none}
+.dw-settled-hd:hover{color:var(--txt)}
 </style>
 </head>
 <body>
@@ -507,7 +540,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v116</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v120</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -727,9 +760,13 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   </div>
   <!-- POHĽADÁVKY -->
   <div class="cs" id="debt-widget" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">
       <div class="st" style="margin:0">POHĽADÁVKY</div>
       <span id="debt-total" style="font-size:12px;font-weight:700;color:var(--acc2);font-family:var(--M)"></span>
+    </div>
+    <div class="debt-toggle" id="debt-view-toggle" style="margin-bottom:12px">
+      <button data-v="person" onclick="toggleDebtView('person')">Podľa osoby</button>
+      <button data-v="expense" onclick="toggleDebtView('expense')">Podľa výdavku</button>
     </div>
     <div id="debt-list"></div>
   </div>
@@ -802,7 +839,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <button class="icon-b" onclick="openColCfg()" title="Stĺpce">⚙</button>
     <button class="icon-b" onclick="openDeletedModal()" title="Zmazané transakcie" style="color:var(--mu)">🗑</button>
     <button class="icon-b" onclick="openEditedModal()" title="História úprav" style="color:var(--mu)">📝</button>
-    <button class="icon-b" id="bulk-mode-btn" onclick="toggleBulkMode()" title="Hromadná editácia" style="color:var(--mu)">☑</button>
+    <button class="icon-b" id="bulk-mode-btn" onclick="toggleBulkMode()" title="Hromadná editácia (alebo podrž prst / pravý klik na transakciu)" style="color:var(--mu)">☑</button>
     <button class="icon-b" onclick="openCatEditModal()" title="Nová kategória" style="color:var(--acc)">＋🏷</button>
     <span style="color:var(--mu);font-size:10px;margin-left:4px" id="txcnt"></span>
     <span id="uncat-badge" onclick="filterUncat()" style="display:none;cursor:pointer;font-size:10px;margin-left:6px;padding:2px 9px;border-radius:10px;background:rgba(224,160,60,.18);color:#e0a03c;border:1px solid rgba(224,160,60,.5);font-weight:600" title="Klikni pre zobrazenie nezaradených transakcií"></span>
@@ -893,6 +930,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
           <option value="6">Júl</option><option value="7">Aug</option><option value="8">Sep</option>
           <option value="9">Okt</option><option value="10">Nov</option><option value="11">Dec</option>
         </select>
+        <button class="btn" onclick="svMonStep(1)" style="font-size:10px;padding:4px 7px" title="Nasledujúci mesiac">►</button>
       </div>
     </div>
     <div style="position:relative">
@@ -1181,6 +1219,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         <select id="sv-year" onchange="renderSavings()" style="font-size:10px;padding:4px 7px">
           <option value="">Všetky roky</option>
         </select>
+        <button class="btn" onclick="svMonStep(-1)" style="font-size:10px;padding:4px 7px" title="Predchádzajúci mesiac">◄</button>
         <select id="sv-month" onchange="renderSavings()" style="font-size:10px;padding:4px 7px">
           <option value="">Celý rok</option>
           <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
@@ -1202,7 +1241,9 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="st" style="margin:0">PRAVIDELNÉ PLATBY</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button class="btn" onclick="recurMonStep(-1)" style="font-size:11px;padding:5px 9px" title="Predchádzajúci mesiac">◄</button>
         <select id="recur-mon-sel" onchange="renderRecurring()" style="font-size:11px;padding:5px 8px;background:var(--s2);border:1px solid var(--bd);color:var(--txt);border-radius:4px"></select>
+        <button class="btn" onclick="recurMonStep(1)" style="font-size:11px;padding:5px 9px" title="Nasledujúci mesiac">►</button>
         <button class="btn prim" style="font-size:11px;padding:5px 12px" onclick="openRecurEdit(null)">+ Pridať</button>
       </div>
     </div>
@@ -1405,8 +1446,9 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         </div>
         <div id="md-tag-ac" style="display:none;position:absolute;left:0;right:0;top:100%;background:var(--s1);border:1px solid var(--bd);border-top:none;border-radius:0 0 5px 5px;z-index:50;max-height:120px;overflow-y:auto"></div>
       </div>
-      <div style="margin-bottom:10px">
-        <button id="md-excl-btn" onclick="toggleExcluded()" style="font-size:11px;padding:5px 12px;border-radius:5px;border:1px solid var(--bd);background:transparent;color:var(--mu);cursor:pointer;width:100%;text-align:left" title="Vylúči transakciu zo všetkých analýz, grafov a štatistík">⊘ Vylúčiť z analýz</button>
+      <div style="margin-bottom:10px;display:flex;gap:6px">
+        <button id="md-excl-btn" onclick="toggleExcluded()" style="font-size:11px;padding:5px 10px;border-radius:5px;border:1px solid var(--bd);background:transparent;color:var(--mu);cursor:pointer;flex:1;text-align:left" title="Vylúči transakciu zo všetkých analýz, grafov a štatistík">⊘ Vylúčiť z analýz</button>
+        <button onclick="markRecurringFromTx()" style="font-size:11px;padding:5px 10px;border-radius:5px;border:1px solid var(--bd);background:transparent;color:var(--acc);cursor:pointer;flex:1;text-align:left" title="Vytvoriť pravidelnú platbu predvyplnenú z tejto transakcie">🔁 Pravidelná platba</button>
       </div>
       <div id="md-goal-row" style="margin-bottom:12px;padding:10px;background:var(--s2);border-radius:5px">
         <div style="font-size:11px;font-weight:600;margin-bottom:6px">🎯 Sporiaci cieľ</div>
@@ -1468,6 +1510,31 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 </div>
 
 <!-- RULE EDIT MODAL -->
+<!-- HROMADNÉ DELENIE MEDZI OSOBY -->
+<div class="modal-bg" id="m-bulk-share">
+  <div class="modal" style="width:400px">
+    <button class="mc" onclick="cm('m-bulk-share')">✕</button>
+    <div class="mt">Rozdeliť medzi osoby</div>
+    <div id="bs-info" style="font-size:11px;color:var(--mu);margin-bottom:12px;line-height:1.5"></div>
+    <div class="ml">Osoby</div>
+    <div id="bs-people"></div>
+    <button class="btn" onclick="bsAddPerson()" style="font-size:11px;padding:5px 12px;color:var(--acc2);border-color:var(--acc2);margin-top:2px">+ Osoba</button>
+    <div class="ml" style="margin-top:14px">Spôsob delenia</div>
+    <div style="display:flex;gap:14px;font-size:12px;margin-bottom:4px">
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="bs-method" value="equal" checked onchange="bsRenderPeople();_bsToggleMe()" style="accent-color:var(--acc2)"> Rovným dielom</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="bs-method" value="custom" onchange="bsRenderPeople();_bsToggleMe()" style="accent-color:var(--acc2)"> Vlastné podiely (%)</label>
+    </div>
+    <div id="bs-includeme-row" style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:9px 11px;background:var(--s2);border-radius:6px">
+      <input type="checkbox" id="bs-include-me" checked style="width:15px;height:15px;accent-color:var(--grn);flex-shrink:0;cursor:pointer">
+      <label for="bs-include-me" style="font-size:12px;cursor:pointer;flex:1">Deliť vrátane mňa <span style="color:var(--mu);font-size:10px">(napr. 3 osoby + ja = 4 podiely; inak delím len medzi zadané osoby)</span></label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn" onclick="cm('m-bulk-share')" style="flex:1;font-size:12px">Zrušiť</button>
+      <button class="btn prim" onclick="applyBulkShare()" style="flex:1;font-size:12px">Rozdeliť</button>
+    </div>
+  </div>
+</div>
+
 <!-- KATEGÓRIA: výsuvný panel (grid view) -->
 <div class="cr-panel-bg" id="cr-panel-bg" onclick="closeCrPanel()"></div>
 <aside class="cr-panel" id="cr-panel" aria-hidden="true"><div class="cr-panel-inner" id="cr-panel-inner"></div></aside>
@@ -2198,6 +2265,35 @@ function bulkSelectAll(){
   renderTxPage(); _updateBulkBar();
 }
 
+// Vstup do hromadného režimu priamo z transakcie (kdekoľvek v tabuľke):
+// dlhé podržanie (dotyk) alebo pravý klik na riadok/kartu → zapne bulk a označí ju.
+function _enterBulkAndSelect(txid){
+  if(!txid) return;
+  if(!bulkMode){ toggleBulkMode(); }   // zapne bulk (vyčistí výber + re-render)
+  bulkSelected.add(txid);
+  renderTxPage(); _updateBulkBar();
+}
+function _txLongPressInit(){
+  ['tx-bd','tx-cards'].forEach(id=>{
+    const el=document.getElementById(id); if(!el||el._lpInit) return; el._lpInit=true;
+    // pravý klik (desktop)
+    el.addEventListener('contextmenu',e=>{
+      const row=e.target.closest('[data-txid]'); if(!row) return;
+      e.preventDefault(); _enterBulkAndSelect(row.dataset.txid);
+    });
+    // dlhé podržanie (dotyk)
+    let timer=null, moved=false;
+    el.addEventListener('touchstart',e=>{
+      const row=e.target.closest('[data-txid]'); if(!row) return;
+      moved=false;
+      timer=setTimeout(()=>{ timer=null; if(!moved){ try{navigator.vibrate&&navigator.vibrate(15);}catch(_){}; _enterBulkAndSelect(row.dataset.txid); } },480);
+    },{passive:true});
+    el.addEventListener('touchmove',()=>{ moved=true; if(timer){clearTimeout(timer);timer=null;} },{passive:true});
+    el.addEventListener('touchend',()=>{ if(timer){clearTimeout(timer);timer=null;} },{passive:true});
+    el.addEventListener('touchcancel',()=>{ if(timer){clearTimeout(timer);timer=null;} },{passive:true});
+  });
+}
+
 function bulkApplyCat(){
   if(!bulkSelected.size) return;
   _cpBulkMode=true;
@@ -2394,6 +2490,11 @@ function getTxCatAmounts(tx){
   if(tx.splits&&tx.splits.length) return tx.splits;
   return [{category:tx.category, amount:txMyAmount(tx)}];
 }
+// Suma, na ktorú majú sumovať splity:
+//  - bežný výdavok (aj zdieľaný): PLNÁ suma transakcie — splity kategorizujú celý nákup,
+//    vrátky pohľadávok sa rozdelia proporcionálne až v analýze (viď buildPivotData pass 2).
+//  - transakcia, ktorá je SAMA vrátka (debtLink príjem): len zvyšok nad naviazanou sumou.
+function splittableTotal(tx){ return isDebtLink(tx) ? Math.abs(txMyAmount(tx)) : Math.abs(tx.amount); }
 function eMerchant(t){ return t.merchantOverride||t.merchant||'—'; }
 function cycMKey(tx) { return mKey(cycDate(tx)); }
 
@@ -4342,16 +4443,33 @@ function saveIbanNameFromDet(){
 }
 
 function _buildTagSelector(allTags){
-  return '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px">'+
-    allTags.map(t=>{
-      const active=_activeTagTags.has(t);
-      const col=_tagColor(t,allTags);
-      return`<button onclick="_toggleTagReportTag('${escA(t)}')"\
-        style="font-size:11px;padding:4px 12px;border-radius:12px;border:1px solid ${active?col:'var(--bd)'};\
-background:${active?col+'22':'transparent'};color:${active?col:'var(--mu)'};\
-cursor:pointer;font-weight:${active?'700':'400'}">🏷 ${t}</button>`;
-    }).join('')+'</div>';
+  const sel=_activeTagTags;
+  const multi=sel.size>1;
+  const chips=allTags.map(t=>{
+    const active=sel.has(t);
+    const col=_tagColor(t,allTags);
+    const st=active?`border-color:${col};background:${col}22;color:${col}`:'';
+    // celý chip = prepni na LEN tento tag (najčastejšia akcia); malé +/× = porovnanie
+    const tog = (!active)
+      ? `<button class="tgs-tog" onclick="event.stopPropagation();_tagReportToggle('${escA(t)}')" title="Pridať k porovnaniu">+</button>`
+      : (multi ? `<button class="tgs-tog" onclick="event.stopPropagation();_tagReportToggle('${escA(t)}')" title="Odobrať z porovnania">×</button>` : '');
+    return`<span class="tgs-chip${active?' on':''}" style="${st}" onclick="_tagReportOnly('${escA(t)}')" title="Zobraziť len tento tag">\
+      <span class="tgs-name">🏷 ${esc(t)}</span>${tog}\
+    </span>`;
+  }).join('');
+  return`<div class="tgs-wrap">
+    <div class="tgs-hd"><span>${multi?`Porovnávam ${sel.size} ${_plSk(sel.size,'tag','tagy','tagov')} — klik na tag = zobraz len jeho`:'Klik na tag = zobraz ho &nbsp;·&nbsp; <strong>+</strong> = pridať k porovnaniu'}</span>\
+      ${multi?`<button class="tgs-clear" onclick="_tagReportClear()">× zrušiť porovnanie</button>`:''}</div>
+    <div class="tgs-chips">${chips}</div>
+  </div>`;
 }
+function _tagReportOnly(t){ _activeTagTags=new Set([t]); _expandedTagCats=new Set(); _expandedTagIncCats=new Set(); renderTagReport(); }
+function _tagReportToggle(t){
+  if(_activeTagTags.has(t)){ if(_activeTagTags.size>1) _activeTagTags.delete(t); }
+  else _activeTagTags.add(t);
+  _expandedTagCats=new Set(); _expandedTagIncCats=new Set(); renderTagReport();
+}
+function _tagReportClear(){ const first=[..._activeTagTags][0]; _activeTagTags=new Set(first?[first]:[]); _expandedTagCats=new Set(); _expandedTagIncCats=new Set(); renderTagReport(); }
 
 function _toggleTagReportTag(t){
   if(_activeTagTags.has(t)&&_activeTagTags.size>1) _activeTagTags.delete(t);
@@ -4557,7 +4675,7 @@ function _catChipInner(tx){
   if(tx.splits&&tx.splits.length){
     const catD=getCatD();
     const splitsSum=tx.splits.reduce((s,sp)=>s+Math.abs(sp.amount),0);
-    const effAmt=Math.abs(txMyAmount(tx));
+    const effAmt=splittableTotal(tx);
     const inconsistent=splitsSum>effAmt+0.01;
     const dots=tx.splits.map(s=>{
       const c=catD.find(c=>c.id===s.category);
@@ -4610,6 +4728,7 @@ function _txCardHTML(tx){
 }
 
 function renderTxPage(){
+  _txLongPressInit();
   // When using numbered pagination, show only that page's slice
   const start=(txPage-1)*txPgSize;
   // If txPage>1 we are in pagination mode; otherwise show up to txLoadedCount (load-more mode)
@@ -4742,7 +4861,7 @@ function openDet(id){
   if (tx.splits?.length) {
     const CAT = getCAT();
     const splitsSum = tx.splits.reduce((s,sp)=>s+Math.abs(sp.amount),0);
-    const effAmt = Math.abs(txMyAmount(tx));
+    const effAmt = splittableTotal(tx);
     const inconsistent = splitsSum > effAmt + 0.01;
     splitsEl.style.display = 'block';
     splitsEl.innerHTML = tx.splits.map(s => {
@@ -7173,10 +7292,17 @@ function buildPivotData(txs, nb, bucketOf, opts={}){
     TX.filter(t=>t.amount>0&&isDebtLink(t)).forEach(tx=>{
       getDebtLinks(tx).forEach(l=>{
         const expTx=byId.get(l.expTxId); if(!expTx||!txsSet.has(expTx.id))return;
-        const cid=expTx.category||'__none'; if(incMatrix[cid]===undefined)return;
         const bi=bucketOf(expTx); if(bi==null||bi<0)return;
         const linkAmt=typeof l.amount==='number'?l.amount:Math.abs(tx.amount);
-        incMatrix[cid][bi]+=linkAmt; incTotals[cid]+=linkAmt; incBucketTotals[bi]+=linkAmt;
+        const addInc=(cid,amt)=>{ if(incMatrix[cid]===undefined)return; incMatrix[cid][bi]+=amt; incTotals[cid]+=amt; incBucketTotals[bi]+=amt; };
+        if(expTx.splits&&expTx.splits.length){
+          // Rozdeľ vrátku POMERNE medzi split kategórie (podľa veľkosti splitu).
+          const tot=expTx.splits.reduce((s,sp)=>s+Math.abs(sp.amount),0);
+          if(tot>0){ expTx.splits.forEach(sp=>addInc(sp.category||'__none', linkAmt*Math.abs(sp.amount)/tot)); }
+          else addInc(expTx.category||'__none', linkAmt);
+        } else {
+          addInc(expTx.category||'__none', linkAmt);
+        }
       });
     });
   }
@@ -8299,6 +8425,24 @@ function renderComparison(){
   });
 }
 
+// Preklik mesiacov pri "Príjmy vs Výdavky" (◄ ►); s rollom roka ak je zvolený konkrétny rok
+function svMonStep(dir){
+  const mSel=document.getElementById('sv-month'); if(!mSel||!mSel.options.length) return;
+  const ySel=document.getElementById('sv-year');
+  let m=mSel.value;
+  if(m===''){ mSel.value = dir>0?'0':'11'; renderSavings(); return; }
+  let mi=parseInt(m)+dir;
+  if(mi<0||mi>11){
+    if(ySel && ySel.value!==''){
+      const yv=parseInt(ySel.value)+(mi<0?-1:1);
+      const opt=[...ySel.options].find(o=>o.value===String(yv));
+      if(opt){ ySel.value=String(yv); mi=(mi<0?11:0); }
+      else { mi=(mi<0?0:11); }
+    } else { mi=(mi<0?11:0); }
+  }
+  mSel.value=String(mi); renderSavings();
+}
+
 function renderSavings(){
   const selYear=document.getElementById('sv-year')?.value;
   const selMStr=document.getElementById('sv-month')?.value;
@@ -8445,6 +8589,22 @@ function findRecurTx(rec, yr, mo){
     }
     return true;
   });
+}
+
+// Vytvor pravidelnú platbu predvyplnenú z aktuálnej transakcie (z detailu) — bez preťaženia detailu
+function markRecurringFromTx(){
+  const tx=TX.find(t=>t.id===detId); if(!tx){alert('Transakcia sa nenašla');return;}
+  cm('m-det');
+  openRecurEdit(null);                 // otvor plný recur-edit modal s defaultmi
+  const name=tx.merchantOverride||tx.merchant||tx.description||tx.info||'';
+  const set=(id,v)=>{const el=document.getElementById(id); if(el!=null&&v!=null) el.value=v;};
+  set('re-name', name);
+  set('re-kw', (name||'').toLowerCase().slice(0,40));
+  set('re-amt', Math.abs(tx.amount).toFixed(2));
+  const dir=document.getElementById('re-dir'); if(dir) dir.value=tx.amount>=0?'income':'expense';
+  const d=eDate(tx); if(d) set('re-day', String(d.getDate()));
+  const catSel=document.getElementById('re-cat'); if(catSel && tx.category){ catSel.value=tx.category; }
+  setTimeout(()=>{const n=document.getElementById('re-name'); if(n){n.focus();n.select();}},120);
 }
 
 function openRecurEdit(id){
@@ -8636,6 +8796,15 @@ function initRecurMonSel(){
     opts.push(`<option value="${val}"${i===0?' selected':''}>${lbl}</option>`);
   }
   sel.innerHTML=opts.join('');
+}
+
+// Preklik mesiacov v Pravidelných platbách (◄ staršie / ► novšie); options sú zoradené najnovšie→najstaršie
+function recurMonStep(dir){
+  const sel=document.getElementById('recur-mon-sel'); if(!sel||!sel.options.length) return;
+  let i=sel.selectedIndex; if(i<0) i=0;
+  let ni = i - dir;                       // dir=-1 (◄ staršie) → index+1 ; dir=+1 (► novšie) → index-1
+  if(ni<0) ni=0; if(ni>sel.options.length-1) ni=sel.options.length-1;
+  if(ni!==i){ sel.selectedIndex=ni; renderRecurring(); }
 }
 
 // ===== RECURRING HELPERS =====
@@ -9579,86 +9748,171 @@ function _dlUpdateRemainder(tx){
 }
 
 // ── Debt widget ──────────────────────────────────────────────────────────────
+// ── Stav prepínača pohľadávok + bulk delenie ──
+let _debtView=(()=>{try{return localStorage.getItem('fintb_debtView')||'person';}catch(e){return 'person';}})();
+function toggleDebtView(v){ _debtView=v; try{localStorage.setItem('fintb_debtView',v);}catch(e){} renderDebtWidget(); }
+function _debtExpand(id){ const e=document.getElementById(id); if(e) e.style.display=e.style.display==='none'?'block':'none'; }
+function _dwBar(ret,owed){ const pct=owed>0?Math.min(100,Math.round(ret/owed*100)):0; return `<div class="dw-bar"><div style="width:${pct}%"></div></div>`; }
+function _dwDate(d){ return d?d.getDate()+'.'+(d.getMonth()+1)+'.':''; }
+
+// Zostaví zoznam zdieľaných výdavkov s vrátkami a zostatkami (zdieľaný základ pre obe zobrazenia)
+function _debtExpenses(){
+  const retMap={};
+  TX.forEach(t=>{ if(t.amount<=0)return; getDebtLinks(t).forEach(l=>{ if(!l.expTxId||!l.personName)return;
+    const k=l.expTxId+'::'+l.personName; retMap[k]=(retMap[k]||0)+(typeof l.amount==='number'?l.amount:Math.abs(t.amount)); }); });
+  const exps=[];
+  TX.forEach(tx=>{ if(!tx.shared?.people?.length)return;
+    const desc=tx.merchantOverride||tx.merchant||tx.description||'—'; const date=eDate(tx);
+    const people=tx.shared.people.filter(p=>p.name).map(p=>{ const owed=p.amount||0; const ret=retMap[tx.id+'::'+p.name]||0; return {name:p.name,owed,ret,remaining:Math.max(0,owed-ret)}; });
+    const owed=people.reduce((s,p)=>s+p.owed,0), ret=people.reduce((s,p)=>s+Math.min(p.owed,p.ret),0), remaining=people.reduce((s,p)=>s+p.remaining,0);
+    exps.push({id:tx.id,desc,date,people,owed,ret,remaining});
+  });
+  return exps;
+}
+
 function renderDebtWidget(){
   const widget=document.getElementById('debt-widget'); if(!widget)return;
-  const debtMap={};
-  TX.forEach(tx=>{
-    if(!tx.shared?.people?.length)return;
-    const desc=tx.merchantOverride||tx.merchant||tx.description||'—';
-    const date=eDate(tx);
-    tx.shared.people.forEach(p=>{
-      if(!p.name)return;
-      if(!debtMap[p.name])debtMap[p.name]=[];
-      debtMap[p.name].push({expTxId:tx.id,amount:p.amount||0,desc,date});
-    });
-  });
-  const retMap={};
-  TX.forEach(t=>{
-    if(t.amount<=0) return;
-    getDebtLinks(t).forEach(l=>{
-      if(!l.expTxId||!l.personName) return;
-      const key=`${l.expTxId}::${l.personName}`;
-      if(!retMap[key])retMap[key]=[];
-      retMap[key].push({tx:t, linkAmt:typeof l.amount==='number'?l.amount:t.amount});
-    });
-  });
-  const names=Object.keys(debtMap);
-  if(!names.length){widget.style.display='none';return;}
+  const exps=_debtExpenses();
+  if(!exps.length){ widget.style.display='none'; return; }
   widget.style.display='block';
-
-  let grandTotal=0;
-  names.forEach(name=>debtMap[name].forEach(item=>{
-    if(!item.amount)return;
-    const returned=(retMap[`${item.expTxId}::${name}`]||[]).reduce((s,t)=>s+t.amount,0);
-    grandTotal+=Math.max(0,item.amount-returned);
-  }));
-  document.getElementById('debt-total').textContent=
-    grandTotal>0?`Celkom: ${fabs(grandTotal)}`:'✓ Vyrovnané';
-
-  document.getElementById('debt-list').innerHTML=names.map((name,ni)=>{
-    const items=debtMap[name];
-    const safe=name.replace(/[^a-zA-Z0-9]/g,'_');
-    let personTotal=0, hasUnknown=false;
-    items.forEach(item=>{
-      const returned=(retMap[`${item.expTxId}::${name}`]||[]).reduce((s,t)=>s+t.amount,0);
-      if(item.amount) personTotal+=Math.max(0,item.amount-returned);
-      else hasUnknown=true;
-    });
-    return`<div style="padding:8px 0;${ni<names.length-1?'border-bottom:1px solid var(--bd)':''}">
-      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer"
-        onclick="const e=document.getElementById('dp_${safe}');e.style.display=e.style.display==='none'?'block':'none'">
-        <span style="font-size:12px;font-weight:600;color:var(--txt)">${name}</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          ${personTotal>0?`<span style="color:var(--acc2);font-weight:700;font-family:var(--M)">${fabs(personTotal)}</span>`:
-            hasUnknown?`<span style="color:var(--mu);font-size:11px">—</span>`:
-            `<span style="color:var(--grn);font-size:11px">✓</span>`}
-          <span style="color:var(--mu);font-size:10px">▾</span>
-        </div>
-      </div>
-      <div id="dp_${safe}" style="display:none;margin-top:8px">
-        ${items.map(item=>{
-          const rets=retMap[`${item.expTxId}::${name}`]||[];
-          const returned=rets.reduce((s,t)=>s+t.amount,0);
-          const remaining=item.amount?Math.max(0,item.amount-returned):null;
-          const settled=item.amount>0&&remaining===0;
-          return`<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-            <div style="display:flex;align-items:center;gap:6px;font-size:11px">
-              <span style="color:${settled?'var(--grn)':'var(--mu)'};flex-shrink:0">${settled?'✓':'○'}</span>
-              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt);cursor:pointer"
-                onclick="cm('m-det');setTimeout(()=>openDet('${item.expTxId}'),50)">${item.desc}</span>
-              <span style="color:var(--mu);font-size:10px;flex-shrink:0">${item.date?item.date.getDate()+'.'+(item.date.getMonth()+1)+'.':''}</span>
-              ${item.amount?`<span style="color:var(--acc2);font-family:var(--M);flex-shrink:0">${fabs(item.amount)}</span>`:`<span style="color:var(--mu);font-size:10px">—</span>`}
-            </div>
-            ${rets.map(r=>{const rd=eDate(r.tx);return`<div style="font-size:10px;color:var(--grn);margin:2px 0 0 18px;cursor:pointer"
-              onclick="cm('m-det');setTimeout(()=>openDet('${r.tx.id}'),50)">
-              ↩ ${r.tx.merchantOverride||r.tx.merchant||r.tx.description||'platba'}${rd?' · '+rd.getDate()+'.'+(rd.getMonth()+1)+'.':''} · ${fabs(r.linkAmt)}</div>`;}).join('')}
-            ${remaining!==null&&remaining>0?`<div style="font-size:10px;color:var(--mu);margin:2px 0 0 18px">zostatok: ${fabs(remaining)}</div>`:''}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }).join('');
+  const grandRemaining=exps.reduce((s,e)=>s+e.remaining,0);
+  const tot=document.getElementById('debt-total');
+  if(tot) tot.innerHTML = grandRemaining>0.01 ? `Dlhujú mi <span style="color:var(--acc2)">${fabs(grandRemaining)}</span>` : '<span style="color:var(--grn)">✓ Vyrovnané</span>';
+  document.querySelectorAll('#debt-view-toggle button').forEach(b=>b.classList.toggle('on',b.dataset.v===_debtView));
+  const list=document.getElementById('debt-list'); if(!list) return;
+  list.innerHTML = _debtView==='expense' ? _renderDebtByExpense(exps) : _renderDebtByPerson(exps);
 }
+
+function _renderDebtByPerson(exps){
+  const ppl={};
+  exps.forEach(e=>e.people.forEach(p=>{
+    if(!ppl[p.name]) ppl[p.name]={name:p.name,owed:0,ret:0,remaining:0,items:[]};
+    const o=ppl[p.name]; o.owed+=p.owed; o.ret+=Math.min(p.owed,p.ret); o.remaining+=p.remaining;
+    o.items.push({expId:e.id,desc:e.desc,date:e.date,owed:p.owed,ret:Math.min(p.owed,p.ret),remaining:p.remaining});
+  }));
+  const arr=Object.values(ppl);
+  const out=arr.filter(p=>p.remaining>0.01).sort((a,b)=>b.remaining-a.remaining);
+  const settled=arr.filter(p=>p.remaining<=0.01);
+  const itemRow=it=>`<div class="dw-item">
+      <span style="color:${it.remaining<=0.01?'var(--grn)':'var(--mu)'};flex-shrink:0">${it.remaining<=0.01?'✓':'○'}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="cm('m-det');setTimeout(()=>openDet('${it.expId}'),50)">${esc(it.desc)}</span>
+      <span style="color:var(--mu);font-size:10px;flex-shrink:0">${_dwDate(it.date)}</span>
+      <span style="font-family:var(--M);flex-shrink:0;color:${it.remaining<=0.01?'var(--grn)':'var(--acc2)'}">${it.remaining<=0.01?fabs(it.owed):fabs(it.remaining)}</span>
+    </div>`;
+  let html=out.map(p=>{ const safe='dpp_'+p.name.replace(/[^a-zA-Z0-9]/g,'_');
+    return `<div class="dw-card">
+      <div class="dw-head" onclick="_debtExpand('${safe}')">
+        <span class="dw-name">${esc(p.name)}</span>
+        <span><span class="dw-remain">${fabs(p.remaining)}</span> <span style="color:var(--mu);font-size:10px">▾</span></span>
+      </div>
+      ${_dwBar(p.ret,p.owed)}
+      <div class="dw-sub">vrátených ${fabs(p.ret)} z ${fabs(p.owed)}${p.ret>0.01?` · zostáva ${fabs(p.remaining)}`:''}</div>
+      <div id="${safe}" style="display:none;margin-top:6px">${p.items.map(itemRow).join('')}</div>
+    </div>`; }).join('');
+  if(out.length===0) html=`<div style="text-align:center;padding:14px;color:var(--grn);font-size:12px">✓ Všetky pohľadávky sú vyrovnané</div>`;
+  if(settled.length){
+    html+=`<div class="dw-settled-grp"><div class="dw-settled-hd" onclick="_debtExpand('dw-settled-p')">✓ Vyrovnané (${settled.length}) ▾</div>
+      <div id="dw-settled-p" style="display:none">${settled.map(p=>`<div class="dw-card settled">
+        <div class="dw-head" onclick="_debtExpand('s_${p.name.replace(/[^a-zA-Z0-9]/g,'_')}')">
+          <span class="dw-name">${esc(p.name)} <span style="color:var(--grn);font-size:11px">✓</span></span>
+          <span style="color:var(--mu);font-size:10px">${fabs(p.owed)} ▾</span></div>
+        <div id="s_${p.name.replace(/[^a-zA-Z0-9]/g,'_')}" style="display:none;margin-top:6px">${p.items.map(itemRow).join('')}</div>
+      </div>`).join('')}</div></div>`;
+  }
+  return html;
+}
+
+function _renderDebtByExpense(exps){
+  const out=exps.filter(e=>e.remaining>0.01).sort((a,b)=>b.remaining-a.remaining);
+  const settled=exps.filter(e=>e.remaining<=0.01);
+  const personRow=p=>`<div class="dw-item">
+      <span style="color:${p.remaining<=0.01?'var(--grn)':'var(--mu)'};flex-shrink:0">${p.remaining<=0.01?'✓':'○'}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+      <span style="font-family:var(--M);flex-shrink:0;color:${p.remaining<=0.01?'var(--grn)':'var(--acc2)'}">${p.remaining<=0.01?fabs(p.owed):fabs(p.remaining)}</span>
+    </div>`;
+  const card=e=>{ const safe='dpe_'+e.id.replace(/[^a-zA-Z0-9]/g,'_'); const sett=e.remaining<=0.01;
+    return `<div class="dw-card${sett?' settled':''}">
+      <div class="dw-head" onclick="_debtExpand('${safe}')">
+        <span class="dw-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="event.stopPropagation();cm('m-det');setTimeout(()=>openDet('${e.id}'),50)">${esc(e.desc)} <span style="color:var(--mu);font-size:10px;font-weight:400">${_dwDate(e.date)}</span></span>
+        <span>${sett?`<span style="color:var(--grn);font-size:11px">✓</span>`:`<span class="dw-remain">${fabs(e.remaining)}</span>`} <span style="color:var(--mu);font-size:10px">▾</span></span>
+      </div>
+      ${sett?'':_dwBar(e.ret,e.owed)}
+      ${sett?'':`<div class="dw-sub">vrátených ${fabs(e.ret)} z ${fabs(e.owed)}</div>`}
+      <div id="${safe}" style="display:none;margin-top:6px">${e.people.map(personRow).join('')}</div>
+    </div>`; };
+  let html=out.map(card).join('');
+  if(out.length===0) html=`<div style="text-align:center;padding:14px;color:var(--grn);font-size:12px">✓ Všetky pohľadávky sú vyrovnané</div>`;
+  if(settled.length){
+    html+=`<div class="dw-settled-grp"><div class="dw-settled-hd" onclick="_debtExpand('dw-settled-e')">✓ Vyrovnané (${settled.length}) ▾</div>
+      <div id="dw-settled-e" style="display:none">${settled.map(card).join('')}</div></div>`;
+  }
+  return html;
+}
+
+// ════════ HROMADNÉ DELENIE (bulk shared) ════════
+let _bsPeople=[];
+function openBulkShare(){
+  if(!bulkSelected.size) return;
+  const exp=[...bulkSelected].map(id=>TX.find(t=>t.id===id)).filter(t=>t&&t.amount<0);
+  if(!exp.length){ alert('Vo výbere nie sú žiadne výdavky (príjmy sa nedajú zdieľať).'); return; }
+  let last=[]; try{ last=JSON.parse(localStorage.getItem('fintb_bsPeople')||'[]'); }catch(e){}
+  _bsPeople = (last&&last.length)? last.map(n=>({name:n,weight:''})) : [{name:'',weight:''},{name:'',weight:''}];
+  const eq=document.querySelector('input[name="bs-method"][value="equal"]'); if(eq) eq.checked=true;
+  const im=document.getElementById('bs-include-me'); if(im) im.checked=true;
+  const totAbs=exp.reduce((s,t)=>s+Math.abs(t.amount),0);
+  document.getElementById('bs-info').textContent=`Rozdelíš ${exp.length} ${_plSk(exp.length,'výdavok','výdavky','výdavkov')} (spolu ${fabs(totAbs)}) medzi zadané osoby. Tvoj podiel zostáva tvojím nákladom.`;
+  bsRenderPeople();
+  _bsToggleMe();
+  document.getElementById('m-bulk-share').classList.add('on');
+}
+function bsAddPerson(){ _bsPeople.push({name:'',weight:''}); bsRenderPeople(); }
+function _bsMethod(){ return document.querySelector('input[name="bs-method"]:checked')?.value||'equal'; }
+function _bsToggleMe(){ const m=_bsMethod(); const row=document.getElementById('bs-includeme-row'); if(row) row.style.display=m==='custom'?'none':'flex'; }
+function bsRenderPeople(){
+  const host=document.getElementById('bs-people'); if(!host) return;
+  const custom=_bsMethod()==='custom';
+  host.innerHTML=_bsPeople.map((p,i)=>`<div class="bs-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+      <input type="text" class="bs-name inp" value="${esc(p.name||'')}" placeholder="Meno osoby" style="flex:1;min-width:0;font-size:12px;background:var(--s1);border:1px solid var(--bd);color:var(--txt);border-radius:5px;padding:6px 9px" oninput="_bsPeople[${i}].name=this.value">
+      ${custom?`<input type="number" class="bs-weight inp" value="${esc(p.weight||'')}" placeholder="%" min="0" max="100" step="1" style="width:62px;font-size:12px;text-align:right;background:var(--s1);border:1px solid var(--bd);color:var(--txt);border-radius:5px;padding:6px 7px" oninput="_bsPeople[${i}].weight=this.value"><span style="font-size:11px;color:var(--mu);flex-shrink:0">%</span>`:''}
+      <button class="btn" onclick="_bsPeople.splice(${i},1);bsRenderPeople()" style="padding:4px 9px;color:var(--red);border-color:var(--red);flex-shrink:0;font-size:12px">✕</button>
+    </div>`).join('');
+}
+function _computeBulkShares(absAmt, people, method, includeMe){
+  const n=people.length; if(!n) return [];
+  let amts;
+  if(method==='custom'){
+    amts=people.map(p=>{ const pct=Math.max(0,parseFloat(p.weight)||0); return Math.round(absAmt*pct/100*100)/100; });
+  } else {
+    const shares=n+(includeMe?1:0); const per=absAmt/shares;
+    amts=people.map(()=>Math.round(per*100)/100);
+    if(!includeMe){ const sum=amts.reduce((s,a)=>s+a,0); amts[n-1]=Math.round((amts[n-1]+(absAmt-sum))*100)/100; }
+  }
+  return people.map((p,i)=>({name:p.name, amount:amts[i]}));
+}
+function applyBulkShare(){
+  const exp=[...bulkSelected].map(id=>TX.find(t=>t.id===id)).filter(t=>t&&t.amount<0);
+  if(!exp.length){ alert('Vo výbere nie sú žiadne výdavky.'); return; }
+  const method=_bsMethod(); const includeMe=document.getElementById('bs-include-me').checked;
+  const people=_bsPeople.map(p=>({name:(p.name||'').trim(),weight:p.weight})).filter(p=>p.name);
+  if(!people.length){ alert('Zadaj aspoň jednu osobu.'); return; }
+  if(method==='custom'){ const sum=people.reduce((s,p)=>s+(parseFloat(p.weight)||0),0);
+    if(sum>100.01){ alert('Súčet podielov presahuje 100 %.'); return; }
+    if(sum<=0){ alert('Zadaj podiely (%).'); return; } }
+  const already=exp.filter(t=>t.shared?.people?.length).length;
+  if(already && !confirm(`${already} z vybraných výdavkov už má zdieľanie. Prepísať ho?`)) return;
+  let applied=0;
+  exp.forEach(tx=>{
+    const shares=_computeBulkShares(Math.abs(tx.amount),people,method,includeMe).filter(s=>s.amount>0.005);
+    tx.shared = shares.length?{people:shares}:undefined; if(shares.length) applied++;
+  });
+  try{ localStorage.setItem('fintb_bsPeople', JSON.stringify(people.map(p=>p.name))); }catch(e){}
+  saveD();
+  cm('m-bulk-share');
+  if(bulkMode) toggleBulkMode();
+  renderTxPage(); renderDebtWidget();
+  alert(`✓ Rozdelené: ${applied} ${_plSk(applied,'výdavok','výdavky','výdavkov')} medzi ${people.length} ${_plSk(people.length,'osobu','osoby','osôb')}.`);
+}
+
 // ==================== GOOGLE DRIVE SYNC ====================
 let _gdToken = null;
 let _gdTokenExp = 0;
@@ -9930,7 +10184,7 @@ function openSplitModal(txId) {
   const isExp = tx.amount < 0;
   const fullTotal = Math.abs(tx.amount);
   // If tx has debtLink, the splittable amount is only the remainder
-  const effectiveTotal = Math.abs(txMyAmount(tx));
+  const effectiveTotal = splittableTotal(tx);
   const linkedAmt = fullTotal - effectiveTotal;
   const lbl = document.getElementById('split-total-lbl');
   lbl.textContent = (isExp ? '-' : '+') + effectiveTotal.toFixed(2) + ' €';
@@ -9981,7 +10235,7 @@ function splitGetRows() {
 function splitUpdateRemainder() {
   const tx = TX.find(t => t.id === _splitTxId);
   if (!tx) return;
-  const total = Math.abs(txMyAmount(tx)); // effective amount (after debtLink if any)
+  const total = splittableTotal(tx); // suma na rozdelenie (plná pre výdavok; zvyšok pre debtLink príjem)
   const rows = splitGetRows();
   const used = rows.reduce((s, r) => s + (r.amount || 0), 0);
   const rem = Math.round((total - used) * 100) / 100;
@@ -10091,6 +10345,7 @@ document.addEventListener('scroll', e => {
   <button class="btn" onclick="bulkSelectAll()" style="font-size:10px;padding:5px 10px">Vybrať všetky</button>
   <button class="btn" id="bulk-apply-cat" onclick="bulkApplyCat()" style="font-size:10px;padding:5px 10px;color:var(--acc2);border-color:var(--acc2)">Kategória</button>
   <button class="btn" id="bulk-tag-btn" onclick="_toggleBulkTagInput()" style="font-size:10px;padding:5px 10px;color:var(--grn);border-color:var(--grn)">🏷 Tag</button>
+  <button class="btn" id="bulk-share-btn" onclick="openBulkShare()" style="font-size:10px;padding:5px 10px;color:var(--acc2);border-color:var(--acc2)">👥 Rozdeliť</button>
 
   <button class="btn" onclick="toggleBulkMode()" style="font-size:10px;padding:5px 10px;margin-left:auto;color:var(--red);border-color:var(--red)">✕ Zrušiť</button>
 </div>
