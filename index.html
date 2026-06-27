@@ -531,6 +531,17 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 .dw-settled-grp{margin-top:6px}
 .dw-settled-hd{font-size:11px;color:var(--mu);cursor:pointer;padding:8px 2px;font-family:var(--M);user-select:none}
 .dw-settled-hd:hover{color:var(--txt)}
+
+/* tag selektor: search + top-N + frekvencia */
+.tgs-search{margin-bottom:8px}
+.tgs-search input{width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--txt);border-radius:8px;padding:7px 11px;font-size:12px;font-family:var(--M)}
+.tgs-search input:focus{outline:none;border-color:var(--acc)}
+.tgs-cnt-badge{font-size:9px;color:var(--mu);padding:0 5px;font-family:var(--M);align-self:center}
+.tgs-chip.on .tgs-cnt-badge{color:inherit;opacity:.7}
+.tgs-more{margin-top:8px;background:none;border:1px dashed var(--bd);color:var(--mu);border-radius:8px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:var(--M);transition:border-color .12s,color .12s}
+.tgs-more:hover{border-color:var(--acc2);color:var(--acc2)}
+.cr-vt-lbl{font-size:11px}
+@media(max-width:560px){.cr-vt-lbl{display:none}}
 </style>
 </head>
 <body>
@@ -540,7 +551,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v125</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v127</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -624,8 +635,8 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <button class="btn prim" onclick="openRuleAdd(null)">+ Pravidlo</button>
     <div class="cr-search"><input type="text" id="cr-search" placeholder="🔍 Hľadať pravidlo…" oninput="catRulesSearch(this.value)"></div>
     <div class="cr-viewtoggle" title="Zobrazenie">
-      <button class="cr-vt" data-v="list" onclick="setCrView('list')" title="Zoznam">☰</button>
-      <button class="cr-vt" data-v="grid" onclick="setCrView('grid')" title="Dlaždice">▦</button>
+      <button class="cr-vt" data-v="list" onclick="setCrView('list')" title="Zoznam">☰ <span class="cr-vt-lbl">Zoznam</span></button>
+      <button class="cr-vt" data-v="grid" onclick="setCrView('grid')" title="Dlaždice">▦ <span class="cr-vt-lbl">Dlaždice</span></button>
     </div>
     <div class="cr-more">
       <button class="btn" onclick="reapplyRules()" title="Znovu aplikovať všetky pravidlá na existujúce transakcie (uzamknuté ručné kategórie zostanú)">↻ Aplikovať na všetky</button>
@@ -674,6 +685,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <div class="bk-row">
       <button class="btn prim" onclick="gdSave()">☁ Zálohovať na Drive</button>
       <button class="btn" onclick="gdLoad()">↓ Obnoviť z Drive</button>
+      <button class="btn" id="gd-rollback-btn" style="display:none" onclick="gdRollback()">↩ Vrátiť späť (pred obnovou)</button>
     </div>
     <div class="bk-info">Drive: <span id="gd-stat" style="color:var(--mu)">—</span></div>
   </div>
@@ -1782,7 +1794,7 @@ function scheduleSave() {
     }
   }, 600);
 }
-function saveD() { scheduleSave(); _returnMap=null; _selfRefundMap=null; }
+function saveD() { scheduleSave(); _returnMap=null; _selfRefundMap=null; try{localStorage.setItem('fintb_data_modified', new Date().toISOString());}catch(e){} }
 
 function sTx(t) { return {...t, date: t.date?.toISOString(), dateProcParsed: t.dateProcParsed?.toISOString(), dateOverride: t.dateOverride?.toISOString(), dateBank: t.dateBank?.toISOString()}; }
 function dTx(t) { return {...t, date: t.date ? new Date(t.date) : null, dateProcParsed: t.dateProcParsed ? new Date(t.dateProcParsed) : null, dateOverride: t.dateOverride ? new Date(t.dateOverride) : undefined, dateBank: t.dateBank ? new Date(t.dateBank) : undefined}; }
@@ -4003,6 +4015,8 @@ let _pivotExpandedParents = new Set(); // expanded parent cats in pivot table
 let _pivotCompact = true; // mobil: default len Kategória + ∑ (na desktope CSS pravidlo neúčinkuje)
 function togglePivotCompact(){ _pivotCompact=!_pivotCompact; renderPivot(); }
 let _expandedTagCats = new Set(); // which category bars are expanded
+let _tagSearch=''; // filter pre tag selektor
+let _tagSelExpanded=false; // zobraziť všetky tagy vs top-N
 let _expandedTagIncCats = new Set(); // which income category bars are expanded
 const TAG_PALETTE=['#4a9fd4','#e05c5c','#50c8a0','#f59e0b','#a78bfa','#fb7185'];
 function _tagColor(tag,allTags){return TAG_PALETTE[allTags.indexOf(tag)%TAG_PALETTE.length];}
@@ -4511,25 +4525,49 @@ function saveIbanNameFromDet(){
   });
 }
 
-function _buildTagSelector(allTags){
+function _tagChip(t,allTags,freq){
+  const sel=_activeTagTags; const active=sel.has(t); const multi=sel.size>1;
+  const col=_tagColor(t,allTags);
+  const st=active?`border-color:${col};background:${col}22;color:${col}`:'';
+  const tog = (!active)
+    ? `<button class="tgs-tog" onclick="event.stopPropagation();_tagReportToggle('${escA(t)}')" title="Pridať k porovnaniu">+</button>`
+    : (multi ? `<button class="tgs-tog" onclick="event.stopPropagation();_tagReportToggle('${escA(t)}')" title="Odobrať z porovnania">×</button>` : '');
+  const cnt=freq[t]?`<span class="tgs-cnt-badge">${freq[t]}</span>`:'';
+  return`<span class="tgs-chip${active?' on':''}" style="${st}" onclick="_tagReportOnly('${escA(t)}')" title="Zobraziť len tento tag">\
+    <span class="tgs-name">🏷 ${esc(t)}</span>${cnt}${tog}\
+  </span>`;
+}
+function _tagChipsAndMore(allTags){
   const sel=_activeTagTags;
-  const multi=sel.size>1;
-  const chips=allTags.map(t=>{
-    const active=sel.has(t);
-    const col=_tagColor(t,allTags);
-    const st=active?`border-color:${col};background:${col}22;color:${col}`:'';
-    // celý chip = prepni na LEN tento tag (najčastejšia akcia); malé +/× = porovnanie
-    const tog = (!active)
-      ? `<button class="tgs-tog" onclick="event.stopPropagation();_tagReportToggle('${escA(t)}')" title="Pridať k porovnaniu">+</button>`
-      : (multi ? `<button class="tgs-tog" onclick="event.stopPropagation();_tagReportToggle('${escA(t)}')" title="Odobrať z porovnania">×</button>` : '');
-    return`<span class="tgs-chip${active?' on':''}" style="${st}" onclick="_tagReportOnly('${escA(t)}')" title="Zobraziť len tento tag">\
-      <span class="tgs-name">🏷 ${esc(t)}</span>${tog}\
-    </span>`;
-  }).join('');
+  const freq={}; TX.forEach(t=>(t.tags||[]).forEach(tg=>{freq[tg]=(freq[tg]||0)+1;}));
+  const q=(_tagSearch||'').toLowerCase().trim();
+  let pool=allTags.slice().sort((a,b)=>(freq[b]||0)-(freq[a]||0)||a.localeCompare(b,'sk'));
+  if(q) pool=pool.filter(t=>t.toLowerCase().includes(q));
+  const TOPN=12;
+  const showAll=_tagSelExpanded||!!q;
+  let visible=showAll?pool:pool.slice(0,TOPN);
+  if(!showAll){ [...sel].forEach(t=>{ if(!visible.includes(t)&&allTags.includes(t)) visible.push(t); }); }
+  const hidden=Math.max(0,pool.length-visible.length);
+  const chips=visible.length?visible.map(t=>_tagChip(t,allTags,freq)).join('')
+    :'<span style="color:var(--mu);font-size:11px;padding:5px 2px">Žiadny tag nezodpovedá hľadaniu.</span>';
+  let more='';
+  if(!showAll&&hidden>0) more=`<button class="tgs-more" onclick="_tagSelExpanded=true;_refreshTagChips()">+ ${hidden} ${_plSk(hidden,'ďalší','ďalšie','ďalších')}</button>`;
+  else if(showAll&&!q&&pool.length>TOPN) more=`<button class="tgs-more" onclick="_tagSelExpanded=false;_refreshTagChips()">− zobraziť menej</button>`;
+  return `<div class="tgs-chips">${chips}</div>${more}`;
+}
+function _refreshTagChips(){
+  const area=document.getElementById('tgs-chips-area');
+  if(area){ area.innerHTML=_tagChipsAndMore([...getAllTags()].sort()); }
+}
+function _tagSearchInput(v){ _tagSearch=v; _refreshTagChips(); }
+function _buildTagSelector(allTags){
+  const sel=_activeTagTags; const multi=sel.size>1;
+  const many=allTags.length>12;
   return`<div class="tgs-wrap">
     <div class="tgs-hd"><span>${multi?`Porovnávam ${sel.size} ${_plSk(sel.size,'tag','tagy','tagov')} — klik na tag = zobraz len jeho`:'Klik na tag = zobraz ho &nbsp;·&nbsp; <strong>+</strong> = pridať k porovnaniu'}</span>\
       ${multi?`<button class="tgs-clear" onclick="_tagReportClear()">× zrušiť porovnanie</button>`:''}</div>
-    <div class="tgs-chips">${chips}</div>
+    ${many?`<div class="tgs-search"><input id="tgs-search-input" type="text" value="${esc(_tagSearch||'')}" oninput="_tagSearchInput(this.value)" placeholder="🔍 hľadať tag…" autocomplete="off"></div>`:''}
+    <div id="tgs-chips-area">${_tagChipsAndMore(allTags)}</div>
   </div>`;
 }
 function _tagReportOnly(t){ _activeTagTags=new Set([t]); _expandedTagCats=new Set(); _expandedTagIncCats=new Set(); renderTagReport(); }
@@ -10158,20 +10196,110 @@ async function gdFindFile() {
   return (await r.json()).files?.[0] || null;
 }
 
+// ── GDrive: zdieľaný payload + apply (save / load / rollback) + bezpečnostné dialógy ──
+function _gdBuildPayload() {
+  return {
+    version: 5, exported: new Date().toISOString(),
+    tx: TX.map(sTx), deletedTX: deletedTX.map(sTx),
+    budgets, budgetLimits, budgetMoves, goals, netWorthItems, netWorthSnapshots, fundNames, openingBalance, rules, recurDefs, recurIgnored,
+    customCats, builtinCats: [...BUILTIN_CATS], visCols,
+    detFieldsHidden: [...detFieldsHidden],
+    ccLimit: document.getElementById('cc-lim')?.value || '',
+    editLog: editLog.slice(0, 500), ibanNames,
+    excludedTags: [...excludedTags], recurMarks, colWidths
+  };
+}
+async function _gdApplyData(data) {
+  TX = (data.tx || []).map(dTx);
+  deletedTX = (data.deletedTX || []).map(dTx);
+  migrateDebtLinks(TX); migrateDebtLinks(deletedTX);
+  budgets = data.budgets || {};
+  budgetLimits = data.budgetLimits || [];
+  budgetMoves = data.budgetMoves || [];
+  goals = data.goals || [];
+  netWorthItems = data.netWorthItems || [];
+  netWorthSnapshots = data.netWorthSnapshots || [];
+  fundNames = data.fundNames || {};
+  openingBalance = data.openingBalance || 0;
+  recurDefs = data.recurDefs || [];
+  recurIgnored = data.recurIgnored || [];
+  rules = data.rules || [];
+  customCats = data.customCats || [];
+  if (data.builtinCats) { BUILTIN_CATS.length = 0; data.builtinCats.forEach(c => BUILTIN_CATS.push(c)); }
+  visCols = data.visCols || ['date','main','place','source','cat','amount'];
+  if (data.detFieldsHidden) { detFieldsHidden.clear(); data.detFieldsHidden.forEach(f=>detFieldsHidden.add(f)); }
+  if (data.ibanNames) { ibanNames = data.ibanNames; }
+  else { ibanNames = (await Store.get('ibanNames')) || {}; } // stará záloha → zachovaj existujúce
+  if (data.editLog) editLog = data.editLog;
+  excludedTags = new Set(data.excludedTags || []);
+  recurMarks = data.recurMarks || {pins:{},blocks:{},excl:{},incl:{}};
+  recurMarks.pins=recurMarks.pins||{};recurMarks.blocks=recurMarks.blocks||{};recurMarks.excl=recurMarks.excl||{};recurMarks.incl=recurMarks.incl||{};
+  if (data.colWidths) colWidths = data.colWidths;
+  if (data.ccLimit) { const el = document.getElementById('cc-lim'); if (el) el.value = data.ccLimit; }
+  if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
+  const txcEl = document.getElementById('txc'); if (txcEl) txcEl.textContent = TX.length + ' transakcií';
+  await Store.set('tx', TX.map(sTx)); await Store.set('deleted', deletedTX.map(sTx));
+  await Store.set('budgets', budgets); await Store.set('budgetlimits', budgetLimits); await Store.set('budgetmoves', budgetMoves); await Store.set('goals', goals); await Store.set('networthitems', netWorthItems); await Store.set('networthsnaps', netWorthSnapshots); await Store.set('fundnames', fundNames);
+  await Store.set('recurDefs', recurDefs); await Store.set('recurignored', recurIgnored); await Store.set('ob', openingBalance);
+  await Store.set('rules', rules); await Store.set('customcats', customCats);
+  await Store.set('builtincats', [...BUILTIN_CATS]); await Store.set('cols', visCols);
+  await Store.set('editlog', editLog.slice(0, 500)); await Store.set('ibanNames', ibanNames);
+  await Store.set('exctags', [...excludedTags]); await Store.set('recurmarks', recurMarks);
+  await Store.set('colWidths', colWidths);
+  updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
+}
+function _gdFmtTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso); if (isNaN(d)) return '—';
+  return d.toLocaleString('sk-SK', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function _gdHumanGap(ms) {
+  const min = Math.round(Math.abs(ms)/60000);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min/60), mm = min%60;
+  if (h < 24) return `${h} h${mm?` ${mm} min`:''}`;
+  const d = Math.floor(h/24); return `${d} ${_plSk(d,'deň','dni','dní')}`;
+}
+function _gdLoadConfirmMsg(driveISO, localISO) {
+  let m = 'Načítať zálohu z Google Drive a nahradiť lokálne dáta?\n\n';
+  m += `📥 Drive záloha:  ${_gdFmtTime(driveISO)}\n`;
+  m += `💾 Lokálne dáta:  ${localISO ? _gdFmtTime(localISO) : 'neznáme'}\n`;
+  if (driveISO && localISO) {
+    const dD = new Date(driveISO), dL = new Date(localISO);
+    if (!isNaN(dD) && !isNaN(dL) && dL.getTime() > dD.getTime() + 60000)
+      m += `\n⚠️ POZOR: Tvoje lokálne dáta sú NOVŠIE než záloha na Drive (o ${_gdHumanGap(dL - dD)}). Načítaním ich nahradíš staršou verziou!\n`;
+  }
+  m += '\nPred načítaním sa vytvorí záloha, ktorú vieš vrátiť späť (↩ Vrátiť späť).';
+  return m;
+}
+function _gdShowRollback(show) {
+  const b = document.getElementById('gd-rollback-btn'); if (b) b.style.display = show ? '' : 'none';
+}
+async function gdSnapshotLocal() {
+  try { await Store.set('preload_backup', _gdBuildPayload()); localStorage.setItem('fintb_has_preload', new Date().toISOString()); }
+  catch(e) { console.warn('Snapshot pred obnovou zlyhal:', e); }
+}
+async function gdRollback() {
+  const snapTs = localStorage.getItem('fintb_has_preload');
+  if (!snapTs) { gdStat('Žiadna záloha na vrátenie', 'err'); return; }
+  if (!confirm(`Vrátiť dáta do stavu pred poslednou obnovou z Drive?\n\nZáloha pred obnovou: ${_gdFmtTime(snapTs)}\nAktuálne načítané (z Drive) dáta sa zahodia.`)) return;
+  gdStat('Vraciam…', '');
+  try {
+    const p = await Store.get('preload_backup');
+    if (!p) { gdStat('Záloha sa nenašla', 'err'); return; }
+    await _gdApplyData(p);
+    try{localStorage.setItem('fintb_data_modified', new Date().toISOString());}catch(e){}
+    localStorage.removeItem('fintb_has_preload');
+    _gdShowRollback(false);
+    gdStat('Vrátené späť ✓', 'ok');
+    go('dashboard');
+  } catch(e) { gdStat('Chyba: ' + e.message, 'err'); }
+}
 async function gdSave() {
   if (!localStorage.getItem('fintb_gd_cid')) { gdStat('Chýba Client ID', 'err'); return; }
   gdStat('Ukladám…', '');
   try {
-    const payload = {
-      version: 5, exported: new Date().toISOString(),
-      tx: TX.map(sTx), deletedTX: deletedTX.map(sTx),
-      budgets, budgetLimits, budgetMoves, goals, netWorthItems, netWorthSnapshots, fundNames, openingBalance, rules, recurDefs, recurIgnored,
-      customCats, builtinCats: [...BUILTIN_CATS], visCols,
-      detFieldsHidden: [...detFieldsHidden],
-      ccLimit: document.getElementById('cc-lim')?.value || '',
-      editLog: editLog.slice(0, 500), ibanNames,
-      excludedTags: [...excludedTags], recurMarks, colWidths
-    };
+    const payload = _gdBuildPayload();
     const file = await gdFindFile();
     const fid = file?.id || null;
     const boundary = '-------fintb314159';
@@ -10201,52 +10329,20 @@ async function gdSave() {
 
 async function gdLoad() {
   if (!localStorage.getItem('fintb_gd_cid')) { gdStat('Chýba Client ID', 'err'); return; }
-  if (!confirm('Nahradiť všetky lokálne dáta zálohou z Google Drive?')) return;
   gdStat('Sťahujem…', '');
   try {
     const file = await gdFindFile();
     if (!file) { gdStat('Žiadna záloha na Drive', 'err'); return; }
     const r = await gdFetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`);
     const data = await r.json();
-    TX = (data.tx || []).map(dTx);
-    deletedTX = (data.deletedTX || []).map(dTx);
-    migrateDebtLinks(TX); migrateDebtLinks(deletedTX);
-    budgets = data.budgets || {};
-    budgetLimits = data.budgetLimits || [];
-    budgetMoves = data.budgetMoves || [];
-    goals = data.goals || [];
-    netWorthItems = data.netWorthItems || [];
-    netWorthSnapshots = data.netWorthSnapshots || [];
-    fundNames = data.fundNames || {};
-    openingBalance = data.openingBalance || 0;
-    recurDefs = data.recurDefs || [];
-    recurIgnored = data.recurIgnored || [];
-    rules = data.rules || [];
-    customCats = data.customCats || [];
-    if (data.builtinCats) { BUILTIN_CATS.length = 0; data.builtinCats.forEach(c => BUILTIN_CATS.push(c)); }
-    visCols = data.visCols || ['date','main','place','source','cat','amount'];
-    if (data.detFieldsHidden) { detFieldsHidden.clear(); data.detFieldsHidden.forEach(f=>detFieldsHidden.add(f)); }
-    if (data.ibanNames) { ibanNames = data.ibanNames; }
-    else { ibanNames = (await Store.get('ibanNames')) || {}; } // stará záloha → zachovaj existujúce
-    if (data.editLog) editLog = data.editLog;
-    excludedTags = new Set(data.excludedTags || []);
-    recurMarks = data.recurMarks || {pins:{},blocks:{},excl:{},incl:{}};
-    recurMarks.pins=recurMarks.pins||{};recurMarks.blocks=recurMarks.blocks||{};recurMarks.excl=recurMarks.excl||{};recurMarks.incl=recurMarks.incl||{};
-    if (data.colWidths) colWidths = data.colWidths;
-    if (data.ccLimit) { const el = document.getElementById('cc-lim'); if (el) el.value = data.ccLimit; }
-    if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
-    document.getElementById('txc').textContent = TX.length + ' transakcií';
-    await Store.set('tx', TX.map(sTx)); await Store.set('deleted', deletedTX.map(sTx));
-    await Store.set('budgets', budgets); await Store.set('budgetlimits', budgetLimits); await Store.set('budgetmoves', budgetMoves); await Store.set('goals', goals); await Store.set('networthitems', netWorthItems); await Store.set('networthsnaps', netWorthSnapshots); await Store.set('fundnames', fundNames);
-    await Store.set('recurDefs', recurDefs); await Store.set('recurignored', recurIgnored); await Store.set('ob', openingBalance);
-    await Store.set('rules', rules); await Store.set('customcats', customCats);
-    await Store.set('builtincats', [...BUILTIN_CATS]); await Store.set('cols', visCols);
-    await Store.set('editlog', editLog.slice(0, 500)); await Store.set('ibanNames', ibanNames);
-    await Store.set('exctags', [...excludedTags]); await Store.set('recurmarks', recurMarks);
-    await Store.set('colWidths', colWidths);
-    updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
-    const ts = new Date(data.exported).toLocaleString('sk-SK', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
-    gdStat(`Obnovené ✓ (záloha z ${ts})`, 'ok');
+    const driveISO = data.exported || file.modifiedTime || null;
+    const localISO = localStorage.getItem('fintb_data_modified') || null;
+    if (!confirm(_gdLoadConfirmMsg(driveISO, localISO))) { gdStat('Obnova zrušená', ''); return; }
+    await gdSnapshotLocal();
+    await _gdApplyData(data);
+    if (driveISO) { try{localStorage.setItem('fintb_data_modified', driveISO);}catch(e){} }
+    _gdShowRollback(true);
+    gdStat(`Obnovené ✓ (záloha z ${_gdFmtTime(driveISO)})`, 'ok');
     go('dashboard');
   } catch(e) { gdStat('Chyba: ' + e.message, 'err'); }
 }
@@ -10257,6 +10353,7 @@ function gdInitUI() {
   if (!cid) { const el = document.getElementById('gd-pin-inp'); if (el) el.value = ''; } // gd-cid-inp bol stale id z pred-PIN éry — padal init na čerstvom profile
   const ts = localStorage.getItem('fintb_gd_last');
   if (ts) gdStat(`Posledná záloha: ${ts}`, 'ok');
+  if (localStorage.getItem('fintb_has_preload')) _gdShowRollback(true);
 }
 
 let _cpTxId = null;
