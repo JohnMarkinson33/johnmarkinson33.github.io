@@ -540,7 +540,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v120</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v125</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -1493,7 +1493,10 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <div id="md-debtlink-wrap" style="display:none;margin-bottom:10px">
         <div class="ml">Vrátky pohľadávok</div>
         <div id="md-dl-rows" style="display:flex;flex-direction:column;gap:5px;margin-bottom:6px"></div>
-        <button class="btn" onclick="debtLinkAddRow()" style="font-size:10px;padding:4px 10px;width:100%">+ Pridať pohľadávku</button>
+        <div style="display:flex;gap:5px">
+          <button class="btn" onclick="debtLinkAddRow()" style="font-size:10px;padding:4px 10px;flex:1">+ Pridať pohľadávku</button>
+          <button class="btn" onclick="openBulkLink()" style="font-size:10px;padding:4px 10px;flex:1;color:var(--acc2);border-color:var(--acc2)" title="Hromadne priradiť viacero pohľadávok k tejto platbe">⚡ Hromadne</button>
+        </div>
         <div id="md-dl-rem-info" style="font-size:11px;margin-top:8px;min-height:16px"></div>
       </div>
       <!-- PREPOJENÉ TRANSAKCIE (tab sekcia dole) -->
@@ -1510,6 +1513,27 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 </div>
 
 <!-- RULE EDIT MODAL -->
+<!-- HROMADNÉ PRIRADENIE POHĽADÁVOK K PLATBE -->
+<div class="modal-bg" id="m-bulk-link">
+  <div class="modal" style="width:440px">
+    <button class="mc" onclick="cm('m-bulk-link')">✕</button>
+    <div class="mt">Hromadne priradiť pohľadávky</div>
+    <div id="bl-info" style="font-size:11px;color:var(--mu);margin-bottom:12px;line-height:1.5"></div>
+    <div class="ml">Od koho</div>
+    <select id="bl-person" onchange="_blRenderList()" style="width:100%;font-size:12px;background:var(--s1);border:1px solid var(--bd);color:var(--txt);border-radius:6px;padding:8px 10px;margin-bottom:10px"></select>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div class="ml" style="margin:0">Pohľadávky na vyrovnanie</div>
+      <div style="display:flex;gap:8px"><button class="tlink" onclick="_blSelectAll(true)" style="background:none;border:none;color:var(--acc2);font-size:10px;cursor:pointer">všetky</button><button class="tlink" onclick="_blSelectAll(false)" style="background:none;border:none;color:var(--mu);font-size:10px;cursor:pointer">žiadne</button></div>
+    </div>
+    <div id="bl-list" style="max-height:300px;overflow:auto;border:1px solid var(--bd);border-radius:6px;padding:2px 8px"></div>
+    <div id="bl-sum" style="font-size:12px;font-family:var(--M);margin-top:10px;text-align:right"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn" onclick="cm('m-bulk-link')" style="flex:1;font-size:12px">Zrušiť</button>
+      <button class="btn prim" onclick="applyBulkLink()" style="flex:1;font-size:12px">Priradiť vybrané</button>
+    </div>
+  </div>
+</div>
+
 <!-- HROMADNÉ DELENIE MEDZI OSOBY -->
 <div class="modal-bg" id="m-bulk-share">
   <div class="modal" style="width:400px">
@@ -1758,7 +1782,7 @@ function scheduleSave() {
     }
   }, 600);
 }
-function saveD() { scheduleSave(); _returnMap=null; }
+function saveD() { scheduleSave(); _returnMap=null; _selfRefundMap=null; }
 
 function sTx(t) { return {...t, date: t.date?.toISOString(), dateProcParsed: t.dateProcParsed?.toISOString(), dateOverride: t.dateOverride?.toISOString(), dateBank: t.dateBank?.toISOString()}; }
 function dTx(t) { return {...t, date: t.date ? new Date(t.date) : null, dateProcParsed: t.dateProcParsed ? new Date(t.dateProcParsed) : null, dateOverride: t.dateOverride ? new Date(t.dateOverride) : undefined, dateBank: t.dateBank ? new Date(t.dateBank) : undefined}; }
@@ -2453,16 +2477,40 @@ function getReturnMap(){
   return _returnMap;
 }
 
+// ── VLASTNÝ ÚČET (neminuté) ─────────────────────────────────────────────
+// Vrátka označená selfRefund = neminutá časť poslaná späť na vlastný účet.
+// Znižuje kategorizovaný výdavok (NErozdeľuje sa proporcionálne ako reimbursement od osôb).
+let _selfRefundMap=null;
+function getSelfRefundMap(){
+  if(_selfRefundMap) return _selfRefundMap;
+  _selfRefundMap={};
+  TX.forEach(t=>{
+    if(t.amount<=0) return;
+    getDebtLinks(t).forEach(l=>{
+      if(!l.expTxId||!l.selfRefund) return;
+      _selfRefundMap[l.expTxId]=(_selfRefundMap[l.expTxId]||0)+(typeof l.amount==='number'?l.amount:t.amount);
+    });
+  });
+  return _selfRefundMap;
+}
+function selfRefundTotal(tx){ return tx?(getSelfRefundMap()[tx.id]||0):0; }
+
 function txMyAmount(tx){
   // DebtLink income: only remainder beyond linked amount counts as regular income
   if(isDebtLink(tx)){
     return Math.max(0, tx.amount-debtLinkAmount(tx));
   }
-  // Shared expense: effective = full amount minus actually received returns
+  // Model A — Shared expense: môj podiel = plná − podiely OSTATNÝCH − neminuté.
+  // (Nezávisí od prijatých vrátok; tie slúžia len na evidenciu vyrovnania v Pohľadávkach.)
   if(tx.shared?.people?.length){
-    const totalReturned=getReturnMap()[tx.id]||0;
-    const effective=Math.abs(tx.amount)-totalReturned;
-    return -Math.max(0,effective);
+    const others=tx.shared.people.reduce((s,p)=>s+(p.amount||0),0);
+    const sr=selfRefundTotal(tx);
+    return -Math.max(0, Math.abs(tx.amount)-others-sr);
+  }
+  // Non-shared výdavok s vrátkou na vlastný účet (neminuté): odráta self-refund.
+  if(tx.amount<0){
+    const sr=selfRefundTotal(tx);
+    if(sr>0) return -Math.max(0, Math.abs(tx.amount)-sr);
   }
   return tx.amount;
 }
@@ -2486,15 +2534,31 @@ function anTx(o={}){
   });
 }
 // Split/shared helper — returns [{category,amount}] using myShare for shared tx
+// Model A: súčet podielov OSTATNÝCH osôb na zdieľanom výdavku (čo mi dlhujú).
+// Toto je "redukcia zodpovednosti" — môj podiel = plná − podiely ostatných − neminuté,
+// nezávisle od toho či mi už zaplatili (vrátky slúžia len na evidenciu vyrovnania).
+function sharedOthersOwed(tx){ return (tx&&tx.amount<0&&tx.shared?.people?.length) ? tx.shared.people.reduce((s,p)=>s+(p.amount||0),0) : 0; }
 function getTxCatAmounts(tx){
-  if(tx.splits&&tx.splits.length) return tx.splits;
+  if(tx.splits&&tx.splits.length){
+    // Model A: môj podiel per kategória = split škálovaný (1 − podiely_ostatných / spent_base).
+    // spent_base = súčet splitov (= plná − neminuté). Súčet škálovaných = môj podiel (== txMyAmount).
+    if(tx.amount<0){
+      const others=sharedOthersOwed(tx);
+      if(others>0){
+        const base=tx.splits.reduce((s,sp)=>s+Math.abs(sp.amount),0);
+        const frac=base>0?Math.max(0,1-others/base):1;
+        return tx.splits.map(sp=>({category:sp.category, amount: sp.amount*frac}));
+      }
+    }
+    return tx.splits;
+  }
   return [{category:tx.category, amount:txMyAmount(tx)}];
 }
 // Suma, na ktorú majú sumovať splity:
 //  - bežný výdavok (aj zdieľaný): PLNÁ suma transakcie — splity kategorizujú celý nákup,
 //    vrátky pohľadávok sa rozdelia proporcionálne až v analýze (viď buildPivotData pass 2).
 //  - transakcia, ktorá je SAMA vrátka (debtLink príjem): len zvyšok nad naviazanou sumou.
-function splittableTotal(tx){ return isDebtLink(tx) ? Math.abs(txMyAmount(tx)) : Math.abs(tx.amount); }
+function splittableTotal(tx){ return (isDebtLink(tx) ? Math.abs(txMyAmount(tx)) : Math.abs(tx.amount)) - selfRefundTotal(tx); }
 function eMerchant(t){ return t.merchantOverride||t.merchant||'—'; }
 function cycMKey(tx) { return mKey(cycDate(tx)); }
 
@@ -4042,6 +4106,8 @@ function _afterTagChange(){
 }
 
 
+// Poznámka "z [hrubá]" keď sa môj podiel líši od hrubej sumy (zdieľané/split)
+function _shareNote(shareAbs, grossAbs){ return Math.abs(shareAbs-grossAbs)>0.01 ? `<span style="font-size:9px;color:var(--mu);font-weight:400">z ${fabs(grossAbs)}</span> ` : ''; }
 function renderTagReport(){
   const wrap=document.getElementById('an-tag-report'); if(!wrap) return;
   document.getElementById('an-drill').style.display='none';
@@ -4166,13 +4232,16 @@ function renderTagReport(){
         const expanded=_expandedTagCats.has(cid);
         const catTxs=txs.filter(t=>t.amount<0&&getTxCatAmounts(t).some(x=>x.category===cid&&x.amount<0))
           .sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
-        const txRows=catTxs.map(t=>`
+        const txRows=catTxs.map(t=>{
+          const shareAbs=Math.abs(getTxCatAmounts(t).filter(x=>x.category===cid).reduce((s,x)=>s+x.amount,0));
+          const grossAbs=t.splits?.length ? Math.abs(t.splits.filter(s=>s.category===cid).reduce((s,x)=>s+x.amount,0)) : Math.abs(t.amount);
+          return `
           <div onclick="openDet('${t.id}')" style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;border-radius:4px;margin:1px 0" 
             onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
             <span style="font-size:10px;color:var(--mu);flex-shrink:0;min-width:55px">${fd(eDate(t)||t.date)}</span>
             <span style="font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.merchantOverride||t.merchant||'—'}</span>
-            <span style="font-size:11px;font-family:var(--M);color:var(--red);flex-shrink:0">−${fabs(Math.abs(t.amount))}</span>
-          </div>`).join('');
+            <span style="font-size:11px;font-family:var(--M);flex-shrink:0;text-align:right">${_shareNote(shareAbs,grossAbs)}<span style="color:var(--red)">−${fabs(shareAbs)}</span></span>
+          </div>`;}).join('');
         return`<div style="margin-bottom:10px">
           <div onclick="_expandedTagCats.has('${cid}')?_expandedTagCats.delete('${cid}'):_expandedTagCats.add('${cid}');renderTagReport()" 
             style="cursor:pointer;padding:4px 0" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
@@ -4225,7 +4294,7 @@ function renderTagReport(){
                 ${t.noteOverride?`<div style="font-size:9px;color:var(--mu)">${t.noteOverride}</div>`:''}
               </div>
               ${cat?`<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:${cat.c}22;color:${cat.c};flex-shrink:0;white-space:nowrap">${cat.l}</span>`:''}
-              <span style="font-family:var(--M);font-size:12px;font-weight:700;color:${neg?'var(--red)':'var(--grn)'};flex-shrink:0">${neg?'−':'+'}${fabs(Math.abs(t.amount))}</span>
+              <span style="font-family:var(--M);font-size:12px;flex-shrink:0;text-align:right">${_shareNote(Math.abs(txMyAmount(t)),Math.abs(t.amount))}<span style="font-weight:700;color:${neg?'var(--red)':'var(--grn)'}">${neg?'−':'+'}${fabs(Math.abs(txMyAmount(t)))}</span></span>
             </div>`;
           }).join('')}
         </div>`;
@@ -5010,14 +5079,19 @@ function autoSaveDet(){
   }
   // DebtLinks (income tx) — supports multiple links
   if(tx.amount>0){
-    const rows=[...document.querySelectorAll('.dl-row')].map(row=>({
-      expTxId:row.querySelector('.dl-tx')?.value||'',
-      personName:row.querySelector('.dl-person')?.value||'',
-      amount:parseFloat(row.querySelector('.dl-amount')?.value)||0
-    })).filter(r=>r.expTxId&&r.personName);
-    if(rows.length){tx.debtLinks=rows;delete tx.debtLink;}
-    else{delete tx.debtLinks;delete tx.debtLink;}
-    _returnMap=null;
+    const rowEls=[...document.querySelectorAll('.dl-row')];
+    if(rowEls.length){ // editovateľné riadky prítomné → prebuduj z DOM
+      const rows=rowEls.map(row=>{
+        const pv=row.querySelector('.dl-person')?.value||'';
+        const isSelf=pv==='__self__';
+        const r={expTxId:row.querySelector('.dl-tx')?.value||'',personName:isSelf?'':pv,amount:parseFloat(row.querySelector('.dl-amount')?.value)||0};
+        if(isSelf) r.selfRefund=true;
+        return r;
+      }).filter(r=>r.expTxId&&(r.personName||r.selfRefund));
+      if(rows.length){tx.debtLinks=rows;delete tx.debtLink;}
+      else{delete tx.debtLinks;delete tx.debtLink;}
+    } // else: kompaktný režim → tx.debtLinks ostávajú (uložené bulk-linkom / _dlRemoveLink)
+    _returnMap=null; _selfRefundMap=null;
     _refreshLinkedSection(tx);
   }
   const dateVal=document.getElementById('md-date').value;
@@ -7269,43 +7343,16 @@ function buildPivotData(txs, nb, bucketOf, opts={}){
   pcatd.forEach(c=>{expMatrix[c.id]=Array(nb).fill(0);incMatrix[c.id]=Array(nb).fill(0);expTotals[c.id]=0;incTotals[c.id]=0;});
   txs.forEach(tx=>{
     const bi=bucketOf(tx); if(bi==null||bi<0)return;
-    // Shared výdavok → zaznamenaj HRUBÚ sumu (vrátky pripočíta 2. prechod).
-    // Tým je zaobchádzanie shared = non-shared a plne vrátené nákupy idú do VYROVNANÉ.
-    if(tx.amount<0 && tx.shared?.people?.length && !tx.splits?.length){
-      const cid=tx.category||'__none';
-      if(expMatrix[cid]!==undefined){const g=Math.abs(tx.amount);expMatrix[cid][bi]+=g;expTotals[cid]+=g;expBucketTotals[bi]+=g;}
-      return;
-    }
+    // Model A: getTxCatAmounts vracia MÔJ PODIEL per kategória (split škálovaný podielom,
+    // non-split = txMyAmount = plná − podiely ostatných − neminuté). Žiadny 2. prechod vrátok.
     getTxCatAmounts(tx).forEach(({category,amount})=>{
       const cid=category||'__none';
       if(amount<0){ if(expMatrix[cid]!==undefined){expMatrix[cid][bi]+=Math.abs(amount);expTotals[cid]+=Math.abs(amount);expBucketTotals[bi]+=Math.abs(amount);} }
       else { if(incMatrix[cid]!==undefined){incMatrix[cid][bi]+=amount;incTotals[cid]+=amount;incBucketTotals[bi]+=amount;} }
     });
   });
-  if(opts.attributeReturns!==false){
-    const byId=new Map(TX.map(t=>[t.id,t]));
-    const txsSet=new Set(txs.map(t=>t.id)); // výdavok musí byť v ROVNAKOM rozsahu ako 1. prechod
-    // 2. prechod: debtLink vrátky → pripočítané ku kategórii a BUCKETU VÝDAVKU.
-    // Iterujeme VŠETKY vrátky v TX (nie len v rozsahu) — vrátka môže prísť v inom
-    // mesiaci než výdavok. Výdavok musí byť v txs (getWeeks presahuje hranice mesiaca,
-    // preto nestačí bucketOf>=0). Platí pre shared aj non-shared.
-    TX.filter(t=>t.amount>0&&isDebtLink(t)).forEach(tx=>{
-      getDebtLinks(tx).forEach(l=>{
-        const expTx=byId.get(l.expTxId); if(!expTx||!txsSet.has(expTx.id))return;
-        const bi=bucketOf(expTx); if(bi==null||bi<0)return;
-        const linkAmt=typeof l.amount==='number'?l.amount:Math.abs(tx.amount);
-        const addInc=(cid,amt)=>{ if(incMatrix[cid]===undefined)return; incMatrix[cid][bi]+=amt; incTotals[cid]+=amt; incBucketTotals[bi]+=amt; };
-        if(expTx.splits&&expTx.splits.length){
-          // Rozdeľ vrátku POMERNE medzi split kategórie (podľa veľkosti splitu).
-          const tot=expTx.splits.reduce((s,sp)=>s+Math.abs(sp.amount),0);
-          if(tot>0){ expTx.splits.forEach(sp=>addInc(sp.category||'__none', linkAmt*Math.abs(sp.amount)/tot)); }
-          else addInc(expTx.category||'__none', linkAmt);
-        } else {
-          addInc(expTx.category||'__none', linkAmt);
-        }
-      });
-    });
-  }
+  // Model A: vrátky (debtLinks) NEznižujú analýzu — slúžia len na evidenciu vyrovnania
+  // v Pohľadávkach. Môj podiel (podiely ostatných) je už zarátaný v getTxCatAmounts / pass-1.
   const netMatrix={},netCatTotals={};
   pcatd.forEach(c=>{netMatrix[c.id]=expMatrix[c.id].map((v,bi)=>v-incMatrix[c.id][bi]); netCatTotals[c.id]=expTotals[c.id]-incTotals[c.id];});
   // Klasifikácia na úrovni KOREŇOV (rodič + subkategórie agregované)
@@ -7743,7 +7790,7 @@ function drillCat(catId,scope){
       const lAmt=typeof l.amount==='number'?l.amount:dlAmt;
       return '<div class="drow drow-sub" style="opacity:.75" onclick="openDet(\''+(expTx?.id||tx.id)+'\')">' +
         '<div class="drow-main"><span class="drow-date"></span>' +
-        '<span class="drow-name" style="font-size:11px;color:var(--mu)">↩ vrátka za: '+expName+(expD?' ('+expD+')':'')+' · '+l.personName+'</span></div>' +
+        '<span class="drow-name" style="font-size:11px;color:var(--mu)">↩ vrátka za: '+expName+(expD?' ('+expD+')':'')+' · '+(l.selfRefund?'neminuté':l.personName)+'</span></div>' +
         '<div class="drow-amt" style="color:var(--mu);font-weight:500">−'+fabs(lAmt)+'</div></div>';
     }).join(''):'';
     const expRow='<div class="drow" onclick="openDet(\'' +tx.id+ '\')">'+
@@ -7756,30 +7803,14 @@ function drillCat(catId,scope){
   // Footer net MUST equal the pivot row → rovnaká logika ako buildPivotData:
   // shared výdavky hrubo, vrátky (vrátane shared) atribuované cez 2. prechod
   // do kategórie+mesiaca VÝDAVKU. Tým drilldown == pivot pre všetky scopes.
+  // Model A: footer net = MÔJ PODIEL (getTxCatAmounts). Žiadny 2. prechod vrátok.
   let myExp=0,myInc=0;
   txs.forEach(tx=>{
-    if(tx.amount<0 && tx.shared?.people?.length && !tx.splits?.length){
-      if(_inDrill(tx.category)) myExp+=Math.abs(tx.amount); // gross
-      return;
-    }
     getTxCatAmounts(tx).forEach(({category,amount})=>{
       if(!_inDrill(category))return;
       if(amount<0) myExp+=Math.abs(amount); else myInc+=amount;
     });
   });
-  {
-    const byId=new Map(TX.map(t=>[t.id,t]));
-    // 2. prechod: filtrujeme podľa VÝDAVKU (yearMatch(expTx)), nie podľa vrátky —
-    // vrátka môže prísť v inom mesiaci. Platí pre shared aj non-shared.
-    TX.filter(t=>t.amount>0&&isDebtLink(t)).forEach(tx=>{
-      getDebtLinks(tx).forEach(l=>{
-        const expTx=byId.get(l.expTxId); if(!expTx)return;
-        const cid=expTx.category; if(!cid||!_inDrill(cid))return;
-        if(!yearMatch(expTx))return; // výdavok musí padať do rozsahu drilldownu
-        myInc+=typeof l.amount==='number'?l.amount:Math.abs(tx.amount);
-      });
-    });
-  }
   const myNet=myExp-myInc;                          // == pivot netCatTotals (signed)
   const totalReduction=grossExp-Math.max(0,myNet);  // everything netted off raw gross
   const realReturns=Math.min(sharedOffset,Math.max(0,totalReduction)); // ↳ returns shown in rows
@@ -9395,10 +9426,8 @@ function _openDetShared(tx){
   } else if(tx.amount>0){
     sharedWrap.style.display='none'; debtWrap.style.display='block';
     // Populate existing links
-    const links=getDebtLinks(tx);
-    document.getElementById('md-dl-rows').innerHTML='';
-    if(links.length) links.forEach(l=>_debtLinkAddRow(l));
-    else _debtLinkAddRow({});
+    _dlEditAll=false;
+    _renderDLRows(tx);
     _dlUpdateRemainder(tx);
   } else {
     sharedWrap.style.display='none'; debtWrap.style.display='none';
@@ -9419,7 +9448,7 @@ function _refreshLinkedSection(tx){
     const paidByPerson={};
     returns.forEach(r=>getDebtLinks(r).filter(l=>l.expTxId===tx.id).forEach(l=>{
       const amt=typeof l.amount==='number'?l.amount:Math.abs(r.amount);
-      const nm=l.personName||'—';
+      const nm=l.selfRefund?'↩ Vlastný účet (neminuté)':(l.personName||'—');
       paidByPerson[nm]=(paidByPerson[nm]||0)+amt;
     }));
     // Osoby, čo ešte dlhujú (nesplatili celú svoju časť) → ostávajú v zozname aj po čiastočnej
@@ -9436,7 +9465,7 @@ function _refreshLinkedSection(tx){
         const links=getDebtLinks(r).filter(l=>l.expTxId===tx.id);
         return links.map(link=>{
           const linkAmt=typeof link.amount==='number'?link.amount:null;
-          const personNote=link.personName?` <span style="font-size:9px;color:var(--mu)">(${esc(link.personName)})</span>`:'';
+          const personNote=link.selfRefund?` <span style="font-size:9px;color:var(--acc2)">↩ neminuté (vlastný účet)</span>`:(link.personName?` <span style="font-size:9px;color:var(--mu)">(${esc(link.personName)})</span>`:'');
           return _linkedTxRow(r,'↩',linkAmt,personNote);
         });
       }).join('');
@@ -9517,7 +9546,7 @@ function linkIncomeTxFromExpense(expTxId, personName, sel){
     incTx.category=undefined;
     incTx.categoryLocked=false;
   }
-  _returnMap=null;
+  _returnMap=null; _selfRefundMap=null;
   saveD();
   const expTxObj=TX.find(t=>t.id===expTxId);
   if(expTxObj)_refreshLinkedSection(expTxObj);
@@ -9636,7 +9665,111 @@ function sharedCalcMyShare(){
 }
 
 // ── DebtLink UI ──────────────────────────────────────────────────────────────
-function debtLinkAddRow(){ _debtLinkAddRow({}); }
+function debtLinkAddRow(){ _dlEditAll=true; _debtLinkAddRow({}); }
+
+// ════════ Kompaktný zoznam priradených pohľadávok (pri mnohých linkoch) ════════
+let _dlEditAll=false;
+function _renderDLRows(tx){
+  const host=document.getElementById('md-dl-rows'); if(!host)return;
+  host.innerHTML='';
+  const links=getDebtLinks(tx);
+  if(links.length>6 && !_dlEditAll){
+    const byId={}; TX.forEach(t=>byId[t.id]=t);
+    const total=links.reduce((s,l)=>s+(typeof l.amount==='number'?l.amount:0),0);
+    host.innerHTML=`<div style="font-size:11px;color:var(--mu);margin-bottom:5px">${links.length} priradených pohľadávok · spolu ${fabs(total)}</div>`
+      +`<div style="max-height:180px;overflow:auto">`+links.map(l=>{
+          const e=byId[l.expTxId]; const desc=e?(e.merchantOverride||e.merchant||e.description||'—'):'(zmazaná)';
+          const who=l.selfRefund?'↩ neminuté':(l.personName||'—');
+          return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(desc)} <span style="color:var(--mu)">· ${esc(who)}</span></span>
+            <span style="font-family:var(--M)">${fabs(typeof l.amount==='number'?l.amount:0)}</span>
+            <button class="btn" onclick="_dlRemoveLink('${escA(l.expTxId)}','${escA(l.personName||'')}',${l.selfRefund?'true':'false'})" style="padding:1px 7px;color:var(--red);border-color:var(--red);flex-shrink:0">×</button>
+          </div>`;
+        }).join('')+`</div>`
+      +`<button class="btn" onclick="_dlEditAll=true;_renderDLRows(TX.find(t=>t.id===detId))" style="font-size:10px;padding:4px 10px;width:100%;margin-top:6px">✎ Upraviť po jednom</button>`;
+  } else {
+    if(links.length) links.forEach(l=>_debtLinkAddRow(l));
+    else _debtLinkAddRow({});
+  }
+}
+function _dlRemoveLink(expId, person, isSelf){
+  const tx=TX.find(t=>t.id===detId); if(!tx)return;
+  tx.debtLinks=getDebtLinks(tx).filter(l=>!(l.expTxId===expId && (l.personName||'')===person && !!l.selfRefund===isSelf));
+  if(!tx.debtLinks.length) delete tx.debtLinks;
+  delete tx.debtLink;
+  _returnMap=null; _selfRefundMap=null;
+  saveD();
+  _renderDLRows(tx); _dlUpdateRemainder(tx); _refreshLinkedSection(tx); renderDebtWidget();
+}
+
+// ════════ HROMADNÉ PRIRADENIE pohľadávok k jednej platbe ════════
+function _personOutstanding(personName){
+  const ret={};
+  TX.forEach(t=>{ if(t.amount<=0)return; getDebtLinks(t).forEach(l=>{
+    if(l.selfRefund || l.personName!==personName) return;
+    ret[l.expTxId]=(ret[l.expTxId]||0)+(typeof l.amount==='number'?l.amount:Math.abs(t.amount));
+  }); });
+  const out=[];
+  TX.forEach(tx=>{ if(tx.amount>=0||!tx.shared?.people?.length)return;
+    const p=tx.shared.people.find(pp=>pp.name===personName); if(!p||!(p.amount>0))return;
+    const paid=ret[tx.id]||0; const remaining=p.amount-paid;
+    if(remaining>0.01) out.push({expTxId:tx.id,desc:(tx.merchantOverride||tx.merchant||tx.description||'—'),date:eDate(tx),owed:p.amount,paid,remaining});
+  });
+  out.sort((a,b)=>(b.date||0)-(a.date||0));
+  return out;
+}
+function _allOwingPeople(){
+  return _getAllSharedNames().map(n=>{ const o=_personOutstanding(n); return {name:n,total:o.reduce((s,x)=>s+x.remaining,0),count:o.length}; })
+    .filter(p=>p.count>0).sort((a,b)=>b.total-a.total);
+}
+function openBulkLink(){
+  const tx=TX.find(t=>t.id===detId); if(!tx||tx.amount<=0){alert('Hromadné priradenie funguje len pri príjmovej transakcii.');return;}
+  const people=_allOwingPeople();
+  if(!people.length){ alert('Žiadne nesplatené pohľadávky na priradenie.'); return; }
+  document.getElementById('bl-person').innerHTML=people.map(p=>`<option value="${escA(p.name)}">${esc(p.name)} — dlhuje ${fabs(p.total)} (${p.count})</option>`).join('');
+  document.getElementById('bl-info').textContent=`Táto platba: +${fabs(tx.amount)}. Vyber komu patrí a ktoré pohľadávky ňou vyrovnať.`;
+  _blRenderList();
+  document.getElementById('m-bulk-link').classList.add('on');
+}
+function _blRenderList(){
+  const person=document.getElementById('bl-person').value;
+  const items=_personOutstanding(person);
+  const host=document.getElementById('bl-list');
+  host.innerHTML=items.length?items.map(it=>`<label style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer">
+      <input type="checkbox" class="bl-cb" data-exp="${escA(it.expTxId)}" data-rem="${it.remaining}" checked onchange="_blUpdateSum()" style="width:15px;height:15px;accent-color:var(--acc2);flex-shrink:0">
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${esc(it.desc)} <span style="color:var(--mu);font-size:10px">${it.date?it.date.getDate()+'.'+(it.date.getMonth()+1)+'.':''}</span></span>
+      <span style="font-family:var(--M);font-size:12px;color:var(--acc2)">${fabs(it.remaining)}${it.paid>0.01?` <span style="color:var(--mu);font-size:9px">z ${fabs(it.owed)}</span>`:''}</span>
+    </label>`).join(''):'<div style="color:var(--mu);font-size:12px;padding:14px;text-align:center">Táto osoba nemá nesplatené pohľadávky.</div>';
+  _blUpdateSum();
+}
+function _blSelectAll(v){ document.querySelectorAll('.bl-cb').forEach(cb=>cb.checked=v); _blUpdateSum(); }
+function _blUpdateSum(){
+  const tx=TX.find(t=>t.id===detId); const pay=tx?Math.abs(tx.amount):0;
+  const checked=[...document.querySelectorAll('.bl-cb:checked')];
+  const sum=checked.reduce((s,cb)=>s+parseFloat(cb.dataset.rem||0),0);
+  const over=sum>pay+0.01;
+  const el=document.getElementById('bl-sum'); if(el) el.innerHTML=`<span style="color:${over?'var(--red)':'var(--grn)'};font-weight:600">Vybrané: ${fabs(sum)} (${checked.length})</span> <span style="color:var(--mu)">/ Platba: ${fabs(pay)}</span>${over?' <span style="color:var(--red);font-size:10px">⚠ presahuje platbu</span>':''}`;
+}
+function applyBulkLink(){
+  const tx=TX.find(t=>t.id===detId); if(!tx)return;
+  const person=document.getElementById('bl-person').value;
+  const checked=[...document.querySelectorAll('.bl-cb:checked')];
+  if(!checked.length){ alert('Nevybral si žiadnu pohľadávku.'); return; }
+  const sum=checked.reduce((s,cb)=>s+parseFloat(cb.dataset.rem||0),0);
+  if(sum>Math.abs(tx.amount)+0.01){ alert(`Súčet vybraných (${fabs(sum)}) presahuje sumu platby (${fabs(Math.abs(tx.amount))}). Odznač niektoré pohľadávky.`); return; }
+  const existing=getDebtLinks(tx).slice(); let added=0;
+  checked.forEach(cb=>{
+    const expId=cb.dataset.exp; const rem=parseFloat(cb.dataset.rem||0);
+    if(existing.some(l=>l.expTxId===expId && !l.selfRefund && l.personName===person)) return; // duplikát
+    existing.push({expTxId:expId, personName:person, amount:Math.round(rem*100)/100}); added++;
+  });
+  tx.debtLinks=existing; delete tx.debtLink;
+  _returnMap=null; _selfRefundMap=null;
+  saveD();
+  cm('m-bulk-link');
+  _dlEditAll=false; _renderDLRows(tx); _dlUpdateRemainder(tx); _refreshLinkedSection(tx); renderDebtWidget();
+  alert(`✓ Priradených ${added} ${_plSk(added,'pohľadávka','pohľadávky','pohľadávok')} (spolu ${fabs(sum)}).`);
+}
 
 function _debtLinkAddRow(link={}){
   const names=_getAllSharedNames();
@@ -9644,14 +9777,16 @@ function _debtLinkAddRow(link={}){
   row.className='dl-row';
   row.style.cssText='background:var(--s2);border-radius:5px;padding:8px;display:flex;flex-direction:column;gap:5px';
   const personOpts=`<option value="">— vyber osobu —</option>`
-    +names.map(n=>`<option value="${n}"${n===link.personName?' selected':''}>${n}</option>`).join('');
-  const txOpts=link.personName?_getDLTxOpts(link.personName,link.expTxId):'';
-  const hasLink=!!(link.expTxId&&link.personName);
+    +names.map(n=>`<option value="${n}"${n===link.personName?' selected':''}>${n}</option>`).join('')
+    +`<option value="__self__"${link.selfRefund?' selected':''}>↩ Vlastný účet (neminuté)</option>`;
+  const _dlKey=link.selfRefund?'__self__':link.personName;
+  const txOpts=_dlKey?_getDLTxOpts(_dlKey,link.expTxId):'';
+  const hasLink=!!(link.expTxId&&_dlKey);
   row.innerHTML=`<div style="display:flex;gap:5px;align-items:center">
       <select class="mi dl-person" style="flex:1;margin-bottom:0" onchange="_onDLPerson(this)">${personOpts}</select>
       <button class="btn" onclick="this.closest('.dl-row').remove();_dlUpdateRemainder(TX.find(t=>t.id===detId));autoSaveDet()" style="padding:2px 6px;font-size:12px;flex-shrink:0">✕</button>
     </div>
-    <select class="mi dl-tx" style="margin-bottom:0;display:${link.personName?'block':'none'}" onchange="_onDLTx(this)">
+    <select class="mi dl-tx" style="margin-bottom:0;display:${_dlKey?'block':'none'}" onchange="_onDLTx(this)">
       <option value="">— vyber pohľadávku —</option>${txOpts}
     </select>
     <div class="dl-amt-row" style="display:${hasLink?'flex':'none'};align-items:center;gap:6px">
@@ -9665,17 +9800,26 @@ function _debtLinkAddRow(link={}){
 }
 
 function _getDLTxOpts(personName, selectedId=''){
-  // Compute per-person returned amounts from existing debtLinks
-  const returned={}; // expTxId → returned amount for this person
+  const isSelf = personName==='__self__';
+  // Compute returned amounts from existing debtLinks (self-aware: selfRefund linky pod kľúčom __self__)
+  const returned={};
   TX.forEach(t=>{
     if(t.amount<=0) return;
     getDebtLinks(t).forEach(l=>{
-      if(l.personName!==personName) return;
+      const key=l.selfRefund?'__self__':l.personName;
+      if(key!==personName) return;
       returned[l.expTxId]=(returned[l.expTxId]||0)+(typeof l.amount==='number'?l.amount:t.amount);
     });
   });
   return TX.filter(tx=>{
-    if(tx.amount>=0||!tx.shared?.people?.some(p=>p.name===personName)) return false;
+    if(tx.amount>=0) return false;
+    if(isSelf){
+      // Vlastný účet (neminuté): ponúkni VŠETKY výdavky (topup/výber nemusí byť zdieľaný), okrem už plne pokrytých
+      const sr=returned[tx.id]||0;
+      if(sr>=Math.abs(tx.amount)-0.01 && tx.id!==selectedId) return false;
+      return true;
+    }
+    if(!tx.shared?.people?.some(p=>p.name===personName)) return false;
     const p=tx.shared.people.find(p=>p.name===personName);
     const share=p?.amount||0;
     const ret=returned[tx.id]||0;
@@ -9687,11 +9831,14 @@ function _getDLTxOpts(personName, selectedId=''){
     .map(tx=>{
       const d=eDate(tx);const ds=d?d.getDate()+'.'+(d.getMonth()+1)+'.':'';
       const desc=(tx.merchantOverride||tx.merchant||tx.description||'—').slice(0,25);
-      const p=tx.shared.people.find(p=>p.name===personName);
+      const p=tx.shared?.people?.find(p=>p.name===personName);
       const share=p?.amount||0;
       const ret=returned[tx.id]||0;
       let amtStr='';
-      if(share>0.01){
+      if(isSelf){
+        // Vlastný účet: ukáž plnú sumu výdavku ako pomôcku (môže byť nezdieľaný)
+        amtStr=' ('+fabs(Math.abs(tx.amount))+')';
+      } else if(share>0.01){
         const rem=Math.max(0,share-ret);
         amtStr=ret>0.01?' ('+fabs(share)+', zostatok '+fabs(rem)+')':' ('+fabs(share)+')';
       }
@@ -10290,7 +10437,7 @@ function splitSave() {
   const rows = splitGetRows();
   tx.splits = rows.map(r => ({ category: r.category, amount: sign * Math.abs(r.amount) }));
   tx.category = null;
-  _returnMap = null;
+  _returnMap = null; _selfRefundMap = null;
   saveD(); renderTx(); updateBadges();
   cm('m-split');
   if(detId===_splitTxId && document.getElementById('m-det').classList.contains('on')) openDet(detId);
@@ -10301,7 +10448,7 @@ function splitClearSplits() {
   if (!tx) return;
   if (!confirm('Zrušiť split a vrátiť sa na jednu kategóriu?')) return;
   delete tx.splits;
-  _returnMap = null;
+  _returnMap = null; _selfRefundMap = null;
   saveD(); renderTx(); updateBadges();
   cm('m-split');
   if(detId===_splitTxId && document.getElementById('m-det').classList.contains('on')) openDet(detId);
