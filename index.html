@@ -551,7 +551,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v127</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v128</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -9915,7 +9915,9 @@ function _onDLTx(sel){
 function _dlUpdateRemainder(tx){
   if(!tx||tx.amount<=0)return;
   const total=tx.amount;
-  const linked=[...document.querySelectorAll('.dl-amount')].reduce((s,el)=>s+(parseFloat(el.value)||0),0);
+  const amtEls=[...document.querySelectorAll('.dl-amount')];
+  // Editovateľný režim → čítaj živé inputy; kompaktný režim (veľa pohľadávok, bez inputov) → uložené debtLinks.
+  const linked=amtEls.length ? amtEls.reduce((s,el)=>s+(parseFloat(el.value)||0),0) : debtLinkAmount(tx);
   const rem=Math.round((total-linked)*100)/100;
   const el=document.getElementById('md-dl-rem-info');
   const catSel=document.getElementById('md-cat');
@@ -10272,6 +10274,14 @@ function _gdLoadConfirmMsg(driveISO, localISO) {
   m += '\nPred načítaním sa vytvorí záloha, ktorú vieš vrátiť späť (↩ Vrátiť späť).';
   return m;
 }
+function _gdSaveConfirmMsg(driveISO, syncedISO) {
+  let m = '⚠️ Na Google Drive je NOVŠIA záloha než tvoja posledná synchronizácia.\n\n';
+  m += `☁ Drive záloha:  ${_gdFmtTime(driveISO)}\n`;
+  m += `🔄 Posledná synchronizácia:  ${_gdFmtTime(syncedISO)}\n`;
+  const gap = new Date(driveISO) - new Date(syncedISO);
+  m += `\nPravdepodobne ju nahralo iné zariadenie (novšia o ${_gdHumanGap(gap)}). Ak teraz zálohuješ, prepíšeš ju svojím stavom.\n\nNaozaj prepísať zálohu na Drive?`;
+  return m;
+}
 function _gdShowRollback(show) {
   const b = document.getElementById('gd-rollback-btn'); if (b) b.style.display = show ? '' : 'none';
 }
@@ -10301,6 +10311,14 @@ async function gdSave() {
   try {
     const payload = _gdBuildPayload();
     const file = await gdFindFile();
+    // Bezpečnosť: na Drive je novšia záloha než naša posledná synchronizácia → varuj pred prepísaním
+    const _synced = localStorage.getItem('fintb_gd_synced');
+    if (file && file.modifiedTime && _synced) {
+      const dDrive = new Date(file.modifiedTime), dSync = new Date(_synced);
+      if (!isNaN(dDrive) && !isNaN(dSync) && dDrive.getTime() > dSync.getTime() + 60000) {
+        if (!confirm(_gdSaveConfirmMsg(file.modifiedTime, _synced))) { gdStat('Zálohovanie zrušené', ''); return; }
+      }
+    }
     const fid = file?.id || null;
     const boundary = '-------fintb314159';
     const meta = JSON.stringify(fid ? {} : { name: GD_FILE, parents: ['appDataFolder'] });
@@ -10318,6 +10336,7 @@ async function gdSave() {
     );
     const result = await r.json();
     if (result.id) {
+      try{localStorage.setItem('fintb_gd_synced', payload.exported);}catch(e){}
       const ts = new Date().toLocaleString('sk-SK', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
       localStorage.setItem('fintb_gd_last', ts);
       gdStat(`Uložené ${ts} ✓`, 'ok');
@@ -10341,6 +10360,7 @@ async function gdLoad() {
     await gdSnapshotLocal();
     await _gdApplyData(data);
     if (driveISO) { try{localStorage.setItem('fintb_data_modified', driveISO);}catch(e){} }
+    try{localStorage.setItem('fintb_gd_synced', driveISO || new Date().toISOString());}catch(e){}
     _gdShowRollback(true);
     gdStat(`Obnovené ✓ (záloha z ${_gdFmtTime(driveISO)})`, 'ok');
     go('dashboard');
