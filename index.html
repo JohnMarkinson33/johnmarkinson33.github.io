@@ -194,7 +194,7 @@ canvas{display:block;width:100%;max-width:100%}
 .tbl tr:hover td{background:rgba(255,255,255,.02);cursor:pointer}
 .tbl tr:last-child td{border-bottom:none}
 .td{color:var(--mu);font-size:10px;white-space:nowrap}
-.tm{font-weight:500;font-size:12px;display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-width:0}.tm-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:40px;flex-shrink:1}
+.tm{font-weight:500;font-size:12px;display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-width:0}.tm-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:40px;max-width:340px;flex-shrink:1}
 .ts{color:var(--mu);font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ta{font-weight:600;text-align:right;white-space:nowrap;font-size:12px}
 .cr{position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize;z-index:2;user-select:none;-webkit-user-select:none}
@@ -274,25 +274,29 @@ input[type=checkbox]{accent-color:var(--acc);cursor:pointer;width:13px;height:13
 .empty-state{text-align:center;padding:40px 20px;color:var(--mu);font-size:12px}
 
 /* CONTINGENCY TABLE */
-.pivot-wrap{overflow-x:auto;margin-top:4px}
+.pivot-wrap{overflow-x:auto;margin-top:4px;border:1px solid var(--bd);border-radius:10px}
 .pivot{border-collapse:collapse;font-size:11px;min-width:100%}
-.pivot th{padding:5px 7px;text-align:right;font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--mu);border-bottom:1px solid var(--bd);font-weight:500;white-space:nowrap}
-.pivot th.cat-hd{text-align:left;position:sticky;left:0;background:var(--s1);z-index:2;min-width:100px;box-shadow:2px 0 5px -2px rgba(0,0,0,.4)}
-.pivot td{padding:3px 4px;text-align:right;border-bottom:1px solid rgba(45,74,99,.4);white-space:nowrap;font-size:10.5px}
-.pivot td.cat-cell{text-align:left;position:sticky;left:0;background:var(--s1);z-index:1;font-size:10.5px;min-width:100px;box-shadow:2px 0 5px -2px rgba(0,0,0,.4)}
+.pivot th{padding:8px 7px;text-align:right;font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--mu);border-bottom:1px solid var(--bd);font-weight:500;white-space:nowrap}
+.pivot th.cat-hd{text-align:left;position:sticky;left:0;background:var(--s1);z-index:2;min-width:100px;box-shadow:3px 0 6px -3px rgba(0,0,0,.22)}
+.pivot td{padding:5px 5px;text-align:right;border-bottom:1px solid var(--bd);white-space:nowrap;font-size:10.5px;transition:background .12s}
+.pivot td.cat-cell{text-align:left;position:sticky;left:0;background:var(--s1);z-index:1;font-size:10.5px;min-width:100px;box-shadow:3px 0 6px -3px rgba(0,0,0,.22)}
 .pivot tr:last-child td{border-bottom:none;font-weight:600;color:var(--txt)}
+.pivot tbody tr:last-child td:first-child{border-bottom-left-radius:10px}
+.pivot tbody tr:last-child td:last-child{border-bottom-right-radius:10px}
 .pivot tr:hover td{background:rgba(94,168,216,.04)}
 .pivot tr:hover td.cat-cell{background:var(--s1)}
 .pivot td.heat0{color:var(--mu)}
-.heat-cell{border-radius:3px;padding:2px 4px;display:inline-block;min-width:34px;text-align:right;font-size:10px}
-.hc{border-radius:3px;padding:1px 4px;display:inline-block;min-width:28px;text-align:right;font-size:10px;background:color-mix(in srgb,var(--cc) 18%,transparent);border-left:2px solid var(--cc);color:var(--txt);font-family:var(--M)}
+.heat-cell{border-radius:5px;padding:2px 5px;display:inline-block;min-width:34px;text-align:right;font-size:10px}
+.hc{border-radius:5px;padding:2px 5px;display:inline-block;min-width:28px;text-align:right;font-size:10px;background:color-mix(in srgb,var(--cc) 18%,transparent);border-left:2px solid var(--cc);color:var(--txt);font-family:var(--M)}
 .h0{color:var(--mu);text-align:center;font-size:10px;padding:3px 2px}
-.prow{cursor:pointer}.prow:hover td{background:var(--s2)}
-.stotal td{padding:4px 4px;font-size:10px;font-family:var(--M);background:var(--s2)}
+.prow{cursor:pointer}.prow:hover td{background:rgba(94,168,216,.07)}
+.prow:hover td.cat-cell{background:var(--s1)}
+.stotal td{padding:6px 5px;font-size:10px;font-family:var(--M);background:var(--s2)}
 .tc{text-align:right;font-family:var(--M);font-size:11px;font-weight:600;padding:3px 5px;white-space:nowrap}
 .pivot-nav{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 .an-tabs{display:flex;gap:5px;margin-bottom:14px}
-.an-tab{background:none;border:1px solid var(--bd);color:var(--mu);padding:4px 14px;cursor:pointer;font-family:var(--M);font-size:11px;border-radius:3px}
+.an-tab{background:none;border:1px solid var(--bd);color:var(--mu);padding:5px 14px;cursor:pointer;font-family:var(--M);font-size:11px;border-radius:5px;transition:border-color .12s,color .12s,background .12s}
+.an-tab:hover{border-color:var(--mu);color:var(--txt)}
 .an-tab.on{border-color:var(--acc);color:var(--acc);background:rgba(94,168,216,.1)}
 
 /* CUSTOM CATEGORIES */
@@ -542,6 +546,35 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 .tgs-more:hover{border-color:var(--acc2);color:var(--acc2)}
 .cr-vt-lbl{font-size:11px}
 @media(max-width:560px){.cr-vt-lbl{display:none}}
+
+/* ── Mesačný report ── */
+.rp-chk{font-size:12px;display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--txt)}
+.rp-chk input{width:15px;height:15px;accent-color:var(--acc);cursor:pointer}
+#report-view{position:fixed;inset:0;z-index:9999;background:#eceef1;overflow:auto;display:none;color:#1a2027}
+#report-view.on{display:block}
+#report-view .rp-toolbar{position:sticky;top:0;background:#fff;border-bottom:1px solid #dfe3e8;padding:10px 16px;display:flex;gap:8px;justify-content:flex-end;box-shadow:0 1px 5px rgba(0,0,0,.08)}
+#report-view .rp-page{max-width:820px;margin:22px auto;background:#fff;box-shadow:0 2px 18px rgba(0,0,0,.1);padding:34px 40px;border-radius:6px}
+#report-view h1{font-family:var(--H,sans-serif);font-size:23px;margin:0 0 3px;color:#141b22}
+#report-view .rp-sub{color:#7a828c;font-size:12px;margin-bottom:22px}
+#report-view .rp-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:26px}
+#report-view .rp-card{border:1px solid #e5e8ec;border-radius:8px;padding:12px 10px;text-align:center}
+#report-view .rp-card .l{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#8a929c;margin-bottom:5px}
+#report-view .rp-card .v{font-size:17px;font-weight:700;font-family:var(--M,monospace)}
+#report-view .rp-charts{display:flex;gap:24px;margin-bottom:26px;flex-wrap:wrap;align-items:flex-start}
+#report-view .rp-chart{flex:1;min-width:250px}
+#report-view .rp-chart h3,#report-view .rp-sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8a929c;margin:0 0 10px;font-weight:700}
+#report-view img.rp-canvas{width:100%;height:auto;display:block}
+#report-view table.rp-tbl{width:100%;border-collapse:collapse;margin-bottom:26px}
+#report-view table.rp-tbl th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#8a929c;padding:7px 8px;border-bottom:2px solid #e5e8ec}
+#report-view table.rp-tbl td{padding:6px 8px;font-size:12px;border-bottom:1px solid #eef1f4;color:#2a323b}
+@media print{
+  body>*:not(#report-view){display:none!important}
+  #report-view{position:static!important;background:#fff!important;overflow:visible!important}
+  #report-view .rp-toolbar{display:none!important}
+  #report-view .rp-page{box-shadow:none!important;margin:0!important;max-width:none!important;padding:0!important;border-radius:0}
+  #report-view .rp-charts,#report-view .rp-tbl tr,#report-view .rp-cards{break-inside:avoid}
+  @page{margin:13mm}
+}
 </style>
 </head>
 <body>
@@ -551,7 +584,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v128</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v145</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -604,6 +637,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <label style="font-size:11px;color:var(--mu)">Počiatočný zostatok účtu (€):</label>
     <input type="number" id="ob" class="inp" style="width:160px" placeholder="napr. 1200.00">
   </div>
+  <button class="btn" onclick="openAccounts()" style="font-size:11px;padding:6px 12px;margin-top:2px">🏦 Sekundárne účty…</button>
   <button class="imp-btn" id="imp-btn" onclick="doImport()" disabled>Spracovať výpisy →</button>
   <div class="log" id="imp-log"></div>
   <div id="dup-box" class="dup-box" style="display:none">
@@ -694,6 +728,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 
 <!-- DASHBOARD -->
 <div id="pg-dashboard" class="page">
+  <div id="dash-scope-tabs" style="display:none"></div>
   <div class="sr" id="sr"></div>
   <div id="dash-forecast"></div>
   <div id="dash-upcoming"></div>
@@ -786,6 +821,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 
 <!-- TRANSACTIONS -->
 <div id="pg-transactions" class="page">
+  <div id="tx-bank-tabs" style="display:none"></div>
   <div class="tx-tb">
     <input type="text" class="tx-q" id="tx-q" placeholder="Hľadaj..." oninput="renderTx()" style="flex:2;min-width:160px">
     <select id="f-src" onchange="renderTx()" style="flex:1;min-width:130px">
@@ -874,6 +910,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <div style="font-family:var(--H);font-size:20px;margin-bottom:4px">Analýza výdavkov</div>
     <div style="color:var(--mu);font-size:11px">Klikni na kategóriu v tabuľke pre detail transakcií</div>
   </div>
+  <div id="an-scope-tabs" style="display:none"></div>
   <div style="margin-bottom:10px">
     <span style="font-size:10px;color:var(--mu);font-weight:600;letter-spacing:.5px">VYLÚČIŤ TAGY Z VÝPOČTU:</span>
     <span id="an-excl-tags" style="display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:8px;vertical-align:middle"></span>
@@ -883,6 +920,8 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <button class="an-tab on" onclick="setAnView('monthly',this)">Mesačný prehľad</button>
     <button class="an-tab" onclick="setAnView('yearly',this)">Ročný prehľad</button>
     <button class="an-tab" onclick="setAnView('tags',this)">🏷 Tagy</button>
+    <button class="an-tab" onclick="setAnView('period',this)">📅 Za obdobie</button>
+    <button class="an-tab" onclick="setAnView('sankey',this)">🔀 Tok</button>
   </div>
   <div class="cs">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -893,6 +932,8 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   </div>
   <!-- TAG REPORT -->
   <div id="an-tag-report" style="display:none"></div>
+  <div id="an-period" style="display:none"></div>
+  <div id="an-sankey" style="display:none"></div>
   <!-- DRILL DOWN -->
   <div class="cs" id="an-drill" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -1204,6 +1245,8 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 <div id="pg-prehlady" class="page">  <div style="margin-bottom:16px">
     <div style="font-family:var(--H);font-size:20px;margin-bottom:4px">Prehľady</div>
     <div style="color:var(--mu);font-size:11px">Porovnanie období · Príjmy vs Výdavky · Opakujúce sa platby</div>
+    <button class="btn" onclick="openReportConfig()" style="margin-top:10px;font-size:12px;color:var(--acc);border-color:var(--acc)">📄 Vygenerovať mesačný report (PDF)</button>
+    <button class="btn" onclick="openExportConfig()" style="margin-top:10px;margin-left:8px;font-size:12px;color:var(--grn);border-color:var(--grn)">📊 Export do XLSX</button>
   </div>
 
   <!-- PERIOD COMPARISON -->
@@ -1526,6 +1569,55 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 
 <!-- RULE EDIT MODAL -->
 <!-- HROMADNÉ PRIRADENIE POHĽADÁVOK K PLATBE -->
+<div class="modal-bg" id="m-transfers">
+  <div class="modal" style="width:560px;max-width:calc(100vw - 32px)">
+    <button class="mc" onclick="cm('m-transfers')">✕</button>
+    <div class="mt">Presuny medzi účtami</div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:14px;line-height:1.5">Presuny medzi tvojimi účtami (topup Revolutu z Tatry, posielanie zvyšku späť a pod.) sa nemajú počítať ako výdavok ani príjem. Tu ich označíš — oba pohyby sa vylúčia z analýzy, ale ostanú v zostatkoch účtov. Hľadám dvojice s rovnakou sumou a opačným smerom v rôznych účtoch (do 5 dní od seba).</div>
+    <div id="tr-cands"></div>
+    <div id="tr-marked"></div>
+  </div>
+</div>
+<div class="modal-bg" id="m-accounts">
+  <div class="modal" style="width:480px;max-width:calc(100vw - 32px)">
+    <button class="mc" onclick="cm('m-accounts')">✕</button>
+    <div class="mt">Účty</div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:14px;line-height:1.5">Tatra je primárny účet. Sekundárne účty (Revolut, 365.bank, Slsp…) si pridaj nižšie — neskôr do nich budeš importovať výpisy a presuny medzi účtami sa nebudú počítať ako výdavok.</div>
+    <div id="acc-list"></div>
+    <div id="acc-form" style="display:none;margin-top:6px;padding:12px;border:1px solid var(--bd);border-radius:8px;background:var(--s1)">
+      <div class="mt" id="acc-form-title" style="font-size:13px;margin-bottom:10px">Nový sekundárny účet</div>
+      <div class="ml">Názov</div>
+      <input id="acc-name" class="mi" placeholder="napr. Revolut">
+      <div class="ml">Účel</div>
+      <input id="acc-purpose" class="mi" placeholder="napr. zahraničné platby a investície">
+      <div class="ml">Typ banky (pre import výpisov)</div>
+      <select id="acc-banktype" class="mi">
+        <option value="">— vyber banku —</option>
+        <option value="b365">365.bank</option>
+        <option value="revolut">Revolut</option>
+        <option value="slsp">Slsp</option>
+        <option value="generic">Iné / CSV (zatiaľ bez parsera)</option>
+      </select>
+      <div class="ml">Počiatočný zostatok (€)</div>
+      <input id="acc-ob" type="number" step="0.01" class="mi" placeholder="0.00">
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn" onclick="_accSaveForm()" style="flex:1;font-size:12px;background:var(--acc);color:#fff;border-color:var(--acc)">Uložiť</button>
+        <button class="btn" onclick="_accCancelForm()" style="flex:1;font-size:12px">Zrušiť</button>
+      </div>
+    </div>
+    <button class="btn" id="acc-add-btn" onclick="_accShowForm()" style="width:100%;margin-top:10px;font-size:12px">+ Pridať sekundárny účet</button>
+    <input type="file" id="acc-import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="_doAccImport(this)">
+    <button class="btn" onclick="openTransferReview()" style="width:100%;margin-top:8px;font-size:12px;color:var(--acc2);border-color:var(--acc2)">🔎 Nájsť presuny medzi účtami</button>
+    <div id="reconcile-sec" style="margin-top:18px"></div>
+  </div>
+</div>
+<div class="modal-bg" id="m-betting">
+  <div class="modal" style="width:520px;max-width:calc(100vw - 32px)">
+    <button class="mc" onclick="cm('m-betting')">✕</button>
+    <div class="mt" id="bet-title">Stávková kniha</div>
+    <div id="bet-body"></div>
+  </div>
+</div>
 <div class="modal-bg" id="m-bulk-link">
   <div class="modal" style="width:440px">
     <button class="mc" onclick="cm('m-bulk-link')">✕</button>
@@ -1781,6 +1873,8 @@ function scheduleSave() {
     await S('recurignored', recurIgnored);
     await S('recurmarks', recurMarks);
     await S('exctags', [...excludedTags]);
+    await S('accounts', accounts);
+    await S('reconciliations', reconciliations);
     const dot = document.getElementById('save-dot');
     dot.classList.remove('on','err');
     if (ok) {
@@ -1796,6 +1890,459 @@ function scheduleSave() {
 }
 function saveD() { scheduleSave(); _returnMap=null; _selfRefundMap=null; try{localStorage.setItem('fintb_data_modified', new Date().toISOString());}catch(e){} }
 
+let accounts = []; // sekundárne účty: [{id,name,purpose,openingBalance}]
+let reconciliations = {}; // { bankId: {balance, date} } — posledná rekonciliácia
+let _accEditId = null;
+let _accImportTarget = null;
+let _txBankFilter = 'tatra'; // prepínač účtu v zozname transakcií
+function txBank(t){ return t.bank || 'tatra'; }
+function allAccounts(){ return [{id:'tatra',name:'Tatra banka',purpose:'Primárny účet',primary:true,openingBalance:openingBalance},...accounts]; }
+function accountBalance(bankId){
+  if(bankId==='tatra') return openingBalance + TX.filter(t=>txBank(t)==='tatra' && t.source==='account').reduce((s,t)=>s+t.amount,0);
+  const a=accounts.find(x=>x.id===bankId); const ob=a?.openingBalance||0;
+  return ob + TX.filter(t=>txBank(t)===bankId).reduce((s,t)=>s+t.amount,0);
+}
+let _anBank='tatra'; // scope analýzy/zostatku podľa účtu (default Tatra = samostatná)
+function _inAnScope(t){ if(_anBank==='__all'){ const b=txBank(t); if(b==='tatra')return true; const a=accounts.find(x=>x.id===b); return !(a&&a.bankType==='slsp'); } return txBank(t)===_anBank; }
+function _scopeBalance(){ if(_anBank==='__all') return allAccounts().filter(a=>a.bankType!=='slsp').reduce((s,a)=>s+accountBalance(a.id),0); return accountBalance(_anBank); }
+function _scopeOpening(){ if(_anBank==='tatra') return openingBalance; if(_anBank==='__all') return allAccounts().filter(a=>a.bankType!=='slsp').reduce((s,a)=>s+(a.id==='tatra'?openingBalance:(a.openingBalance||0)),0); const a=accounts.find(x=>x.id===_anBank); return a?.openingBalance||0; }
+function _renderAnScopeTabs(hostId){
+  const host=document.getElementById(hostId); if(!host)return;
+  if(!accounts.length){ host.style.display='none'; host.innerHTML=''; if(_anBank!=='tatra')_anBank='tatra'; return; }
+  if(_anBank!=='tatra' && _anBank!=='__all' && !accounts.find(a=>a.id===_anBank)) _anBank='tatra';
+  host.style.display='';
+  const tabs=[{id:'tatra',name:'Tatra banka'},...accounts.filter(a=>a.bankType!=='slsp').map(a=>({id:a.id,name:a.name})),{id:'__all',name:'Všetko'}];
+  host.innerHTML='<div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;align-items:center"><span style="font-size:10px;color:var(--mu);flex-shrink:0;margin-right:2px;font-weight:600">ÚČET:</span>'+tabs.map(t=>{
+    const active=_anBank===t.id;
+    return `<button onclick="_setAnBank('${t.id}')" style="flex-shrink:0;padding:5px 12px;border-radius:8px;border:1px solid ${active?'var(--acc)':'var(--bd)'};background:${active?'var(--acc)':'var(--s2)'};color:${active?'#fff':'var(--txt)'};font-size:11px;cursor:pointer;white-space:nowrap;font-weight:${active?'600':'400'}">${esc(t.name)}</button>`;
+  }).join('')+'</div>';
+}
+function _setAnBank(id){ _anBank=id; _renderAnScopeTabs('an-scope-tabs'); _renderAnScopeTabs('dash-scope-tabs'); _anRerender(); }
+function _anRerender(){
+  try{ if(document.getElementById('pg-dashboard')?.classList.contains('on')) rDash(); }catch(e){}
+  try{ if(document.getElementById('pg-analyza')?.classList.contains('on')){ renderExclTagChips(); const tr=document.getElementById('an-tag-report'); if(tr && tr.style.display!=='none') renderTagReport(); else renderPivot(); } }catch(e){}
+}
+function openAccounts(){ _accEditId=null; const f=document.getElementById('acc-form'); if(f)f.style.display='none'; const b=document.getElementById('acc-add-btn'); if(b)b.style.display=''; _renderAccountsList(); _renderReconciliation(); document.getElementById('m-accounts').classList.add('on'); }
+
+// ──────────── REKONCILIÁCIA ZOSTATKOV ────────────
+function _reconResHTML(bankId,diff,ok,date){
+  const dt=date?(' · '+new Date(date).toLocaleDateString('sk')):'';
+  if(ok) return `<span style="color:var(--grn)">✓ Sedí${dt}</span>`;
+  const sign=diff>0?'+':'−';
+  return `<span style="color:var(--red)">Rozdiel: ${sign}${fabs(diff)}${dt}</span> <button class="btn" onclick="_reconcileAdjust('${bankId}')" style="font-size:10px;padding:3px 9px;margin-left:6px;color:#d98a2b;border-color:#d98a2b">Dorovnať transakciou</button><div style="color:var(--mu);font-size:10px;margin-top:4px">${diff>0?'Skutočný je vyšší → asi chýba príjem.':'Skutočný je nižší → asi chýba výdavok.'}</div>`;
+}
+function _renderReconciliation(){
+  const host=document.getElementById('reconcile-sec'); if(!host)return;
+  let html='<div style="border-top:1px solid var(--bd);padding-top:14px"><div class="mt" style="font-size:13px;margin-bottom:4px">🧮 Kontrola zostatkov</div><div style="font-size:11px;color:var(--mu);margin-bottom:12px;line-height:1.5">Zadaj skutočný zostatok z banky a over, či sedí s vypočítaným (počiatočný + transakcie). Ak nesedí, niečo chýba alebo prebýva.</div>';
+  allAccounts().forEach(a=>{
+    const expected=accountBalance(a.id);
+    const rec=reconciliations[a.id]; const hasRec=rec&&typeof rec.balance==='number';
+    const diff=hasRec?(rec.balance-expected):null; const ok=hasRec&&Math.abs(diff)<0.005;
+    html+=`<div style="padding:10px;border:1px solid var(--bd);border-radius:8px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b style="font-size:13px">${esc(a.name)}</b>
+        <span style="font-size:11px;color:var(--mu)">vypočítaný: <b style="font-family:var(--M);color:var(--txt)">${fe(expected)}</b></span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input type="number" step="0.01" id="rec-in-${a.id}" value="${hasRec?rec.balance:''}" placeholder="skutočný zostatok z banky" style="flex:1;min-width:130px;padding:6px" onkeydown="if(event.key==='Enter')_reconcileCheck('${a.id}')">
+        <button class="btn" onclick="_reconcileCheck('${a.id}')" style="font-size:11px;padding:6px 12px;color:var(--acc);border-color:var(--acc)">Skontrolovať</button>
+      </div>
+      <div id="rec-res-${a.id}" style="margin-top:7px;font-size:11px">${hasRec?_reconResHTML(a.id,diff,ok,rec.date):''}</div>
+    </div>`;
+  });
+  html+='</div>';
+  host.innerHTML=html;
+}
+function _reconcileCheck(bankId){
+  const inp=document.getElementById('rec-in-'+bankId); if(!inp)return;
+  const raw=(inp.value||'').trim(); if(raw===''){ alert('Zadaj skutočný zostatok.'); return; }
+  const actual=parseFloat(raw.replace(',','.')); if(isNaN(actual)){ alert('Neplatné číslo.'); return; }
+  const expected=accountBalance(bankId);
+  reconciliations[bankId]={balance:actual, date:new Date().toISOString()};
+  saveD();
+  const diff=actual-expected, ok=Math.abs(diff)<0.005;
+  const res=document.getElementById('rec-res-'+bankId);
+  if(res) res.innerHTML=_reconResHTML(bankId,diff,ok,reconciliations[bankId].date);
+}
+function _reconcileAdjust(bankId){
+  const rec=reconciliations[bankId]; if(!rec||typeof rec.balance!=='number')return;
+  const expected=accountBalance(bankId), diff=Math.round((rec.balance-expected)*100)/100;
+  if(Math.abs(diff)<0.005){ alert('Zostatok už sedí.'); return; }
+  const a=allAccounts().find(x=>x.id===bankId);
+  if(!confirm('Pridať vyrovnávaciu transakciu '+(diff>0?'+':'−')+fabs(diff)+' na účet „'+(a?a.name:bankId)+'"?\n\nDorovná vypočítaný zostatok na skutočný. Bude vylúčená z analýzy (nie je reálny výdavok/príjem) — neskôr ju môžeš upraviť a zaradiť.')) return;
+  TX.push({ id:'tx_'+Math.random().toString(36).slice(2), date:new Date(), amount:diff, source:'account', bank:bankId, merchant:'Korekcia zostatku (rekonciliácia)', category:'ostatne', excluded:true, reconAdjust:true });
+  saveD();
+  _renderReconciliation();
+  try{ updateFilters(); }catch(e){}
+  try{ if(document.getElementById('pg-transactions')?.classList.contains('on')) renderTx(); }catch(e){}
+  try{ if(typeof updateBkInfo==='function') updateBkInfo(); }catch(e){}
+}
+function _renderAccountsList(){
+  const host=document.getElementById('acc-list'); if(!host)return;
+  host.innerHTML=allAccounts().map(a=>{
+    const bal=accountBalance(a.id);
+    const cnt=TX.filter(t=>txBank(t)===a.id).length;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px;background:var(--s2)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${esc(a.name)}${a.primary?' <span style="font-size:9px;color:var(--acc);border:1px solid var(--acc);border-radius:3px;padding:1px 5px;margin-left:2px">primárny</span>':''}</div>
+        <div style="font-size:10px;color:var(--mu)">${esc(a.purpose||'')}${a.bankType?` · ${({b365:'365.bank',revolut:'Revolut',slsp:'Slsp',generic:'CSV'})[a.bankType]||a.bankType}`:''}${cnt?` · ${cnt} tx`:''}</div>
+      </div>
+      <div style="font-family:var(--M);font-size:13px;font-weight:700;color:${bal>=0?'var(--grn)':'var(--red)'};white-space:nowrap">${fe(bal)}</div>
+      ${a.primary?'':`<div style="display:flex;gap:4px;flex-shrink:0">
+        ${a.bankType==='slsp'?`<button class="btn" onclick="openBettingBook('${a.id}')" style="padding:3px 8px;font-size:11px;color:var(--acc2);border-color:var(--acc2)" title="Stávková kniha (P/L)">📊</button>`:''}
+        <button class="btn" onclick="_accImportClick('${a.id}')" style="padding:3px 8px;font-size:11px;color:var(--acc);border-color:var(--acc)" title="Importovať výpis">📥</button>
+        ${cnt?`<button class="btn" onclick="_accClearTxs('${a.id}')" style="padding:3px 8px;font-size:11px;color:#d98a2b;border-color:#d98a2b" title="Vymazať transakcie účtu (pre čistý preimport)">🧹</button>`:''}
+        <button class="btn" onclick="_accShowForm('${a.id}')" style="padding:3px 8px;font-size:11px" title="Upraviť">✎</button>
+        <button class="btn" onclick="_accRemove('${a.id}')" style="padding:3px 8px;font-size:11px;color:var(--red);border-color:var(--red)" title="Zmazať">🗑</button>
+      </div>`}
+    </div>`;
+  }).join('');
+}
+function _accShowForm(id){
+  _accEditId=id||null;
+  const a=id?accounts.find(x=>x.id===id):null;
+  document.getElementById('acc-name').value=a?.name||'';
+  document.getElementById('acc-purpose').value=a?.purpose||'';
+  document.getElementById('acc-banktype').value=a?.bankType||'';
+  document.getElementById('acc-ob').value=(a&&a.openingBalance)?a.openingBalance:'';
+  document.getElementById('acc-form-title').textContent=a?'Upraviť účet':'Nový sekundárny účet';
+  document.getElementById('acc-form').style.display='';
+  document.getElementById('acc-add-btn').style.display='none';
+}
+function _accCancelForm(){ document.getElementById('acc-form').style.display='none'; document.getElementById('acc-add-btn').style.display=''; _accEditId=null; }
+// Vymaže všetky transakcie sekundárneho účtu (pre čistý preimport, napr. oprava poplatkov/kategórií)
+function _accClearTxs(accountId){
+  const a=accounts.find(x=>x.id===accountId); if(!a)return;
+  const list=TX.filter(t=>txBank(t)===accountId);
+  if(!list.length){ alert('Tento účet nemá žiadne transakcie.'); return; }
+  if(!confirm('Vymazať VŠETKY transakcie účtu „'+a.name+'" ('+list.length+')?\n\nToto sa nedá vrátiť. Potom môžeš výpis naimportovať nanovo (napr. kvôli oprave poplatkov či kategórií).')) return;
+  // odpoj párové presuny – prežívajúcej nohe (napr. Tatra) zruš väzbu + vylúčenie
+  list.forEach(t=>{ if(t.transferPair){ const p=TX.find(x=>x.id===t.transferPair); if(p && txBank(p)!==accountId){ delete p.transferPair; p.excluded=false; } } });
+  TX=TX.filter(t=>txBank(t)!==accountId);
+  saveD();
+  _renderAccountsList();
+  try{ updateFilters(); }catch(e){}
+  try{ if(document.getElementById('pg-transactions')?.classList.contains('on')) renderTx(); }catch(e){}
+  try{ if(typeof updateBkInfo==='function') updateBkInfo(); }catch(e){}
+  try{ _renderAnScopeTabs('dash-scope-tabs'); _renderAnScopeTabs('an-scope-tabs'); }catch(e){}
+  alert('Hotovo — vymazaných '+list.length+' transakcií účtu „'+a.name+'".\nTeraz importni výpis nanovo cez 📥.');
+}
+
+// ──────────── SLSP STÁVKOVÁ KNIHA (P/L) ────────────
+function _slspStats(accountId){
+  const bet=TX.filter(t=>txBank(t)===accountId && !t.transferPair); // stávkové pohyby (bez interného dofinancovania)
+  let dep=0, wd=0; const mo={};
+  bet.forEach(t=>{
+    const a=t.amount||0; const d=eDate(t)||t.date;
+    const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    (mo[key]=mo[key]||{dep:0,wd:0});
+    if(a<0){ dep+=-a; mo[key].dep+=-a; } else { wd+=a; mo[key].wd+=a; }
+  });
+  const funding=TX.filter(t=>txBank(t)===accountId && t.transferPair && (t.amount||0)>0).reduce((s,t)=>s+t.amount,0);
+  return { dep, wd, net:wd-dep, mo, funding, bal:accountBalance(accountId), count:bet.length };
+}
+function openBettingBook(accountId){ _renderBettingBook(accountId); document.getElementById('m-betting').classList.add('on'); }
+
+// ──────────── MESAČNÝ PDF REPORT ────────────
+const _rpPalette=['#5ea8d8','#e0922f','#6bbf6b','#d9645c','#9b7fd0','#4bb1a8','#d98cc0','#c7b34a','#7a8aa0','#e07a5f','#81b29a','#f2cc8f','#b0916f','#6f9bd8'];
+function _rpCatColor(id, idx){ const c=getCAT()[id]?.c; if(c && /^(#|rgb)/.test(c)) return c; return _rpPalette[idx%_rpPalette.length]; }
+function _rpCatName(id){ return getCAT()[id]?.l || (id||'Nezaradené'); }
+const _rpMonNames=['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+const _rpMonShortArr=['jan','feb','mar','apr','máj','jún','júl','aug','sep','okt','nov','dec'];
+function _rpMonShort(m){ return _rpMonShortArr[((m%12)+12)%12]; }
+function _rpFont(mono){ try{ const v=getComputedStyle(document.documentElement).getPropertyValue(mono?'--M':'--H'); if(v&&v.trim())return v.trim(); }catch(e){} return mono?'monospace':'sans-serif'; }
+function _rpToday(){ const d=new Date(); return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear(); }
+function _rpDate(d){ return d?String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.':''; }
+function _rpScopeName(){ if(_anBank==='__all')return 'Všetky účty'; if(_anBank==='tatra')return 'Tatra banka'; return (accounts.find(a=>a.id===_anBank)?.name)||'Tatra banka'; }
+
+function openReportConfig(){
+  const sel=document.getElementById('rp-month'); if(!sel)return;
+  const keys=new Set();
+  anTx({}).forEach(t=>{ const d=eDate(t); if(d) keys.add(d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0')); });
+  const now=new Date(); keys.add(now.getFullYear()+'-'+String(now.getMonth()).padStart(2,'0'));
+  const arr=[...keys].sort().reverse();
+  sel.innerHTML=arr.map(k=>{ const p=k.split('-'); return `<option value="${k}">${_rpMonNames[+p[1]]} ${p[0]}</option>`; }).join('');
+  document.getElementById('m-report').classList.add('on');
+}
+
+function _reportData(y, m){
+  const txns=anTx({year:y, month:m});
+  let income=0, expense=0; const catMap={}, merchMap={};
+  txns.forEach(t=>{
+    const amt=t.amount||0;
+    const my=txMyAmount(t); // B10: môj podiel (shared → bez cudzej časti), konzistentne s dashboardom
+    if(amt>0){ income+=my; }
+    else {
+      expense+=-my;
+      getTxCatAmounts(t).forEach(p=>{ const v=Math.abs(p.amount||0); if(v>0) catMap[p.category]=(catMap[p.category]||0)+v; });
+      const mn=eMerchant(t); merchMap[mn]=(merchMap[mn]||0)+Math.abs(my);
+    }
+  });
+  const cats=Object.entries(catMap).map(([id,v])=>({id, value:v})).sort((a,b)=>b.value-a.value);
+  const merchants=Object.entries(merchMap).map(([mn,v])=>({merchant:mn, value:v})).sort((a,b)=>b.value-a.value).slice(0,10);
+  const trend=[]; for(let i=5;i>=0;i--){ const d=new Date(y,m-i,1); const tt=anTx({year:d.getFullYear(), month:d.getMonth()}); const exp=tt.filter(t=>(t.amount||0)<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0); trend.push({y:d.getFullYear(), m:d.getMonth(), value:exp}); }
+  return { y, m, income, expense, net:income-expense, cats, merchants, trend, count:txns.length, balance:_scopeBalance() };
+}
+
+function _rpRoundRect(x,X,Y,W,H,r){ if(H<=0)return; r=Math.min(r,W/2,H/2); x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+W,Y,X+W,Y+H,r); x.arcTo(X+W,Y+H,X,Y+H,r); x.arcTo(X,Y+H,X,Y,r); x.arcTo(X,Y,X+W,Y,r); x.closePath(); }
+
+function _reportPie(cats, size){
+  const dpr=2, S=size*dpr; const cv=document.createElement('canvas'); cv.width=S; cv.height=S; const x=cv.getContext('2d');
+  const total=cats.reduce((s,c)=>s+c.value,0)||1;
+  const cx=S/2, cy=S/2, r=S/2*0.94, ir=r*0.58;
+  let a=-Math.PI/2;
+  cats.forEach((c,i)=>{ const a2=a+(c.value/total)*Math.PI*2; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,r,a,a2); x.closePath(); x.fillStyle=_rpCatColor(c.id,i); x.fill(); a=a2; });
+  x.beginPath(); x.arc(cx,cy,ir,0,Math.PI*2); x.fillStyle='#fff'; x.fill();
+  x.fillStyle='#141b22'; x.textAlign='center'; x.textBaseline='middle';
+  x.font='700 '+(S*0.08)+'px '+_rpFont(true); x.fillText(fabs(total), cx, cy-S*0.02);
+  x.fillStyle='#8a929c'; x.font='400 '+(S*0.045)+'px '+_rpFont(); x.fillText('výdavky', cx, cy+S*0.07);
+  return cv.toDataURL('image/png');
+}
+
+function _reportBars(trend, w, h){
+  const dpr=2, W=w*dpr, H=h*dpr; const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const pad={l:6*dpr,r:6*dpr,t:18*dpr,b:24*dpr};
+  const max=Math.max(...trend.map(t=>t.value),1);
+  const n=trend.length, gap=9*dpr, bw=(W-pad.l-pad.r-gap*(n-1))/n;
+  trend.forEach((t,i)=>{
+    const bh=(t.value/max)*(H-pad.t-pad.b);
+    const bx=pad.l+i*(bw+gap), by=H-pad.b-bh, cur=(i===n-1);
+    x.fillStyle=cur?'#5ea8d8':'#ccd5de'; _rpRoundRect(x,bx,by,bw,bh,4*dpr); x.fill();
+    x.textAlign='center';
+    x.fillStyle=cur?'#3f83b5':'#98a1ab'; x.font=(cur?'700 ':'400 ')+(8.5*dpr)+'px '+_rpFont(true);
+    x.fillText(Math.round(t.value), bx+bw/2, by-5*dpr);
+    x.fillStyle='#8a929c'; x.font='400 '+(9*dpr)+'px '+_rpFont();
+    x.fillText(_rpMonShort(t.m), bx+bw/2, H-pad.b+14*dpr);
+  });
+  return cv.toDataURL('image/png');
+}
+
+function generateReport(){
+  const g=id=>document.getElementById(id)?.checked;
+  const key=document.getElementById('rp-month').value; if(!key)return;
+  const p=key.split('-'), y=+p[0], m=+p[1];
+  const d=_reportData(y,m);
+  const total=d.cats.reduce((s,c)=>s+c.value,0)||1;
+  let html=`<h1>Mesačný report — ${_rpMonNames[m]} ${y}</h1>
+    <div class="rp-sub">${esc(_rpScopeName())} · vygenerované ${_rpToday()} · ${d.count} transakcií</div>`;
+  if(g('rp-s-summary')){
+    html+=`<div class="rp-cards">
+      <div class="rp-card"><div class="l">Príjmy</div><div class="v" style="color:#2e9e5b">${fabs(d.income)}</div></div>
+      <div class="rp-card"><div class="l">Výdavky</div><div class="v" style="color:#d9534f">${fabs(d.expense)}</div></div>
+      <div class="rp-card"><div class="l">Rozdiel</div><div class="v" style="color:${d.net>=0?'#2e9e5b':'#d9534f'}">${d.net>=0?'+':'−'}${fabs(d.net)}</div></div>
+      <div class="rp-card"><div class="l">Zostatok účtu</div><div class="v">${fe(d.balance)}</div></div>
+    </div>`;
+  }
+  const showPie=g('rp-s-pie')&&d.cats.length, showTrend=g('rp-s-trend');
+  if(showPie||showTrend){
+    html+='<div class="rp-charts">';
+    if(showPie) html+=`<div class="rp-chart"><h3>Výdavky podľa kategórií</h3><img class="rp-canvas" src="${_reportPie(d.cats,240)}"></div>`;
+    if(showTrend) html+=`<div class="rp-chart"><h3>Výdavky — 6-mesačný trend</h3><img class="rp-canvas" src="${_reportBars(d.trend,300,175)}"></div>`;
+    html+='</div>';
+  }
+  if(g('rp-s-cats')&&d.cats.length){
+    html+=`<div class="rp-sec-title">Kategórie</div><table class="rp-tbl"><thead><tr><th style="width:14px"></th><th>Kategória</th><th style="text-align:right">Suma</th><th style="text-align:right">Podiel</th></tr></thead><tbody>`;
+    d.cats.forEach((c,i)=>{ html+=`<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${_rpCatColor(c.id,i)}"></span></td><td>${esc(_rpCatName(c.id))}</td><td style="text-align:right;font-family:var(--M,monospace)">${fabs(c.value)}</td><td style="text-align:right;color:#8a929c">${(c.value/total*100).toFixed(1)} %</td></tr>`; });
+    html+='</tbody></table>';
+  }
+  if(g('rp-s-merch')&&d.merchants.length){
+    html+=`<div class="rp-sec-title">Top obchodníci</div><table class="rp-tbl"><thead><tr><th>Obchodník</th><th style="text-align:right">Suma</th></tr></thead><tbody>`;
+    d.merchants.forEach(mm=>{ html+=`<tr><td>${esc(mm.merchant)}</td><td style="text-align:right;font-family:var(--M,monospace)">${fabs(mm.value)}</td></tr>`; });
+    html+='</tbody></table>';
+  }
+  if(g('rp-s-tx')){
+    const cols={date:g('rp-c-date'),merch:g('rp-c-merch'),cat:g('rp-c-cat'),tags:g('rp-c-tags'),amt:g('rp-c-amt')};
+    const txns=anTx({year:y,month:m}).slice().sort((a,b)=>eDate(b)-eDate(a));
+    html+=`<div class="rp-sec-title">Transakcie (${txns.length})</div><table class="rp-tbl"><thead><tr>`;
+    if(cols.date)html+='<th>Dátum</th>'; if(cols.merch)html+='<th>Obchodník</th>'; if(cols.cat)html+='<th>Kategória</th>'; if(cols.tags)html+='<th>Tagy</th>'; if(cols.amt)html+='<th style="text-align:right">Suma</th>';
+    html+='</tr></thead><tbody>';
+    txns.forEach(t=>{ html+='<tr>';
+      if(cols.date)html+=`<td style="white-space:nowrap">${_rpDate(eDate(t))}</td>`;
+      if(cols.merch)html+=`<td>${esc(eMerchant(t))}</td>`;
+      if(cols.cat)html+=`<td>${esc(_rpCatName(t.category))}</td>`;
+      if(cols.tags)html+=`<td style="color:#8a929c;font-size:10px">${esc((t.tags||[]).join(', '))}</td>`;
+      if(cols.amt)html+=`<td style="text-align:right;font-family:var(--M,monospace);color:${(t.amount||0)<0?'#d9534f':'#2e9e5b'}">${(t.amount||0)<0?'−':'+'}${fabs(t.amount)}</td>`;
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+  }
+  document.getElementById('rp-content').innerHTML=html;
+  cm('m-report');
+  document.getElementById('report-view').classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function closeReport(){ document.getElementById('report-view').classList.remove('on'); document.body.style.overflow=''; }
+
+// ──────────── XLSX EXPORT ────────────
+function openExportConfig(){
+  const sel=document.getElementById('xp-range'); if(!sel)return;
+  const mk=new Set(), ys=new Set();
+  anTx({}).forEach(t=>{ const d=eDate(t); if(d){ mk.add(d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0')); ys.add(d.getFullYear()); } });
+  const now=new Date(); mk.add(now.getFullYear()+'-'+String(now.getMonth()).padStart(2,'0')); ys.add(now.getFullYear());
+  const ya=[...ys].sort().reverse(), ma=[...mk].sort().reverse();
+  let html='<option value="all">Všetko</option>';
+  html+='<optgroup label="Rok">'+ya.map(y=>`<option value="y:${y}">Rok ${y}</option>`).join('')+'</optgroup>';
+  html+='<optgroup label="Mesiac">'+ma.map(k=>{const p=k.split('-');return `<option value="m:${k}">${_rpMonNames[+p[1]]} ${p[0]}</option>`;}).join('')+'</optgroup>';
+  sel.innerHTML=html;
+  document.getElementById('m-export').classList.add('on');
+}
+
+function _buildExportWorkbook(txns){
+  const wb=XLSX.utils.book_new();
+  const EUR='#,##0.00" €"';
+  const txS=txns.slice().sort((a,b)=>eDate(a)-eDate(b));
+  const aoa=[['Dátum','Obchodník','Kategória','Tagy','Suma','Účet']];
+  txS.forEach(t=>{ aoa.push([ eDate(t), eMerchant(t), _rpCatName(t.category), (t.tags||[]).join(', '), t.amount||0, (typeof _accName==='function'?_accName(txBank(t)):txBank(t)) ]); });
+  const wsT=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
+  const rgT=XLSX.utils.decode_range(wsT['!ref']);
+  for(let r=1;r<=rgT.e.r;r++){
+    const dc=wsT[XLSX.utils.encode_cell({r,c:0})]; if(dc)dc.z='dd.mm.yyyy';
+    const ac=wsT[XLSX.utils.encode_cell({r,c:4})]; if(ac)ac.z=EUR;
+  }
+  wsT['!cols']=[{wch:11},{wch:26},{wch:16},{wch:18},{wch:12},{wch:14}];
+  wsT['!freeze']={xSplit:0,ySplit:1};
+  XLSX.utils.book_append_sheet(wb, wsT, 'Transakcie');
+  const cmap={};
+  txns.forEach(t=>{ if((t.amount||0)<0) getTxCatAmounts(t).forEach(p=>{ const v=Math.abs(p.amount||0); if(v>0)cmap[p.category]=(cmap[p.category]||0)+v; }); });
+  const cats=Object.entries(cmap).map(([id,v])=>({id,v})).sort((a,b)=>b.v-a.v);
+  const caoa=[['Kategória','Výdavky','Podiel']];
+  cats.forEach(c=>caoa.push([_rpCatName(c.id), c.v, null]));
+  const cTot=caoa.length+1;
+  caoa.push(['Spolu', null, null]);
+  const wsC=XLSX.utils.aoa_to_sheet(caoa);
+  for(let i=0;i<cats.length;i++){ const r=i+1;
+    const bc=wsC[XLSX.utils.encode_cell({r,c:1})]; if(bc)bc.z=EUR;
+    wsC[XLSX.utils.encode_cell({r,c:2})]={t:'n', f:`B${r+1}/B${cTot}`, z:'0.0%'};
+  }
+  wsC[XLSX.utils.encode_cell({r:cats.length+1,c:1})]={t:'n', f:`SUM(B2:B${cats.length+1})`, z:EUR};
+  wsC['!cols']=[{wch:22},{wch:14},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, wsC, 'Kategórie');
+  const mo={};
+  txns.forEach(t=>{ const d=eDate(t); const k=d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0'); (mo[k]=mo[k]||{inc:0,exp:0}); const my=txMyAmount(t); if((t.amount||0)>0)mo[k].inc+=my; else mo[k].exp+=Math.abs(my); });
+  const mkeys=Object.keys(mo).sort();
+  const maoa=[['Mesiac','Príjmy','Výdavky','Rozdiel']];
+  mkeys.forEach(k=>{ const p=k.split('-'); maoa.push([_rpMonNames[+p[1]]+' '+p[0], mo[k].inc, mo[k].exp, null]); });
+  const mTot=maoa.length+1;
+  maoa.push(['Spolu', null, null, null]);
+  const wsM=XLSX.utils.aoa_to_sheet(maoa);
+  for(let i=0;i<mkeys.length;i++){ const r=i+1;
+    const bc=wsM[XLSX.utils.encode_cell({r,c:1})]; if(bc)bc.z=EUR;
+    const cc=wsM[XLSX.utils.encode_cell({r,c:2})]; if(cc)cc.z=EUR;
+    wsM[XLSX.utils.encode_cell({r,c:3})]={t:'n', f:`B${r+1}-C${r+1}`, z:EUR};
+  }
+  wsM[XLSX.utils.encode_cell({r:mkeys.length+1,c:1})]={t:'n',f:`SUM(B2:B${mkeys.length+1})`,z:EUR};
+  wsM[XLSX.utils.encode_cell({r:mkeys.length+1,c:2})]={t:'n',f:`SUM(C2:C${mkeys.length+1})`,z:EUR};
+  wsM[XLSX.utils.encode_cell({r:mkeys.length+1,c:3})]={t:'n',f:`B${mTot}-C${mTot}`,z:EUR};
+  wsM['!cols']=[{wch:16},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsM, 'Mesačný prehľad');
+  return wb;
+}
+
+function exportXLSX(){
+  const val=(document.getElementById('xp-range')||{}).value||'all';
+  let txns, label;
+  if(val==='all'){ txns=anTx({}); label='vsetko'; }
+  else if(val.slice(0,2)==='y:'){ const y=+val.slice(2); txns=anTx({year:y}); label=''+y; }
+  else { const p=val.slice(2).split('-'); const y=+p[0], m=+p[1]; txns=anTx({year:y,month:m}); label=p[0]+'-'+String(m+1).padStart(2,'0'); }
+  const sc=(_anBank==='__all'?'vsetky':(_anBank==='tatra'?'tatra':(accounts.find(a=>a.id===_anBank)?.name||'tatra'))).replace(/[^a-z0-9]/gi,'');
+  const wb=_buildExportWorkbook(txns);
+  XLSX.writeFile(wb, `finTB_${sc}_${label}.xlsx`);
+  cm('m-export');
+}
+
+
+function _renderBettingBook(accountId){
+  const a=accounts.find(x=>x.id===accountId); if(!a)return;
+  const s=_slspStats(accountId);
+  const tEl=document.getElementById('bet-title'); if(tEl)tEl.textContent='Stávková kniha — '+a.name;
+  const moNames=['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
+  const fmtM=k=>{ const p=k.split('-'); return moNames[(+p[1])-1]+' '+p[0]; };
+  const months=Object.keys(s.mo).sort().reverse();
+  const netClr=s.net>=0?'var(--grn)':'var(--red)';
+  const rows=months.map(k=>{ const r=s.mo[k]; const net=r.wd-r.dep; return `<tr style="border-bottom:1px solid var(--bd)">
+      <td style="padding:6px 8px;font-size:11px">${fmtM(k)}</td>
+      <td style="padding:6px 8px;text-align:right;font-size:11px;color:var(--red);font-family:var(--M)">${r.dep?'−'+fabs(r.dep):'—'}</td>
+      <td style="padding:6px 8px;text-align:right;font-size:11px;color:var(--grn);font-family:var(--M)">${r.wd?'+'+fabs(r.wd):'—'}</td>
+      <td style="padding:6px 8px;text-align:right;font-size:11px;font-weight:700;font-family:var(--M);color:${net>=0?'var(--grn)':'var(--red)'}">${net>=0?'+':'−'}${fabs(net)}</td>
+    </tr>`;}).join('');
+  const body=`
+    <div style="text-align:center;padding:16px;background:var(--s1);border-radius:10px;margin-bottom:14px">
+      <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Čistý výsledok</div>
+      <div style="font-size:30px;font-weight:800;color:${netClr};font-family:var(--M)">${s.net>=0?'+':'−'}${fabs(s.net)}</div>
+      <div style="font-size:10px;color:var(--mu);margin-top:4px">${s.net>=0?'V pluse 📈':'V mínuse 📉'} · ${s.count} stávkových pohybov</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="flex:1;padding:10px;background:var(--s2);border-radius:8px;text-align:center">
+        <div style="font-size:9px;color:var(--mu);text-transform:uppercase">Vklady do stávkovky</div>
+        <div style="font-size:16px;font-weight:700;color:var(--red);font-family:var(--M)">${s.dep?'−'+fabs(s.dep):fabs(0)}</div>
+      </div>
+      <div style="flex:1;padding:10px;background:var(--s2);border-radius:8px;text-align:center">
+        <div style="font-size:9px;color:var(--mu);text-transform:uppercase">Výbery zo stávkovky</div>
+        <div style="font-size:16px;font-weight:700;color:var(--grn);font-family:var(--M)">${s.wd?'+'+fabs(s.wd):fabs(0)}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;font-size:11px;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px">
+        <span style="color:var(--mu)">Zostatok na účte:</span> <b style="font-family:var(--M)">${fe(s.bal)}</b>
+      </div>
+      ${s.funding?`<div style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px">
+        <span style="color:var(--mu)">Dofinancované z účtov:</span> <b style="font-family:var(--M)">${fabs(s.funding)}</b>
+      </div>`:''}
+    </div>
+    ${months.length?`<div style="font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Mesačný rozpad</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:1px solid var(--bd)">
+        <th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--mu);text-transform:uppercase">Mesiac</th>
+        <th style="padding:5px 8px;text-align:right;font-size:9px;color:var(--mu);text-transform:uppercase">Vklady</th>
+        <th style="padding:5px 8px;text-align:right;font-size:9px;color:var(--mu);text-transform:uppercase">Výbery</th>
+        <th style="padding:5px 8px;text-align:right;font-size:9px;color:var(--mu);text-transform:uppercase">Výsledok</th>
+      </tr></thead><tbody>${rows}</tbody>
+    </table>`:'<div style="text-align:center;color:var(--mu);font-size:12px;padding:20px">Zatiaľ žiadne stávkové pohyby. Naimportuj Slsp výpis (📥).</div>'}
+    <div style="font-size:10px;color:var(--mu);margin-top:12px;line-height:1.5;padding:8px 10px;background:var(--s1);border-radius:8px">💡 Výsledok = výbery − vklady (čistý cash-flow). Dofinancovanie z Tatry sa neráta — označ ho ako presun cez „🔎 Nájsť presuny", nech ti nenafukuje výsledok.</div>`;
+  const bEl=document.getElementById('bet-body'); if(bEl)bEl.innerHTML=body;
+}
+function _accSaveForm(){
+  const name=document.getElementById('acc-name').value.trim();
+  if(!name){ alert('Zadaj názov účtu.'); return; }
+  const purpose=document.getElementById('acc-purpose').value.trim();
+  const ob=parseFloat(document.getElementById('acc-ob').value)||0;
+  const bankType=document.getElementById('acc-banktype').value;
+  if(_accEditId){
+    const a=accounts.find(x=>x.id===_accEditId);
+    if(a){ a.name=name; a.purpose=purpose; a.openingBalance=ob; a.bankType=bankType; }
+  } else {
+    accounts.push({id:'acc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, purpose, openingBalance:ob, bankType});
+  }
+  saveD();
+  _accCancelForm(); _renderAccountsList();
+}
+function _accRemove(id){
+  const a=accounts.find(x=>x.id===id); if(!a)return;
+  const cnt=TX.filter(t=>txBank(t)===id).length;
+  if(cnt){ alert(`Účet „${a.name}" má ${cnt} transakcií — najprv ich presuň alebo zmaž.`); return; }
+  if(!confirm(`Zmazať účet „${a.name}"?`)) return;
+  accounts=accounts.filter(x=>x.id!==id);
+  saveD(); _renderAccountsList();
+}
+function _accImportClick(id){ _accImportTarget=id; const f=document.getElementById('acc-import-file'); if(f){ f.value=''; f.click(); } }
+async function _doAccImport(inp){
+  const file=inp.files&&inp.files[0]; const accId=_accImportTarget; _accImportTarget=null;
+  if(!file||!accId)return;
+  const acc=accounts.find(a=>a.id===accId); if(!acc){ alert('Účet sa nenašiel.'); return; }
+  if(!acc.bankType){ alert('Najprv účtu nastav typ banky (Upraviť → Typ banky).'); return; }
+  try{
+    const buf=await file.arrayBuffer(); const data=new Uint8Array(buf);
+    let parsed;
+    if(acc.bankType==='b365') parsed=parse365(data);
+    else if(acc.bankType==='slsp') parsed=parseSlsp(data);
+    else if(acc.bankType==='revolut') parsed=parseRevolut(data);
+    else { alert('Pre tento typ banky („'+acc.bankType+'") zatiaľ nemám parser.'); return; }
+    if(!parsed||!parsed.length){ alert('V súbore som nenašiel žiadne transakcie. Skontroluj, či je to správny výpis.'); return; }
+    const {added,dup}=_importSecondaryTxs(accId, parsed);
+    saveD(); _renderAccountsList();
+    alert(`Import „${acc.name}": pridaných ${added} transakcií${dup?`, preskočených duplicít ${dup}`:''}.`);
+  }catch(e){ alert('Chyba pri importe: '+e.message); }
+}
 function sTx(t) { return {...t, date: t.date?.toISOString(), dateProcParsed: t.dateProcParsed?.toISOString(), dateOverride: t.dateOverride?.toISOString(), dateBank: t.dateBank?.toISOString()}; }
 function dTx(t) { return {...t, date: t.date ? new Date(t.date) : null, dateProcParsed: t.dateProcParsed ? new Date(t.dateProcParsed) : null, dateOverride: t.dateOverride ? new Date(t.dateOverride) : undefined, dateBank: t.dateBank ? new Date(t.dateBank) : undefined}; }
 // Legacy singular debtLink -> debtLinks[] (used by loadAll, importBackup, gdLoad)
@@ -1845,6 +2392,8 @@ async function loadAll() {
   if (exct && exct.length) excludedTags = new Set(exct);
   openingBalance = (await Store.get('ob')) || 0;
   if (openingBalance) document.getElementById('ob').value = openingBalance;
+  accounts = (await Store.get('accounts')) || [];
+  reconciliations = (await Store.get('reconciliations')) || {};
   rules = (await Store.get('rules')) || [];
   customCats = (await Store.get('customcats')) || [];
   const savedBuiltin = await Store.get('builtincats');
@@ -1904,6 +2453,16 @@ const BUILTIN_CATS = [
 ];
 function getCatD() { return [...BUILTIN_CATS, ...customCats]; }
 function getCAT() { const m={}; getCatD().forEach(c=>m[c.id]=c); return m; }
+// Mapuj bankový názov kategórie na finTB kategóriu (zhoda podľa názvu), inak vytvor custom
+function _resolveCatByLabel(label){
+  const L=String(label||'').trim(); if(!L) return undefined;
+  const hit=getCatD().find(c=>String(c.l||'').toLowerCase().trim()===L.toLowerCase());
+  if(hit) return hit.id;
+  const slug=L.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,24)||'cat';
+  let id='bk_'+slug, n=2; while(getCatD().some(c=>c.id===id)){ id='bk_'+slug+'_'+n; n++; }
+  customCats.push({id, l:L, c:'#8a96a3', builtin:false});
+  return id;
+}
 const catOptsHtml = () => buildCatSelectHtml(null,false);
 
 const BUILTIN = []; // No built-in rules — users define their own in the Rules tab
@@ -2057,6 +2616,186 @@ function pAmt(s) {
   else if (s.includes(',')) s = s.replace(',','.');
   return parseFloat(s)||0;
 }
+// ==================== SEKUNDÁRNE BANKY: PARSERY ====================
+// Oprava Revolut mojibake: obsah je UTF-8 dekódovaný cez Windows-1250 → reverzne to opravíme.
+const _cp1250EncMap=(()=>{ try{ const d=new TextDecoder('windows-1250'); const m={}; for(let b=0;b<256;b++){ m[d.decode(new Uint8Array([b]))]=b; } return m; }catch(e){ return null; } })();
+function _fixCp1250(s){
+  if(!_cp1250EncMap||!s) return s;
+  try{ const by=[]; for(const ch of s){ const b=_cp1250EncMap[ch]; by.push(b===undefined?(ch.charCodeAt(0)&0xFF):b); } return new TextDecoder('utf-8').decode(new Uint8Array(by)); }
+  catch(e){ return s; }
+}
+function _cellDate(v){ if(v instanceof Date) return isNaN(v)?null:v; return pDate(String(v==null?'':v)); }
+function _cellAmt(v){ return typeof v==='number'? v : pAmt(String(v==null?'':v)); }
+
+// 365.bank: hlavička (Dátum, Popis, Suma (EUR), Typ, Poznámka), jeden znamienkový stĺpec
+function parse365(data){
+  const wb=XLSX.read(data,{type:'array',cellDates:true,raw:false});
+  const ws=wb.Sheets['Transakcie']||wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,cellDates:true,defval:''});
+  let hR=-1; for(let i=0;i<Math.min(10,rows.length);i++){ const j=(rows[i]||[]).map(x=>String(x||'').toLowerCase()).join('|'); if(j.includes('popis')&&j.includes('suma')){hR=i;break;} }
+  if(hR<0)return [];
+  const hds=rows[hR].map(h=>String(h||'').toLowerCase().trim());
+  const fi=(...ts)=>{for(const t of ts){const i=hds.findIndex(h=>h.includes(t));if(i>=0)return i;}return -1;};
+  const iD=fi('dátum','datum'), iM=fi('popis'), iA=fi('suma'), iN=fi('poznámka','poznamka');
+  const txs=[];
+  for(let i=hR+1;i<rows.length;i++){
+    const r=rows[i]; if(!r||!r.some(x=>String(x).trim()))continue;
+    const date=_cellDate(r[iD]); if(!date)continue;
+    const amount=_cellAmt(r[iA]); if(!amount)continue;
+    const merchant=String(r[iM]==null?'':r[iM]).trim();
+    const note=iN>=0?String(r[iN]==null?'':r[iN]).trim():'';
+    txs.push({date, amount, merchant:merchant||'—', description:merchant, info:note, source:'account'});
+  }
+  return txs;
+}
+
+// Slsp: hlavička ~r5 (Partner, Suma prichádzajúcich/odchádzajúcich, Dátum splatnosti), sumárne riadky na konci
+function parseSlsp(data){
+  const wb=XLSX.read(data,{type:'array',cellDates:true,raw:false});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,cellDates:true,defval:''});
+  let hR=-1; for(let i=0;i<Math.min(15,rows.length);i++){ const j=(rows[i]||[]).map(x=>String(x||'').toLowerCase()).join('|'); if(j.includes('partner')&&j.includes('suma')){hR=i;break;} }
+  if(hR<0)return [];
+  const hds=rows[hR].map(h=>String(h||'').toLowerCase().trim());
+  const fi=(...ts)=>{for(const t of ts){const i=hds.findIndex(h=>h.includes(t));if(i>=0)return i;}return -1;};
+  const iD=fi('dátum splatnosti','dátum','datum'), iIn=fi('prichádzajúcich','prichadzajucich'), iOut=fi('odchádzajúcich','odchadzajucich');
+  const iP=fi('partner'), iDe=fi('popis transakcie','popis'), iIB=fi('iban partnera'), iNo=fi('poznámka','poznamka'), iCat=fi('kategória','kategoria');
+  const txs=[];
+  for(let i=hR+1;i<rows.length;i++){
+    const r=rows[i]; if(!r)continue;
+    const j=r.map(x=>String(x||'').toLowerCase()).join('|');
+    if(j.includes('počet transakcií')||j.includes('pocet transakcii'))break;
+    const date=_cellDate(r[iD]); if(!date)continue;
+    const amount=(iIn>=0?_cellAmt(r[iIn]):0)+(iOut>=0?_cellAmt(r[iOut]):0);
+    if(!amount)continue;
+    const partner=String(iP>=0&&r[iP]!=null?r[iP]:'').trim();
+    const desc=String(iDe>=0&&r[iDe]!=null?r[iDe]:'').trim();
+    const iban=String(iIB>=0&&r[iIB]!=null?r[iIB]:'').trim();
+    const note=String(iNo>=0&&r[iNo]!=null?r[iNo]:'').trim();
+    const bcat=String(iCat>=0&&r[iCat]!=null?r[iCat]:'').trim();
+    txs.push({date, amount, merchant:partner||desc||'—', description:desc, info:note, iban, bankCat:bcat||undefined, source:'account'});
+  }
+  return txs;
+}
+
+// Revolut: jeden stĺpec s comma-CSV, mojibake; polia Typ,Produkt,Dátum začiatku,Dátum dokončenia,Popis,Suma,Poplatok,Mena,State,Zostatok
+function parseRevolut(data){
+  const wb=XLSX.read(data,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+  const txs=[];
+  for(let i=0;i<rows.length;i++){
+    const cell=rows[i]&&rows[i][0]; if(!cell)continue;
+    const line=_fixCp1250(String(cell));
+    if(/^\s*Typ\s*,\s*Produkt/i.test(line))continue; // hlavička
+    const p=line.split(','); if(p.length<10)continue;
+    const tail=p.slice(p.length-5); // Suma,Poplatok,Mena,State,Zostatok
+    const popis=p.slice(4,p.length-5).join(',').trim();
+    const suma=tail[0], state=tail[3];
+    if(state && !/DOKON/i.test(state)) continue; // len dokončené
+    const date=pDate(p[3])||pDate(p[2]); if(!date)continue;
+    const fee=Math.abs(pAmt(tail[1])||0);
+    const amount=(pAmt(suma)||0)-fee; if(!amount)continue;
+    txs.push({date, amount, merchant:popis||p[0]||'—', description:popis, info:String(p[1]||'').trim(), source:'account'});
+  }
+  return txs;
+}
+
+// Dedup pri importe do sekundárneho účtu (count-based: dátum+suma+obchodník v rámci banky)
+function _importSecondaryTxs(accountId, parsed){
+  const keyOf=t=>`${localDateKey(eDate(t)||t.date)}|${(t.amount||0).toFixed(2)}|${String(t.merchant||'').toLowerCase().trim()}`;
+  const cnt={}; TX.filter(t=>txBank(t)===accountId).forEach(t=>{const k=keyOf(t);cnt[k]=(cnt[k]||0)+1;});
+  let added=0, dup=0;
+  parsed.forEach(t=>{
+    const k=keyOf(t);
+    if(cnt[k]>0){ cnt[k]--; dup++; return; }
+    if(t.bankCat){ const cid=_resolveCatByLabel(t.bankCat); if(cid&&!t.category)t.category=cid; }
+    delete t.bankCat;
+    t.id='tx_'+Math.random().toString(36).slice(2); t.bank=accountId; t.source='account';
+    TX.push(t); added++;
+  });
+  return {added, dup};
+}
+
+// ──────────── PÁROVÉ PRESUNY MEDZI ÚČTAMI ────────────
+let _transferCands=[];
+function _accName(bankId){ if(bankId==='tatra')return 'Tatra banka'; const a=accounts.find(x=>x.id===bankId); return a?a.name:bankId; }
+function _findTransferPairs(maxDays=5){
+  const cand=TX.filter(t=>!t.transferPair && t.amount);
+  const byAmt={};
+  cand.forEach(t=>{ const k=Math.abs(t.amount).toFixed(2); (byAmt[k]=byAmt[k]||[]).push(t); });
+  const used=new Set(); const pairs=[];
+  Object.values(byAmt).forEach(group=>{
+    const sorted=group.slice().sort((a,b)=>(eDate(a)||a.date)-(eDate(b)||b.date));
+    for(let i=0;i<sorted.length;i++){
+      const a=sorted[i]; if(used.has(a.id))continue;
+      let best=null,bestDiff=Infinity;
+      for(let j=0;j<sorted.length;j++){
+        const b=sorted[j]; if(j===i||used.has(b.id))continue;
+        if(Math.sign(a.amount)===Math.sign(b.amount))continue;   // opačný smer
+        if(txBank(a)===txBank(b))continue;                       // rôzne účty
+        const dd=Math.abs((eDate(a)||a.date)-(eDate(b)||b.date))/86400000;
+        if(dd>maxDays)continue;
+        if(dd<bestDiff){bestDiff=dd;best=b;}
+      }
+      if(best){ used.add(a.id);used.add(best.id);
+        const out=a.amount<0?a:best, inc=a.amount<0?best:a;
+        pairs.push({out,inc,days:Math.round(bestDiff)});
+      }
+    }
+  });
+  pairs.sort((a,b)=>(eDate(b.out)||b.out.date)-(eDate(a.out)||a.out.date));
+  return pairs;
+}
+function _markTransferPair(outId, incId){
+  const out=TX.find(t=>t.id===outId), inc=TX.find(t=>t.id===incId);
+  if(!out||!inc)return;
+  out.transferPair=incId; inc.transferPair=outId;
+  out.excluded=true; inc.excluded=true;
+}
+function _unmarkTransfer(txId){
+  const t=TX.find(x=>x.id===txId); if(!t)return;
+  const o=t.transferPair?TX.find(x=>x.id===t.transferPair):null;
+  [t,o].forEach(x=>{ if(x){ delete x.transferPair; x.excluded=false; } });
+  saveD(); _renderTransferReview();
+}
+function openTransferReview(){ _renderTransferReview(); document.getElementById('m-transfers').classList.add('on'); }
+function _renderTransferReview(){ _renderTransferCandidates(); _renderMarkedTransfers(); }
+function _renderTransferCandidates(){
+  const host=document.getElementById('tr-cands'); if(!host)return;
+  const cands=_findTransferPairs(); _transferCands=cands;
+  if(!cands.length){ host.innerHTML='<div style="font-size:11px;color:var(--mu);padding:6px 0">Žiadne nové návrhy presunov.</div>'; return; }
+  host.innerHTML=`<div class="ml" style="margin-bottom:6px">Navrhované presuny (${cands.length})</div>`+
+    cands.map((p,i)=>`<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px;cursor:pointer">
+      <input type="checkbox" data-tri="${i}" checked style="width:16px;height:16px;accent-color:var(--acc);flex-shrink:0">
+      <div style="flex:1;font-size:11px;min-width:0">
+        <div style="display:flex;justify-content:space-between;gap:8px"><span><span style="color:var(--red);font-family:var(--M)">−${fabs(p.out.amount)}</span> · ${esc(_accName(txBank(p.out)))}</span><span style="color:var(--mu)">${fd(eDate(p.out)||p.out.date)}</span></div>
+        <div style="color:var(--mu);font-size:10px;padding:1px 0">↓ ${p.days===0?'ten istý deň':p.days+' d'}</div>
+        <div style="display:flex;justify-content:space-between;gap:8px"><span><span style="color:var(--grn);font-family:var(--M)">+${fabs(p.inc.amount)}</span> · ${esc(_accName(txBank(p.inc)))}</span><span style="color:var(--mu)">${fd(eDate(p.inc)||p.inc.date)}</span></div>
+      </div>
+    </label>`).join('')+
+    `<button class="btn" onclick="_confirmTransfers()" style="width:100%;font-size:12px;background:var(--acc);color:#fff;border-color:var(--acc);margin-top:4px">Označiť vybrané ako presuny</button>`;
+}
+function _confirmTransfers(){
+  const checks=[...document.querySelectorAll('#tr-cands input[data-tri]:checked')];
+  let n=0;
+  checks.forEach(ch=>{ const p=_transferCands[+ch.dataset.tri]; if(p){ _markTransferPair(p.out.id,p.inc.id); n++; } });
+  saveD(); _renderTransferReview();
+  if(n) alert(`Označených ${n} presunov. Vylúčené z analýzy, ostávajú v zostatkoch.`);
+}
+function _renderMarkedTransfers(){
+  const host=document.getElementById('tr-marked'); if(!host)return;
+  const seen=new Set(); const marked=[];
+  TX.forEach(t=>{ if(t.transferPair&&!seen.has(t.id)){ const o=TX.find(x=>x.id===t.transferPair); if(o){ seen.add(t.id);seen.add(o.id); const out=t.amount<0?t:o, inc=t.amount<0?o:t; marked.push({out,inc}); } } });
+  if(!marked.length){ host.innerHTML=''; return; }
+  marked.sort((a,b)=>(eDate(b.out)||b.out.date)-(eDate(a.out)||a.out.date));
+  host.innerHTML=`<div class="ml" style="margin:16px 0 6px">Označené presuny (${marked.length})</div>`+
+    marked.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px;background:var(--s2)">
+      <div style="flex:1;font-size:11px;min-width:0">↔ <span style="font-family:var(--M)">${fabs(p.out.amount)}</span> · ${esc(_accName(txBank(p.out)))} → ${esc(_accName(txBank(p.inc)))} <span style="color:var(--mu)">${fd(eDate(p.out)||p.out.date)}</span></div>
+      <button class="btn" onclick="_unmarkTransfer('${p.out.id}')" style="padding:3px 8px;font-size:11px;color:var(--red);border-color:var(--red);flex-shrink:0">zrušiť</button>
+    </div>`).join('');
+}
+
 // ==================== MERGE (count-based upsert) ====================
 // Key insight: Tatra banka exports are cumulative (always whole periods).
 // Strategy: newer import always refreshes existing data, preserving user edits.
@@ -2541,6 +3280,7 @@ function anTx(o={}){
     if(o.to && d>o.to) return false;
     if(isCCRepayment(t)) return false;
     if(t.excluded) return false;
+    if(!_inAnScope(t)) return false;
     if(!o.withExcludedTags && (t.tags||[]).some(tag=>excludedTags.has(tag))) return false;
     return true;
   });
@@ -2679,7 +3419,7 @@ function go(nm) {
       updateTagFilter(); renderTx();
     }
     if (nm==='data') dataSub(_dataSub||'import');
-    if (nm==='analyza'){renderExclTagChips(); renderPivot();}
+    if (nm==='analyza'){_renderAnScopeTabs('an-scope-tabs'); renderExclTagChips(); renderPivot();}
     if (nm==='budget') renderBudget();
     if (nm==='goals') renderGoals();
     if (nm==='networth') renderNetWorth();
@@ -2723,32 +3463,35 @@ function getPTx() {
   else if (period==='month') cut.setMonth(now.getMonth()-1);
   else if (period==='quarter') cut.setMonth(now.getMonth()-3);
   else if (period==='year') cut.setFullYear(now.getFullYear()-1);
-  else return TX.filter(t=>!isCCRepayment(t)&&!t.excluded);
-  return TX.filter(t=>eDate(t)>=cut&&!isCCRepayment(t)&&!t.excluded);
+  else return TX.filter(t=>!isCCRepayment(t)&&!t.excluded&&_inAnScope(t));
+  return TX.filter(t=>eDate(t)>=cut&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t));
 }
 function setPeriod(p,btn) { period=p; document.querySelectorAll('.pb').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); rTimeChart(); }
 
 function rDash() {
+  _renderAnScopeTabs('dash-scope-tabs');
   if (!TX.length) return;
   const now=new Date(), nm=now.getMonth(), ny=now.getFullYear();
-  const thisM = TX.filter(t=>t.date&&eDate(t).getMonth()===nm&&eDate(t).getFullYear()===ny&&!isCCRepayment(t)&&!t.excluded);
-  const lastM = TX.filter(t=>{if(!t.date)return false;if(isCCRepayment(t))return false;if(t.excluded)return false;const d=new Date(ny,nm-1,1);return eDate(t).getMonth()===d.getMonth()&&eDate(t).getFullYear()===d.getFullYear();});
+  const thisM = TX.filter(t=>t.date&&eDate(t).getMonth()===nm&&eDate(t).getFullYear()===ny&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t));
+  const lastM = TX.filter(t=>{if(!t.date)return false;if(isCCRepayment(t))return false;if(t.excluded)return false;if(!_inAnScope(t))return false;const d=new Date(ny,nm-1,1);return eDate(t).getMonth()===d.getMonth()&&eDate(t).getFullYear()===d.getFullYear();});
   const inc=thisM.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
   const exp=thisM.filter(t=>t.amount<0).reduce((s,t)=>s+txMyAmount(t),0);
   const lexp=lastM.filter(t=>t.amount<0).reduce((s,t)=>s+txMyAmount(t),0);
   const diff=lexp?((exp-lexp)/Math.abs(lexp)*100):0;
-  const accB=openingBalance+TX.filter(t=>t.source==='account').reduce((s,t)=>s+t.amount,0);
+  const accB=_scopeBalance();
   const ccTx=TX.filter(t=>t.source==='credit_card');
   const ccNow=ccTx.filter(t=>cycDate(t).getMonth()===nm&&cycDate(t).getFullYear()===ny);
   const ccSpent=ccNow.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
 
   const invCats=getCatD().filter(c=>c.isInvestment).map(c=>c.id);
-  const invTxAll=TX.filter(t=>t.date&&invCats.includes(t.category));
+  // B10: split-aware – investičná časť aj zo splitov
+  const _invShare=t=>getTxCatAmounts(t).filter(p=>invCats.includes(p.category)).reduce((s,p)=>s+p.amount,0);
+  const invTxAll=TX.filter(t=>t.date&&Math.abs(_invShare(t))>0.005);
   // invBalance: total invested (outflows are negative amounts = money leaving account to investment)
   // Show absolute value — positive = net invested/saved
-  const invNet=invTxAll.reduce((s,t)=>s+t.amount,0);
+  const invNet=invTxAll.reduce((s,t)=>s+_invShare(t),0);
   const invDisplay=Math.abs(invNet); // always positive for display
-  const invThisM=thisM.filter(t=>invCats.includes(t.category)).reduce((s,t)=>s+Math.abs(t.amount),0);
+  const invThisM=thisM.reduce((s,t)=>s+Math.abs(_invShare(t)),0);
   const hasInv=invCats.length>0;
   document.getElementById('sr').innerHTML=`
     <div class="sc g"><div class="sc-l">Príjmy / mesiac</div><div class="sc-v pos">${fabs(inc)}</div><div class="sc-s">${thisM.filter(t=>t.amount>0).length} platieb</div></div>
@@ -2772,7 +3515,7 @@ function renderForecast(){
   const now=new Date(), nm=now.getMonth(), ny=now.getFullYear(), today=now.getDate();
   const daysInMonth=new Date(ny,nm+1,0).getDate();
   const daysLeft=Math.max(0,daysInMonth-today);
-  const accB=openingBalance+TX.filter(t=>t.source==='account').reduce((s,t)=>s+t.amount,0);
+  const accB=_scopeBalance();
   const mk=ny+'-'+String(nm+1).padStart(2,'0');
   // pravidelné platby tento mesiac, ktoré ešte NEPRIŠLI (deň > dnes, nenapárované)
   let upExp=0,upInc=0,upExpN=0,upIncN=0;
@@ -2887,7 +3630,7 @@ function _avgFlexEstimate(){
 }
 function getCashflowProjection(months, includeFlex){
   const now=new Date(), nm=now.getMonth(), ny=now.getFullYear(), today=now.getDate();
-  let balance=openingBalance+TX.filter(t=>t.source==='account').reduce((s,t)=>s+t.amount,0);
+  let balance=_scopeBalance();
   const flexLims=budgetLimits.filter(l=>l.type==='monthly'&&l.flexType==='flexible');
   const hasFlexBudget=flexLims.length>0;
   const avgFlex=hasFlexBudget?0:_avgFlexEstimate();
@@ -2999,11 +3742,11 @@ const NW_KINDS={
   liability:[['creditcard','💳 Kreditná karta'],['loan','🏦 Pôžička'],['mortgage','🏡 Hypotéka'],['other','📦 Iný záväzok']]
 };
 function _nwKindLabel(side,kind){ const f=(NW_KINDS[side]||[]).find(k=>k[0]===kind); return f?f[1]:'📦 Iné'; }
-function _nwAccountValue(){ return openingBalance+TX.filter(t=>t.source==='account').reduce((s,t)=>s+t.amount,0); }
+function _nwAccountValue(){ return allAccounts().reduce((s,a)=>s+accountBalance(a.id),0); }
 function _nwInvestedTotal(){
   const invCats=getCatD().filter(c=>c.isInvestment).map(c=>c.id);
   if(!invCats.length) return 0;
-  return Math.abs(TX.filter(t=>t.date&&invCats.includes(t.category)).reduce((s,t)=>s+t.amount,0));
+  return Math.abs(TX.filter(t=>t.date).reduce((s,t)=>s+getTxCatAmounts(t).filter(p=>invCats.includes(p.category)).reduce((x,p)=>x+p.amount,0),0));
 }
 function _nwTotals(){
   const acc=_nwAccountValue();
@@ -3537,8 +4280,8 @@ function getCatPTx(){
   else if(catPeriod==='month'){ cut=new Date(now.getFullYear(),now.getMonth(),1); }
   else if(catPeriod==='quarter'){ cut.setMonth(now.getMonth()-3); }
   else if(catPeriod==='year'){ cut.setFullYear(now.getFullYear()-1); }
-  else return TX.filter(t=>!isCCRepayment(t)&&!t.excluded);
-  return TX.filter(t=>eDate(t)>=cut&&!isCCRepayment(t)&&!t.excluded);
+  else return TX.filter(t=>!isCCRepayment(t)&&!t.excluded&&_inAnScope(t));
+  return TX.filter(t=>eDate(t)>=cut&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t));
 }
 function getTopMPTx(){
   const now=new Date(); let cut=new Date();
@@ -3546,8 +4289,8 @@ function getTopMPTx(){
   else if(topMPeriod==='month'){ cut=new Date(now.getFullYear(),now.getMonth(),1); }
   else if(topMPeriod==='quarter'){ cut.setMonth(now.getMonth()-3); }
   else if(topMPeriod==='year'){ cut.setFullYear(now.getFullYear()-1); }
-  else return TX.filter(t=>!isCCRepayment(t)&&!t.excluded);
-  return TX.filter(t=>eDate(t)>=cut&&!isCCRepayment(t)&&!t.excluded);
+  else return TX.filter(t=>!isCCRepayment(t)&&!t.excluded&&_inAnScope(t));
+  return TX.filter(t=>eDate(t)>=cut&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t));
 }
 function rCatChart(){
   const cv=document.getElementById('c-cat');if(!cv)return;
@@ -4143,7 +4886,7 @@ function renderTagReport(){
   }
 
   const tag=[..._activeTagTags][0];
-  const txs=TX.filter(t=>(t.tags||[]).includes(tag)&&!isCCRepayment(t)&&!t.excluded)
+  const txs=TX.filter(t=>(t.tags||[]).includes(tag)&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t))
     .sort((a,b)=>(eDate(a)||a.date)-(eDate(b)||b.date));
 
   // ── Stats ─────────────────────────────────────────────────────
@@ -4588,7 +5331,7 @@ function _toggleTagReportTag(t){
 
 function _renderTagReportMulti(tags,allTags,CAT,wrap,selectorHtml){
   const tagData=tags.map(tag=>{
-    const txs=TX.filter(t=>(t.tags||[]).includes(tag)&&!isCCRepayment(t)&&!t.excluded)
+    const txs=TX.filter(t=>(t.tags||[]).includes(tag)&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t))
       .sort((a,b)=>(eDate(a)||a.date)-(eDate(b)||b.date));
     const spent=txs.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
     const income=txs.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
@@ -4722,7 +5465,21 @@ function renderTagChartsMulti(tagData,allTags,allGK,gLabels,topCats,CAT){
   }
 }
 
+function _renderTxBankTabs(){
+  const host=document.getElementById('tx-bank-tabs'); if(!host)return;
+  if(!accounts.length){ host.style.display='none'; host.innerHTML=''; if(_txBankFilter!=='tatra')_txBankFilter='tatra'; return; }
+  if(_txBankFilter!=='tatra' && _txBankFilter!=='__all' && !accounts.find(a=>a.id===_txBankFilter)) _txBankFilter='tatra';
+  host.style.display='';
+  const tabs=[{id:'tatra',name:'Tatra banka'},...accounts.map(a=>({id:a.id,name:a.name})),{id:'__all',name:'Všetko'}];
+  host.innerHTML='<div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px">'+tabs.map(t=>{
+    const active=_txBankFilter===t.id;
+    const bal=t.id==='__all'?null:accountBalance(t.id);
+    return `<button onclick="_txSetBank('${t.id}')" style="flex-shrink:0;padding:6px 12px;border-radius:8px;border:1px solid ${active?'var(--acc)':'var(--bd)'};background:${active?'var(--acc)':'var(--s2)'};color:${active?'#fff':'var(--txt)'};font-size:12px;cursor:pointer;white-space:nowrap;font-weight:${active?'600':'400'}">${esc(t.name)}${bal!=null?` <span style="font-size:10px;opacity:.85;font-family:var(--M)">${fe(bal)}</span>`:''}</button>`;
+  }).join('')+'</div>';
+}
+function _txSetBank(id){ _txBankFilter=id; _renderTxBankTabs(); renderTx(); }
 function renderTx(){
+  _renderTxBankTabs();
   if(!TX.length){
     document.getElementById('tx-hd').innerHTML='';
     document.getElementById('tx-bd').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--mu);font-size:12px">Žiadne transakcie</td></tr>';
@@ -4741,6 +5498,7 @@ function renderTx(){
   const txTo=document.getElementById('f-to')?.value||'';
   txFilters={q,src,cat,mon,typ};
   fTx=TX.filter(t=>{
+    if(_txBankFilter!=='__all' && txBank(t)!==_txBankFilter)return false;
     if(src&&t.source!==src)return false;
     if(cat==='__null'&&!isGenuinelyUncat(t))return false;
     if(cat&&cat!=='__null'){
@@ -4803,7 +5561,7 @@ function _catChipInner(tx){
 function _txStatusBadges(tx){
   return (tx.shared?.people?.length?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(100,160,255,.18);color:var(--acc2);margin-left:5px;vertical-align:middle;letter-spacing:.3px">÷ zdieľaná</span>`:'')
     +(isDebtLink(tx)?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(91,193,124,.18);color:var(--grn);margin-left:5px;vertical-align:middle;letter-spacing:.3px">↩ vrátka</span>`:'')
-    +(tx.excluded?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(180,80,80,.18);color:var(--red);margin-left:5px;vertical-align:middle;letter-spacing:.3px">⊘ vylúčená</span>`:'');
+    +(tx.transferPair?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(140,140,200,.2);color:var(--acc2);margin-left:5px;vertical-align:middle;letter-spacing:.3px">↔ presun</span>`:(tx.excluded?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(180,80,80,.18);color:var(--red);margin-left:5px;vertical-align:middle;letter-spacing:.3px">⊘ vylúčená</span>`:''));
 }
 function _txTagBadges(tx){
   return (tx.tags||[]).map(tag=>`<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:10px;background:var(--acc)22;color:var(--acc2);margin-left:4px;vertical-align:middle;border:1px solid var(--acc)44">🏷 ${esc(tag)}</span>`).join('');
@@ -6033,7 +6791,7 @@ function exportBackup(){
     detFieldsHidden:[...detFieldsHidden],
     ccLimit:document.getElementById('cc-lim')?.value||'',
     ibanNames, editLog:editLog.slice(0,500),
-    excludedTags:[...excludedTags], recurMarks, colWidths
+    excludedTags:[...excludedTags], recurMarks, colWidths, accounts, reconciliations
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
@@ -6060,6 +6818,8 @@ async function importBackup(inp){
     else { ibanNames=(await Store.get('ibanNames'))||{}; } // stará záloha → zachovaj existujúce
     if(data.editLog) editLog=data.editLog;
     excludedTags=new Set(data.excludedTags||[]);
+    accounts=data.accounts||[];
+    reconciliations=data.reconciliations||{};
     recurMarks=data.recurMarks||{pins:{},blocks:{},excl:{},incl:{}};
     recurMarks.pins=recurMarks.pins||{};recurMarks.blocks=recurMarks.blocks||{};recurMarks.excl=recurMarks.excl||{};recurMarks.incl=recurMarks.incl||{};
     if(data.colWidths) colWidths=data.colWidths;
@@ -6074,6 +6834,7 @@ async function importBackup(inp){
     await Store.set('ibanNames',ibanNames); await Store.set('editlog',editLog.slice(0,500));
     await Store.set('exctags',[...excludedTags]); await Store.set('recurmarks',recurMarks);
     await Store.set('colWidths',colWidths);
+    await Store.set('accounts',accounts);
     updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
     alert(`Záloha načítaná: ${TX.length} transakcií, ${rules.length} pravidiel.`);
     go('dashboard');
@@ -6109,7 +6870,7 @@ function getBudgetAnalytics(catId, selectedMon){
     months.push(mKey(d));
   }
   const monthlySpend=months.map(m=>
-    TX.filter(t=>t.date&&mKey(eDate(t))===m&&!isCCRepayment(t)&&!t.excluded)
+    TX.filter(t=>t.date&&mKey(eDate(t))===m&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t))
       .reduce((s,t)=>s+getTxCatAmounts(t).filter(({category,amount})=>category===catId&&amount<0).reduce((ss,{amount})=>ss+Math.abs(amount),0),0)
   );
   const selMon=months[5]; // the selected (or current) month
@@ -6139,13 +6900,13 @@ function getBudgetAnalytics(catId, selectedMon){
   // YoY: compare selMon vs same month last year
   const [selY,selMo]=selMon.split('-').map(Number);
   const lastYearMon=`${selY-1}-${String(selMo).padStart(2,'0')}`;
-  const lastYearSpend=TX.filter(t=>t.date&&mKey(eDate(t))===lastYearMon&&!isCCRepayment(t)&&!t.excluded)
+  const lastYearSpend=TX.filter(t=>t.date&&mKey(eDate(t))===lastYearMon&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t))
     .reduce((s,t)=>s+getTxCatAmounts(t).filter(({category,amount})=>category===catId&&amount<0).reduce((ss,{amount})=>ss+Math.abs(amount),0),0);
   const yoyDiff=lastYearSpend>0?(lastYearSpend-curSpend):null;
   const yoyPct=lastYearSpend>0?((curSpend-lastYearSpend)/lastYearSpend*100):null;
 
   const curYear=refDate.getFullYear();
-  const yearlySpend=TX.filter(t=>t.date&&eDate(t).getFullYear()===curYear&&!isCCRepayment(t)&&!t.excluded)
+  const yearlySpend=TX.filter(t=>t.date&&eDate(t).getFullYear()===curYear&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t))
     .reduce((s,t)=>s+getTxCatAmounts(t).filter(({category,amount})=>category===catId&&amount<0).reduce((ss,{amount})=>ss+Math.abs(amount),0),0);
   const yearlyLimit=getLimitForCat(catId,'yearly');
 
@@ -6505,7 +7266,7 @@ function renderFlexBudget(){
   const irregItems=budgetLimits.filter(l=>l.type==='yearly'||l.flexType==='irregular').map(l=>{
     const cat=catd.find(c=>c.id===l.catId);
     if(!cat) return null;
-    const yearlySpent=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&t.amount<0&&!isCCRepayment(t)&&!t.excluded)
+    const yearlySpent=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&t.amount<0&&!isCCRepayment(t)&&!t.excluded&&_inAnScope(t))
       .reduce((s,t)=>s+getTxCatAmounts(t).filter(({category,amount})=>(category===l.catId||getCatParentId(category)===l.catId)&&amount<0).reduce((ss,{amount})=>ss+Math.abs(amount),0),0);
     return{cat,limit:l.amount,spent:yearlySpent,mesEq:l.amount/12};
   }).filter(Boolean);
@@ -7097,15 +7858,16 @@ function _renderBudgetCore(){
 
   if(view==='yearly'){
     const yr=parseInt(bgYr?.value)||now.getFullYear();
-    txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&t.amount<0);
+    txs=anTx({year:yr}).filter(t=>t.amount<0);
     periodLabel=String(yr);
   } else {
     const mon=bgMon?.value; if(!mon)return;
     const [yr,mo]=mon.split('-').map(Number);
-    txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&eDate(t).getMonth()===mo-1&&t.amount<0);
+    txs=anTx({year:yr,month:mo-1}).filter(t=>t.amount<0);
     periodLabel=mon;
   }
-  const bc={}; txs.forEach(t=>{const k=t.category||'__none';bc[k]=(bc[k]||0)+Math.abs(t.amount);});
+  // B10: splity rozpočítané per kategória (getTxCatAmounts), nie celá suma do t.category
+  const bc={}; txs.forEach(t=>{ getTxCatAmounts(t).forEach(p=>{ const v=Math.abs(p.amount||0); if(v>0){ const k=p.category||'__none'; bc[k]=(bc[k]||0)+v; } }); });
   const limitType=view==='yearly'?'yearly':'monthly';
   const isCurrentMonth=view==='monthly'&&bgMon?.value===mKey(now);
 
@@ -7199,13 +7961,15 @@ function openBudgetDrill(catId,catLabel,period,isYearly){
   const _bdrCatIds=new Set([catId,...getSubcatIds(catId)]);
   if(isYearly){
     const yr=parseInt(period);
-    txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&_bdrCatIds.has(t.category)&&t.amount<0);
+    txs=anTx({year:yr}).filter(t=>t.amount<0&&getTxCatAmounts(t).some(p=>_bdrCatIds.has(p.category)&&Math.abs(p.amount)>0));
   } else {
     const [yr,mo]=period.split('-').map(Number);
-    txs=TX.filter(t=>t.date&&eDate(t).getFullYear()===yr&&eDate(t).getMonth()===mo-1&&_bdrCatIds.has(t.category)&&t.amount<0);
+    txs=anTx({year:yr,month:mo-1}).filter(t=>t.amount<0&&getTxCatAmounts(t).some(p=>_bdrCatIds.has(p.category)&&Math.abs(p.amount)>0));
   }
   txs=txs.sort((a,b)=>b.date-a.date);
-  const total=txs.reduce((s,t)=>s+Math.abs(t.amount),0);
+  // B10: pri splitoch rátaj len podiel patriaci tejto kategórii
+  const _bdrShare=t=>Math.abs(getTxCatAmounts(t).filter(p=>_bdrCatIds.has(p.category)).reduce((s,p)=>s+p.amount,0));
+  const total=txs.reduce((s,t)=>s+_bdrShare(t),0);
   const cat=getCAT()[catId]||{c:'var(--acc)',l:catLabel};
   document.getElementById('bdr-title').innerHTML=`<span style="color:${cat.c}">■</span> ${catLabel} — ${period}`;
 
@@ -7351,19 +8115,148 @@ function setAnView(v, btn){
   document.querySelectorAll('.an-tab').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
   const tagRep=document.getElementById('an-tag-report');
+  const periodEl=document.getElementById('an-period');
+  const sankeyEl=document.getElementById('an-sankey');
   const pivotCs=document.querySelector('#pg-analyza .cs');
   const chartsEl=document.getElementById('an-charts');
+  const drillEl=document.getElementById('an-drill');
+  if(tagRep) tagRep.style.display='none';
+  if(periodEl) periodEl.style.display='none';
+  if(sankeyEl) sankeyEl.style.display='none';
   if(v==='tags'){
     if(pivotCs) pivotCs.style.display='none';
     if(chartsEl) chartsEl.style.display='none';
-    document.getElementById('an-drill').style.display='none';
+    if(drillEl) drillEl.style.display='none';
     renderTagReport();
+  } else if(v==='period'){
+    if(pivotCs) pivotCs.style.display='none';
+    if(chartsEl) chartsEl.style.display='none';
+    if(drillEl) drillEl.style.display='none';
+    if(periodEl) periodEl.style.display='';
+    renderPeriodReport();
+  } else if(v==='sankey'){
+    if(pivotCs) pivotCs.style.display='none';
+    if(chartsEl) chartsEl.style.display='none';
+    if(drillEl) drillEl.style.display='none';
+    if(sankeyEl) sankeyEl.style.display='';
+    renderSankey();
   } else {
-    if(tagRep) tagRep.style.display='none';
     if(pivotCs) pivotCs.style.display='';
     if(chartsEl) chartsEl.style.display='';
     renderPivot();
   }
+}
+
+// ──────────── VŠETKY KATEGÓRIE ZA OBDOBIE ────────────
+let _periodPreset='thisyear', _periodFrom='', _periodTo='';
+function _pdDate(d){ return d?String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear():''; }
+function _periodRange(){
+  const now=new Date(); let from, to=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59);
+  if(_periodPreset==='lastyear'){ from=new Date(now.getFullYear()-1,0,1); to=new Date(now.getFullYear()-1,11,31,23,59,59); }
+  else if(_periodPreset==='3m'){ from=new Date(now.getFullYear(),now.getMonth()-3,now.getDate()); }
+  else if(_periodPreset==='6m'){ from=new Date(now.getFullYear(),now.getMonth()-6,now.getDate()); }
+  else if(_periodPreset==='12m'){ from=new Date(now.getFullYear()-1,now.getMonth(),now.getDate()); }
+  else if(_periodPreset==='all'){ let e=null; anTx({}).forEach(t=>{const d=eDate(t); if(d&&(!e||d<e))e=d;}); from=e||new Date(now.getFullYear(),0,1); }
+  else if(_periodPreset==='custom'){ from=_periodFrom?new Date(_periodFrom):new Date(now.getFullYear(),0,1); if(_periodTo)to=new Date(_periodTo+'T23:59:59'); }
+  else { from=new Date(now.getFullYear(),0,1); } // thisyear
+  return {from, to};
+}
+function _periodCatData(from, to){
+  const txns=anTx({}).filter(t=>{ const d=eDate(t); return d && d>=from && d<=to; });
+  let income=0, expense=0; const catMap={};
+  txns.forEach(t=>{ const amt=t.amount||0;
+    const my=txMyAmount(t); // B10: môj podiel (shared)
+    if(amt>0){ income+=my; }
+    else { expense+=-my; getTxCatAmounts(t).forEach(p=>{ const v=Math.abs(p.amount||0); if(v>0){ (catMap[p.category]=catMap[p.category]||{sum:0,cnt:0}); catMap[p.category].sum+=v; catMap[p.category].cnt++; } }); }
+  });
+  const cats=Object.entries(catMap).map(([id,o])=>({id, sum:o.sum, cnt:o.cnt})).sort((a,b)=>b.sum-a.sum);
+  const months=Math.max(1,(to.getFullYear()-from.getFullYear())*12+(to.getMonth()-from.getMonth())+1);
+  return { income, expense, net:income-expense, cats, months, count:txns.length };
+}
+function _periodRerender(){ if(anView==='sankey')renderSankey(); else renderPeriodReport(); }
+function _setPeriodPreset(preset){ _periodPreset=preset; _periodRerender(); }
+function renderPeriodReport(){
+  const host=document.getElementById('an-period'); if(!host)return;
+  const rng=_periodRange(); const d=_periodCatData(rng.from,rng.to);
+  const total=d.cats.reduce((s,c)=>s+c.sum,0)||1;
+  const presets=[['thisyear','Tento rok'],['lastyear','Minulý rok'],['3m','3 mes.'],['6m','6 mes.'],['12m','12 mes.'],['all','Celé obdobie'],['custom','Vlastný']];
+  let html='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+presets.map(([k,l])=>{const on=_periodPreset===k;return `<button onclick="_setPeriodPreset('${k}')" style="padding:4px 12px;font-size:11px;font-family:var(--M);border-radius:3px;cursor:pointer;border:1px solid ${on?'var(--acc)':'var(--bd)'};color:${on?'var(--acc)':'var(--mu)'};background:${on?'rgba(94,168,216,.1)':'none'}">${l}</button>`;}).join('')+'</div>';
+  if(_periodPreset==='custom'){
+    html+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap"><input type="date" value="${_periodFrom}" onchange="_periodFrom=this.value;renderPeriodReport()" style="padding:5px"><span style="color:var(--mu)">→</span><input type="date" value="${_periodTo}" onchange="_periodTo=this.value;renderPeriodReport()" style="padding:5px"></div>`;
+  }
+  html+=`<div style="font-size:11px;color:var(--mu);margin-bottom:14px">${_pdDate(rng.from)} – ${_pdDate(rng.to)} · ${d.count} transakcií · ${d.months} ${d.months===1?'mesiac':(d.months<5?'mesiace':'mesiacov')}</div>`;
+  const card=(l,v,clr)=>`<div style="flex:1;min-width:108px;padding:10px;background:var(--s2);border-radius:8px;text-align:center"><div style="font-size:9px;color:var(--mu);text-transform:uppercase">${l}</div><div style="font-size:15px;font-weight:700;font-family:var(--M)${clr?';color:'+clr:''}">${v}</div></div>`;
+  html+='<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">'+card('Príjmy',fabs(d.income),'var(--grn)')+card('Výdavky',fabs(d.expense),'var(--red)')+card('Rozdiel',(d.net>=0?'+':'−')+fabs(d.net),d.net>=0?'var(--grn)':'var(--red)')+card('Ø výdavky / mes.',fabs(d.expense/d.months))+'</div>';
+  if(d.cats.length){
+    const maxSum=d.cats[0].sum;
+    html+='<div style="display:flex;flex-direction:column;gap:9px">'+d.cats.map((c,i)=>{const clr=_rpCatColor(c.id,i);const pct=c.sum/total*100;return `<div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px"><span style="font-size:12px"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${clr};margin-right:6px"></span>${esc(_rpCatName(c.id))} <span style="font-size:10px;color:var(--mu)">${c.cnt}×</span></span><span style="font-size:12px;font-family:var(--M)"><b>${fabs(c.sum)}</b> <span style="color:var(--mu);font-size:10px">${pct.toFixed(1)}%</span></span></div><div style="height:7px;background:var(--s1);border-radius:4px;overflow:hidden"><div style="height:100%;width:${(c.sum/maxSum*100).toFixed(1)}%;background:${clr};border-radius:4px"></div></div></div>`;}).join('')+'</div>';
+  } else { html+='<div style="text-align:center;color:var(--mu);font-size:12px;padding:30px">Žiadne výdavky v tomto období.</div>'; }
+  host.innerHTML=html;
+}
+
+// ──────────── SANKEY: TOK PEŇAZÍ ────────────
+function _periodPresetBarHTML(rng){
+  const presets=[['thisyear','Tento rok'],['lastyear','Minulý rok'],['3m','3 mes.'],['6m','6 mes.'],['12m','12 mes.'],['all','Celé obdobie'],['custom','Vlastný']];
+  let h='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+presets.map(([k,l])=>{const on=_periodPreset===k;return `<button onclick="_setPeriodPreset('${k}')" style="padding:4px 12px;font-size:11px;font-family:var(--M);border-radius:3px;cursor:pointer;border:1px solid ${on?'var(--acc)':'var(--bd)'};color:${on?'var(--acc)':'var(--mu)'};background:${on?'rgba(94,168,216,.1)':'none'}">${l}</button>`;}).join('')+'</div>';
+  if(_periodPreset==='custom') h+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap"><input type="date" value="${_periodFrom}" onchange="_periodFrom=this.value;_periodRerender()" style="padding:5px"><span style="color:var(--mu)">→</span><input type="date" value="${_periodTo}" onchange="_periodTo=this.value;_periodRerender()" style="padding:5px"></div>`;
+  h+=`<div style="font-size:11px;color:var(--mu);margin-bottom:14px">${_pdDate(rng.from)} – ${_pdDate(rng.to)}</div>`;
+  return h;
+}
+function _sankeyData(from,to){
+  const txns=anTx({}).filter(t=>{const d=eDate(t);return d&&d>=from&&d<=to;});
+  const incMap={}, expMap={};
+  txns.forEach(t=>{ const amt=t.amount||0;
+    if(amt>0){ getTxCatAmounts(t).forEach(p=>{ const v=p.amount||0; if(v>0)incMap[p.category]=(incMap[p.category]||0)+v; }); }
+    else { getTxCatAmounts(t).forEach(p=>{ const v=Math.abs(p.amount||0); if(v>0)expMap[p.category]=(expMap[p.category]||0)+v; }); }
+  });
+  const inc=Object.entries(incMap).map(([id,v])=>({id,v})).sort((a,b)=>b.v-a.v);
+  const exp=Object.entries(expMap).map(([id,v])=>({id,v})).sort((a,b)=>b.v-a.v);
+  return {inc, exp, income:inc.reduce((s,c)=>s+c.v,0), expense:exp.reduce((s,c)=>s+c.v,0)};
+}
+function _sankCap(arr,n){ if(arr.length<=n)return arr.map((c,i)=>({...c,_i:i})); const top=arr.slice(0,n).map((c,i)=>({...c,_i:i})); const rest=arr.slice(n).reduce((s,c)=>s+c.v,0); if(rest>0)top.push({id:'__rest',v:rest,label:'Ostatné',_i:-1}); return top; }
+function _sankRibbon(x1,y1t,y1b,x2,y2t,y2b){ const xm=(x1+x2)/2; return `M${x1},${y1t} C${xm},${y1t} ${xm},${y2t} ${x2},${y2t} L${x2},${y2b} C${xm},${y2b} ${xm},${y1b} ${x1},${y1b} Z`; }
+function _sankeySVG(d){
+  const VW=900, NW=15, GAP=7, leftX=134, rightX=VW-134-NW, midX=Math.round((leftX+NW+rightX)/2-NW/2);
+  let inflows=_sankCap(d.inc,9).map(c=>({label:c.label||_rpCatName(c.id), v:c.v, color:c.id==='__rest'?'#8a929c':_rpCatColor(c.id,c._i)}));
+  let outflows=_sankCap(d.exp,9).map(c=>({label:c.label||_rpCatName(c.id), v:c.v, color:c.id==='__rest'?'#8a929c':_rpCatColor(c.id,c._i)}));
+  const income=d.income, expense=d.expense;
+  if(income>expense+0.01) outflows.push({label:'Úspory', v:income-expense, color:'#4bb1a8'});
+  else if(expense>income+0.01) inflows.push({label:'Z rezerv', v:expense-income, color:'#c7863f'});
+  const mid=Math.max(income,expense)||1, FLOW_H=440, scale=FLOW_H/mid;
+  const leftH=inflows.reduce((s,n)=>s+n.v*scale,0)+(inflows.length-1)*GAP;
+  const rightH=outflows.reduce((s,n)=>s+n.v*scale,0)+(outflows.length-1)*GAP;
+  const midH=mid*scale, H=Math.round(Math.max(leftH,rightH,midH)+26);
+  let ly=(H-leftH)/2; inflows.forEach(n=>{ n.h=n.v*scale; n.y=ly; ly+=n.h+GAP; });
+  let ry=(H-rightH)/2; outflows.forEach(n=>{ n.h=n.v*scale; n.y=ry; ry+=n.h+GAP; });
+  const midY=(H-midH)/2;
+  let ribbons='', nodes='', labels='';
+  nodes+=`<rect x="${midX}" y="${midY}" width="${NW}" height="${midH}" rx="2" fill="#5ea8d8"/>`;
+  labels+=`<text x="${midX+NW/2}" y="${midY-11}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--txt)">Rozpočet</text>`;
+  labels+=`<text x="${midX+NW/2}" y="${midY-11+13}" text-anchor="middle" font-size="10" fill="var(--mu)">${fabs(mid)}</text>`;
+  let inOff=midY;
+  inflows.forEach(n=>{
+    nodes+=`<rect x="${leftX}" y="${n.y}" width="${NW}" height="${Math.max(1,n.h)}" rx="2" fill="${n.color}"/>`;
+    ribbons+=`<path d="${_sankRibbon(leftX+NW,n.y,n.y+n.h,midX,inOff,inOff+n.h)}" fill="${n.color}" opacity="0.4"/>`;
+    labels+=`<text x="${leftX-6}" y="${n.y+n.h/2+3.5}" text-anchor="end" font-size="11" fill="var(--txt)">${esc(n.label)} <tspan fill="var(--mu)">${fabs(n.v)}</tspan></text>`;
+    inOff+=n.h;
+  });
+  let outOff=midY;
+  outflows.forEach(n=>{
+    nodes+=`<rect x="${rightX}" y="${n.y}" width="${NW}" height="${Math.max(1,n.h)}" rx="2" fill="${n.color}"/>`;
+    ribbons+=`<path d="${_sankRibbon(midX+NW,outOff,outOff+n.h,rightX,n.y,n.y+n.h)}" fill="${n.color}" opacity="0.4"/>`;
+    labels+=`<text x="${rightX+NW+6}" y="${n.y+n.h/2+3.5}" text-anchor="start" font-size="11" fill="var(--txt)">${esc(n.label)} <tspan fill="var(--mu)">${fabs(n.v)}</tspan></text>`;
+    outOff+=n.h;
+  });
+  return `<svg viewBox="0 0 ${VW} ${H}" style="width:100%;height:auto;min-width:660px" xmlns="http://www.w3.org/2000/svg">${ribbons}${nodes}${labels}</svg>`;
+}
+function renderSankey(){
+  const host=document.getElementById('an-sankey'); if(!host)return;
+  const rng=_periodRange(); const d=_sankeyData(rng.from,rng.to);
+  let html=_periodPresetBarHTML(rng);
+  if(!d.income && !d.expense){ host.innerHTML=html+'<div style="text-align:center;color:var(--mu);font-size:12px;padding:30px">Žiadne dáta v tomto období.</div>'; return; }
+  html+='<div style="overflow-x:auto;padding:4px 0">'+_sankeySVG(d)+'</div>';
+  html+='<div style="font-size:10px;color:var(--mu);margin-top:10px;line-height:1.5">Tok peňazí: príjmy (vľavo) → rozpočet → výdavky podľa kategórií (vpravo). '+(d.income>d.expense?'„Úspory" = koľko ostalo.':(d.expense>d.income?'„Z rezerv" = výdavky nad rámec príjmov obdobia.':''))+'</div>';
+  host.innerHTML=html;
 }
 
 // ── ZDIEĽANÉ VÝPOČTOVÉ JADRO PIVOTU ─────────────────────────────
@@ -7765,7 +8658,7 @@ function drillCat(catId,scope){
   const hasCat=t=>t.splits?.length
     ? t.splits.some(s=>_inDrill(s.category))
     : _inDrill(t.category);
-  let txs=TX.filter(t=>yearMatch(t)&&hasCat(t)&&!t.excluded&&!isCCRepayment(t)&&!(t.tags||[]).some(tag=>excludedTags.has(tag)))
+  let txs=TX.filter(t=>yearMatch(t)&&hasCat(t)&&!t.excluded&&!isCCRepayment(t)&&_inAnScope(t)&&!(t.tags||[]).some(tag=>excludedTags.has(tag)))
     .sort((a,b)=>(eDate(b)||b.date)-(eDate(a)||a.date));
   const catAmt=tx=>tx.splits?.length
     ? tx.splits.filter(s=>_inDrill(s.category)).reduce((s,sp)=>s+sp.amount,0)
@@ -8437,8 +9330,8 @@ function renderComparison(){
     <div class="sc r" style="margin:0"><div class="sc-l">Výdavky ${mb}</div><div class="sc-v neg">${fabs(expB)}</div><div class="sc-s">${txB.filter(t=>t.amount<0).length} txn</div></div>`;
   const catd=getCatD().filter(c=>c.id!=='sporenie');
   const bcA={},bcB={};
-  txA.filter(t=>!isCCRepayment(t)&&!t.excluded).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcA[root]=(bcA[root]||0)+Math.abs(amount);}});});
-  txB.filter(t=>!isCCRepayment(t)&&!t.excluded).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcB[root]=(bcB[root]||0)+Math.abs(amount);}});});
+  txA.filter(t=>!isCCRepayment(t)&&!t.excluded&&_inAnScope(t)).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcA[root]=(bcA[root]||0)+Math.abs(amount);}});});
+  txB.filter(t=>!isCCRepayment(t)&&!t.excluded&&_inAnScope(t)).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcB[root]=(bcB[root]||0)+Math.abs(amount);}});});
   // Only show root categories (subcats aggregated)
   const activeCats=catd.filter(c=>!c.parentId&&(bcA[c.id]||0)+(bcB[c.id]||0)>0);
   const maxV=Math.max(...activeCats.flatMap(c=>[bcA[c.id]||0,bcB[c.id]||0]),1);
@@ -9235,7 +10128,7 @@ function setBalPeriod(p, btn) {
 
 function rBalanceChart() {
   const sec = document.getElementById('balance-sec');
-  const accTx = TX.filter(t => t.source === 'account' && eDate(t)).sort((a,b)=>eDate(a)-eDate(b));
+  const accTx = TX.filter(t => t.source === 'account' && _inAnScope(t) && eDate(t)).sort((a,b)=>eDate(a)-eDate(b));
   if (!accTx.length) { if(sec) sec.style.display='none'; return; }
   if(sec) sec.style.display='block';
   const now = new Date();
@@ -9281,7 +10174,7 @@ function rBalanceChart() {
   }
 
   if(!keys.length){ if(sec) sec.style.display='none'; return; }
-  let runBal = openingBalance;
+  let runBal = _scopeOpening();
   accTx.filter(t=>eDate(t)<cut).forEach(t=>runBal+=t.amount);
   const daily={};
   accTx.filter(t=>eDate(t)>=cut).forEach(t=>{const k=getKey(t);if(k)daily[k]=(daily[k]||0)+t.amount;});
@@ -10208,7 +11101,7 @@ function _gdBuildPayload() {
     detFieldsHidden: [...detFieldsHidden],
     ccLimit: document.getElementById('cc-lim')?.value || '',
     editLog: editLog.slice(0, 500), ibanNames,
-    excludedTags: [...excludedTags], recurMarks, colWidths
+    excludedTags: [...excludedTags], recurMarks, colWidths, accounts, reconciliations
   };
 }
 async function _gdApplyData(data) {
@@ -10237,6 +11130,8 @@ async function _gdApplyData(data) {
   recurMarks = data.recurMarks || {pins:{},blocks:{},excl:{},incl:{}};
   recurMarks.pins=recurMarks.pins||{};recurMarks.blocks=recurMarks.blocks||{};recurMarks.excl=recurMarks.excl||{};recurMarks.incl=recurMarks.incl||{};
   if (data.colWidths) colWidths = data.colWidths;
+  accounts = data.accounts || [];
+  reconciliations = data.reconciliations || {};
   if (data.ccLimit) { const el = document.getElementById('cc-lim'); if (el) el.value = data.ccLimit; }
   if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
   const txcEl = document.getElementById('txc'); if (txcEl) txcEl.textContent = TX.length + ' transakcií';
@@ -10248,6 +11143,7 @@ async function _gdApplyData(data) {
   await Store.set('editlog', editLog.slice(0, 500)); await Store.set('ibanNames', ibanNames);
   await Store.set('exctags', [...excludedTags]); await Store.set('recurmarks', recurMarks);
   await Store.set('colWidths', colWidths);
+  await Store.set('accounts', accounts);
   updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
 }
 function _gdFmtTime(iso) {
@@ -10612,6 +11508,55 @@ document.addEventListener('scroll', e => {
   <button class="btn" id="bulk-share-btn" onclick="openBulkShare()" style="font-size:10px;padding:5px 10px;color:var(--acc2);border-color:var(--acc2)">👥 Rozdeliť</button>
 
   <button class="btn" onclick="toggleBulkMode()" style="font-size:10px;padding:5px 10px;margin-left:auto;color:var(--red);border-color:var(--red)">✕ Zrušiť</button>
+</div>
+<div class="modal-bg" id="m-export">
+  <div class="modal" style="width:400px;max-width:calc(100vw - 32px)">
+    <button class="mc" onclick="cm('m-export')">✕</button>
+    <div class="mt">📊 Export do XLSX</div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:4px">Obdobie</label>
+      <select id="xp-range" style="width:100%"></select>
+    </div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:14px;line-height:1.5">Vytvorí zošit s hárkami <b>Transakcie</b>, <b>Kategórie</b> (s podielmi) a <b>Mesačný prehľad</b> — vrátane vzorcov a súčtov. Rešpektuje zvolený účet.</div>
+    <button class="btn" onclick="exportXLSX()" style="width:100%;background:var(--acc);color:#fff;border-color:var(--acc);padding:9px;font-size:13px">Stiahnuť XLSX</button>
+  </div>
+</div>
+<div class="modal-bg" id="m-report">
+  <div class="modal" style="width:440px;max-width:calc(100vw - 32px)">
+    <button class="mc" onclick="cm('m-report')">✕</button>
+    <div class="mt">📄 Mesačný report</div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--mu);display:block;margin-bottom:4px">Mesiac</label>
+      <select id="rp-month" style="width:100%"></select>
+    </div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:7px">Sekcie v reporte</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+      <label class="rp-chk"><input type="checkbox" id="rp-s-summary" checked> Zhrnutie (príjmy/výdavky/zostatok)</label>
+      <label class="rp-chk"><input type="checkbox" id="rp-s-pie" checked> Koláčový graf kategórií</label>
+      <label class="rp-chk"><input type="checkbox" id="rp-s-trend" checked> Stĺpcový graf (6-mesačný trend)</label>
+      <label class="rp-chk"><input type="checkbox" id="rp-s-cats" checked> Tabuľka kategórií</label>
+      <label class="rp-chk"><input type="checkbox" id="rp-s-merch" checked> Top obchodníci</label>
+      <label class="rp-chk"><input type="checkbox" id="rp-s-tx" onchange="document.getElementById('rp-tx-cols').style.display=this.checked?'block':'none'"> Zoznam transakcií</label>
+    </div>
+    <div id="rp-tx-cols" style="display:none;margin-bottom:14px;padding:10px;background:var(--s1);border-radius:8px">
+      <div style="font-size:11px;color:var(--mu);margin-bottom:7px">Stĺpce transakcií</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">
+        <label class="rp-chk"><input type="checkbox" id="rp-c-date" checked> Dátum</label>
+        <label class="rp-chk"><input type="checkbox" id="rp-c-merch" checked> Obchodník</label>
+        <label class="rp-chk"><input type="checkbox" id="rp-c-cat" checked> Kategória</label>
+        <label class="rp-chk"><input type="checkbox" id="rp-c-tags"> Tagy</label>
+        <label class="rp-chk"><input type="checkbox" id="rp-c-amt" checked> Suma</label>
+      </div>
+    </div>
+    <button class="btn" onclick="generateReport()" style="width:100%;background:var(--acc);color:#fff;border-color:var(--acc);padding:9px;font-size:13px">Vygenerovať náhľad →</button>
+  </div>
+</div>
+<div id="report-view">
+  <div class="rp-toolbar">
+    <button class="btn" onclick="closeReport()" style="font-size:12px">✕ Zavrieť</button>
+    <button class="btn" onclick="window.print()" style="font-size:12px;background:var(--acc);color:#fff;border-color:var(--acc)">🖨 Tlačiť / Uložiť PDF</button>
+  </div>
+  <div class="rp-page" id="rp-content"></div>
 </div>
 </body>
 </html>
