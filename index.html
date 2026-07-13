@@ -90,12 +90,44 @@ async function pwaDiag(){
       const reg=await navigator.serviceWorker.getRegistration();
       if(reg) add(!!reg.active,'Service worker beží', (reg.active?'aktívny':(reg.installing?'inštaluje sa…':'čaká'))+' · scope: '+reg.scope);
       else add(false,'Service worker beží','NIE JE registrovaný — Android Chrome ho vyžaduje!');
+      // Kontroluje SW túto stránku? (bez toho Chrome installability nevyhodnotí)
+      add(!!navigator.serviceWorker.controller,'SW kontroluje túto stránku',
+          navigator.serviceWorker.controller?'áno':'NIE — načítaj stránku ešte raz (Ctrl/⟳)');
     }catch(e){ add(false,'Service worker beží','chyba: '+e.message); }
   } else add(false,'Service worker podporovaný','prehliadač nepodporuje');
+
+  // Obsah cache — ak je prázdna, SW cachovanie zlyhalo
+  try{
+    const ks=await caches.keys();
+    let n=0, cn='—';
+    for(const k of ks){ const c2=await caches.open(k); const rs=await c2.keys(); if(rs.length>n){n=rs.length; cn=k;} }
+    add(n>0,'Cache naplnená', n>0?(n+' položiek · '+cn):'PRÁZDNA — offline nebude fungovať');
+  }catch(e){ add(false,'Cache naplnená','chyba: '+e.message); }
+
+  // start_url musí byť v scope a na rovnakej doméne ako stránka
+  if(mf && ml){
+    try{
+      const su=new URL(mf.start_url||'./', ml.href).href;
+      const sc=new URL(mf.scope||'./', ml.href).href;
+      const inScope=location.href.startsWith(sc);
+      add(inScope,'Stránka je v scope manifestu', inScope?'✓':'NIE! scope='+sc);
+      add(true,'start_url', su);
+      add(true,'táto stránka', location.href);
+    }catch(e){ add(false,'start_url / scope','chyba: '+e.message); }
+  }
+
+  // Je appka už nainštalovaná? Chrome vtedy inštaláciu NEPONÚKNE.
+  try{
+    if(navigator.getInstalledRelatedApps){
+      const apps=await navigator.getInstalledRelatedApps();
+      add(apps.length===0,'Nie je už nainštalovaná', apps.length? ('UŽ NAINŠTALOVANÁ ('+apps.length+') → Chrome preto neponúka!') : 'nie je');
+    }
+  }catch(e){}
 
   add(!!_pwaPrompt,'Chrome ponúka inštaláciu', _pwaPrompt?'áno → tlačidlo ⬇ v hlavičke':'zatiaľ nie');
   const st=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
   add(true,'Beží ako nainštalovaná PWA', st?'ÁNO':'nie (v prehliadači)');
+  add(true,'Prehliadač', (navigator.userAgent.match(/Chrome\/[\d.]+/)||['?'])[0]+' · '+(navigator.userAgent.includes('Android')?'Android':'desktop'));
 
   const bad=L.filter(x=>!x.ok);
   let html='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
@@ -104,8 +136,10 @@ async function pwaDiag(){
     <div style="flex:1;min-width:0"><div style="font-size:11px">${esc(x.label)}</div>
     <div style="font-size:10px;color:var(--mu);word-break:break-all">${esc(x.detail)}</div></div></div>`; });
   html+='</div>';
-  if(bad.length) html+=`<div style="padding:9px 11px;border-radius:8px;background:rgba(224,92,92,.12);border:1px solid var(--red);font-size:11px;line-height:1.5"><b>Problém:</b> ${bad.length} ${bad.length===1?'podmienka nesplnená':'podmienok nesplnených'}. Android Chrome vyžaduje HTTPS + platný manifest + <b>bežiaci service worker</b>. Desktop je zhovievavejší — preto tam inštaláciu ponúka aj tak.</div>`;
-  else html+='<div style="padding:9px 11px;border-radius:8px;background:rgba(91,193,124,.12);border:1px solid var(--grn);font-size:11px;line-height:1.5">Všetko v poriadku. Ak Chrome stále neponúka inštaláciu, chvíľu so stránkou pracuj a skús menu ⋮ → „Pridať na plochu / Inštalovať aplikáciu".</div>';
+  const blockers=bad.filter(x=>x.label!=='Chrome ponúka inštaláciu');
+  if(blockers.length) html+=`<div style="padding:9px 11px;border-radius:8px;background:rgba(224,92,92,.12);border:1px solid var(--red);font-size:11px;line-height:1.5"><b>Blokuje inštaláciu:</b> ${blockers.map(b=>esc(b.label)).join(', ')}.</div>`;
+  else if(!_pwaPrompt) html+='<div style="padding:9px 11px;border-radius:8px;background:rgba(240,160,64,.12);border:1px solid var(--acc3);font-size:11px;line-height:1.5"><b>Technicky je všetko splnené</b>, ale Chrome zatiaľ inštaláciu neponúkol. Najčastejšia príčina: Chrome si <b>pamätá starý verdikt</b> o stránke. Skús: Chrome → ⋮ → Nastavenia → Nastavenia webu → Všetky weby → tento web → <b>Vymazať a resetovať</b>. Potom stránku otvor znova a chvíľu v nej klikaj.</div>';
+  else html+='<div style="padding:9px 11px;border-radius:8px;background:rgba(91,193,124,.12);border:1px solid var(--grn);font-size:11px;line-height:1.5">Všetko v poriadku — inštaluj tlačidlom ⬇ v hlavičke.</div>';
   body.innerHTML=html;
 }
 </script>
@@ -621,7 +655,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v147</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v148</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
