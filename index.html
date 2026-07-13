@@ -50,6 +50,64 @@ window.addEventListener('appinstalled', function(){
   _pwaPrompt=null;
   const b=document.getElementById('pwa-install-btn'); if(b) b.style.display='none';
 });
+
+// ── PWA diagnostika: ukáže presne, ktorá podmienka inštalácie zlyháva ──
+async function pwaDiag(){
+  const m=document.getElementById('m-pwa'); if(m) m.classList.add('on');
+  const body=document.getElementById('pwa-diag-body'); if(!body) return;
+  body.innerHTML='Kontrolujem…';
+  const L=[]; const add=(ok,label,detail)=>L.push({ok,label,detail:detail||''});
+
+  add(location.protocol==='https:'||location.hostname==='localhost','HTTPS',location.protocol+'//'+location.host);
+
+  const ml=document.querySelector('link[rel="manifest"]');
+  add(!!ml,'Manifest <link> v HTML', ml?ml.getAttribute('href'):'CHÝBA');
+
+  let mf=null;
+  if(ml){
+    try{
+      const r=await fetch(ml.href,{cache:'no-store'});
+      add(r.ok,'manifest.json na serveri','HTTP '+r.status);
+      if(r.ok){ try{ mf=await r.json(); }catch(e){ add(false,'manifest.json je platný JSON', e.message); } }
+    }catch(e){ add(false,'manifest.json na serveri','chyba: '+e.message); }
+  }
+  if(mf){
+    add(!!(mf.name||mf.short_name),'manifest: name', mf.name||mf.short_name||'chýba');
+    add(['standalone','fullscreen','minimal-ui'].includes(mf.display),'manifest: display', mf.display||'chýba');
+    const ic=mf.icons||[];
+    add(ic.some(i=>String(i.sizes).includes('192'))&&ic.some(i=>String(i.sizes).includes('512')),'manifest: ikony 192 + 512', ic.map(i=>i.sizes).join(', ')||'žiadne');
+    for(const i of ic){
+      try{ const ir=await fetch(new URL(i.src, ml.href).href,{cache:'no-store'}); add(ir.ok,'ikona '+i.sizes+' stiahnuteľná','HTTP '+ir.status); }
+      catch(e){ add(false,'ikona '+i.sizes+' stiahnuteľná','chyba: '+e.message); }
+    }
+  }
+
+  try{ const r=await fetch('./sw.js',{cache:'no-store'}); add(r.ok,'sw.js na serveri','HTTP '+r.status+(r.ok?'':' → SÚBOR CHÝBA!')); }
+  catch(e){ add(false,'sw.js na serveri','chyba: '+e.message); }
+
+  if('serviceWorker' in navigator){
+    try{
+      const reg=await navigator.serviceWorker.getRegistration();
+      if(reg) add(!!reg.active,'Service worker beží', (reg.active?'aktívny':(reg.installing?'inštaluje sa…':'čaká'))+' · scope: '+reg.scope);
+      else add(false,'Service worker beží','NIE JE registrovaný — Android Chrome ho vyžaduje!');
+    }catch(e){ add(false,'Service worker beží','chyba: '+e.message); }
+  } else add(false,'Service worker podporovaný','prehliadač nepodporuje');
+
+  add(!!_pwaPrompt,'Chrome ponúka inštaláciu', _pwaPrompt?'áno → tlačidlo ⬇ v hlavičke':'zatiaľ nie');
+  const st=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  add(true,'Beží ako nainštalovaná PWA', st?'ÁNO':'nie (v prehliadači)');
+
+  const bad=L.filter(x=>!x.ok);
+  let html='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
+  L.forEach(x=>{ html+=`<div style="display:flex;gap:7px;align-items:flex-start;padding:6px 8px;background:var(--s1);border-radius:6px">
+    <span style="flex-shrink:0">${x.ok?'✅':'❌'}</span>
+    <div style="flex:1;min-width:0"><div style="font-size:11px">${esc(x.label)}</div>
+    <div style="font-size:10px;color:var(--mu);word-break:break-all">${esc(x.detail)}</div></div></div>`; });
+  html+='</div>';
+  if(bad.length) html+=`<div style="padding:9px 11px;border-radius:8px;background:rgba(224,92,92,.12);border:1px solid var(--red);font-size:11px;line-height:1.5"><b>Problém:</b> ${bad.length} ${bad.length===1?'podmienka nesplnená':'podmienok nesplnených'}. Android Chrome vyžaduje HTTPS + platný manifest + <b>bežiaci service worker</b>. Desktop je zhovievavejší — preto tam inštaláciu ponúka aj tak.</div>`;
+  else html+='<div style="padding:9px 11px;border-radius:8px;background:rgba(91,193,124,.12);border:1px solid var(--grn);font-size:11px;line-height:1.5">Všetko v poriadku. Ak Chrome stále neponúka inštaláciu, chvíľu so stránkou pracuj a skús menu ⋮ → „Pridať na plochu / Inštalovať aplikáciu".</div>';
+  body.innerHTML=html;
+}
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -563,7 +621,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v146</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v147</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -618,6 +676,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <input type="number" id="ob" class="inp" style="width:160px" placeholder="napr. 1200.00">
   </div>
   <button class="btn" onclick="openAccounts()" style="font-size:11px;padding:6px 12px;margin-top:2px">🏦 Sekundárne účty…</button>
+  <button class="btn" onclick="pwaDiag()" style="font-size:11px;padding:6px 12px;margin-top:2px;margin-left:6px">📲 PWA diagnostika</button>
   <button class="imp-btn" id="imp-btn" onclick="doImport()" disabled>Spracovať výpisy →</button>
   <div class="log" id="imp-log"></div>
   <div id="dup-box" class="dup-box" style="display:none">
@@ -11488,6 +11547,13 @@ document.addEventListener('scroll', e => {
   <button class="btn" id="bulk-share-btn" onclick="openBulkShare()" style="font-size:10px;padding:5px 10px;color:var(--acc2);border-color:var(--acc2)">👥 Rozdeliť</button>
 
   <button class="btn" onclick="toggleBulkMode()" style="font-size:10px;padding:5px 10px;margin-left:auto;color:var(--red);border-color:var(--red)">✕ Zrušiť</button>
+</div>
+<div class="modal-bg" id="m-pwa">
+  <div class="modal" style="width:480px;max-width:calc(100vw - 32px)">
+    <button class="mc" onclick="cm('m-pwa')">✕</button>
+    <div class="mt">📲 PWA diagnostika</div>
+    <div id="pwa-diag-body" style="font-size:12px">Kontrolujem…</div>
+  </div>
 </div>
 <div class="modal-bg" id="m-export">
   <div class="modal" style="width:400px;max-width:calc(100vw - 32px)">
