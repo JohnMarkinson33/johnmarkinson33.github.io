@@ -9,67 +9,46 @@
 <meta name="apple-mobile-web-app-title" content="finTB">
 <meta name="application-name" content="finTB">
 <meta name="theme-color" content="#0d1117">
-<link rel="manifest" id="pwa-manifest">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>finTB</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-// ── PWA MANIFEST (inline blob, works in all browsers) ──────────────────────
-(function(){
-  const manifest = {
-    name:"finTB – Finance Tracker", short_name:"finTB",
-    description:"Osobný finančný tracker pre Tatra banku",
-    start_url:".", display:"standalone",
-    background_color:"#0d1117", theme_color:"#0d1117", orientation:"any",
-    icons:[
-      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%230d1117'/%3E%3Crect x='16' y='16' width='160' height='160' rx='24' fill='%23161c24'/%3E%3Ctext x='96' y='130' font-family='Arial Black,sans-serif' font-size='88' font-weight='900' fill='%235ea8d8' text-anchor='middle'%3Ef%3C/text%3E%3Ctext x='128' y='130' font-family='Arial Black,sans-serif' font-size='88' font-weight='900' fill='%23cdd9e5' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml",purpose:"any maskable"},
-      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%230d1117'/%3E%3Crect x='32' y='32' width='448' height='448' rx='60' fill='%23161c24'/%3E%3Ctext x='256' y='340' font-family='Arial Black,sans-serif' font-size='240' font-weight='900' fill='%235ea8d8' text-anchor='middle'%3Ef%3C/text%3E%3Ctext x='340' y='340' font-family='Arial Black,sans-serif' font-size='240' font-weight='900' fill='%23cdd9e5' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}
-    ]
-  };
-  try {
-    const blob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
-    document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
-  } catch(e){}
-})();
-
-// ── SERVICE WORKER via embedded script tag ──────────────────────────────────
-// Chrome/Brave block blob: SW — we use a script tag with a special type and
-// extract its text to create the SW from a same-origin-ish source.
+// ── PWA: service worker + inštalácia ────────────────────────────────────────
+// POZOR: SW MUSÍ byť samostatný súbor (sw.js) na rovnakej doméne.
+// Blob/inline SW Chrome odmieta → appka sa potom nedá nainštalovať.
+// Na hostingu musia ležať vedľa index.html: manifest.json, sw.js,
+// icon-192.png, icon-512.png, icon-maskable-512.png
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  // Put SW code in a script tag the browser ignores, then extract and register
-  const swEl = document.getElementById('sw-src');
-  if(!swEl) return;
-  const swCode = swEl.textContent;
-  const blob = new Blob([swCode], {type:'text/javascript'});
-  const url = URL.createObjectURL(blob);
-  // Use type: 'classic' and bypass scope restriction with header trick via fetch
-  // Since this is a local file, we must use blob URL — Chrome requires HTTPS for SW
-  // FALLBACK: register without SW but still show install banner via beforeinstallprompt
-  // The manifest alone is enough for Android Chrome to show the install prompt on HTTPS.
-  // For local file usage, we skip SW registration (not possible from file://)
-  navigator.serviceWorker.register(url).catch(()=>{
-    // Silently fail — app still works fully offline via localStorage
+  if(!location.protocol.startsWith('http')) return; // file:// → SW nefunguje (a netreba)
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(e){
+      console.warn('finTB: registrácia service workera zlyhala →', e && e.message);
+    });
   });
 })();
-</script>
-<script id="sw-src" type="text/sw-worker">
-const CACHE='fintb-v2';
-self.addEventListener('install',e=>{e.waitUntil(self.skipWaiting());});
-self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+
+// Vlastné tlačidlo inštalácie (Chrome vyvolá beforeinstallprompt len keď sú
+// splnené podmienky: HTTPS + platný manifest + bežiaci SW s fetch handlerom)
+let _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  _pwaPrompt = e;
+  const b=document.getElementById('pwa-install-btn'); if(b) b.style.display='';
 });
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  e.respondWith(caches.match(e.request).then(r=>{
-    if(r)return r;
-    return fetch(e.request).then(res=>{
-      if(res&&res.status===200){
-        const clone=res.clone();
-        caches.open(CACHE).then(c=>c.put(e.request,clone));
-      }
-      return res;
-    }).catch(()=>r);
-  }));
+async function pwaInstall(){
+  const b=document.getElementById('pwa-install-btn');
+  if(!_pwaPrompt){ alert('Inštalácia nie je dostupná.\n\nSkús menu Chrome (⋮) → „Pridať na plochu" / „Inštalovať aplikáciu".'); return; }
+  _pwaPrompt.prompt();
+  try{ await _pwaPrompt.userChoice; }catch(e){}
+  _pwaPrompt=null;
+  if(b) b.style.display='none';
+}
+window.addEventListener('appinstalled', function(){
+  _pwaPrompt=null;
+  const b=document.getElementById('pwa-install-btn'); if(b) b.style.display='none';
 });
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -584,7 +563,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v145</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v146</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -596,6 +575,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <button class="nb" onclick="go('prehlady')">Prehľady</button>
   </nav>
   <div class="hdr-right">
+    <button class="theme-btn" id="pwa-install-btn" onclick="pwaInstall()" title="Nainštalovať ako aplikáciu" style="display:none">⬇</button>
     <div class="save-dot" id="save-dot" title="Uložené"></div>
     <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Prepnúť tému">🌙</button>
   </div>
