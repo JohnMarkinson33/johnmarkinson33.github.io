@@ -347,9 +347,9 @@ input[type=checkbox]{accent-color:var(--acc);cursor:pointer;width:13px;height:13
 /* CONTINGENCY TABLE */
 .pivot-wrap{overflow-x:auto;margin-top:4px;border:1px solid var(--bd);border-radius:10px}
 .pivot{border-collapse:collapse;font-size:11px;min-width:100%}
-.pivot th{padding:8px 7px;text-align:right;font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--mu);border-bottom:1px solid var(--bd);font-weight:500;white-space:nowrap}
+.pivot th{padding:9px 7px;text-align:right;font-size:8.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--mu);border-bottom:1px solid rgba(139,148,158,.16);font-weight:500;white-space:nowrap}
 .pivot th.cat-hd{text-align:left;position:sticky;left:0;background:var(--s1);z-index:2;min-width:100px;box-shadow:3px 0 6px -3px rgba(0,0,0,.22)}
-.pivot td{padding:5px 5px;text-align:right;border-bottom:1px solid var(--bd);white-space:nowrap;font-size:10.5px;transition:background .12s}
+.pivot td{padding:6px 6px;text-align:right;border-bottom:1px solid rgba(139,148,158,.09);white-space:nowrap;font-size:10.5px;transition:background .12s}
 .pivot td.cat-cell{text-align:left;position:sticky;left:0;background:var(--s1);z-index:1;font-size:10.5px;min-width:100px;box-shadow:3px 0 6px -3px rgba(0,0,0,.22)}
 .pivot tr:last-child td{border-bottom:none;font-weight:600;color:var(--txt)}
 .pivot tbody tr:last-child td:first-child{border-bottom-left-radius:10px}
@@ -358,17 +358,22 @@ input[type=checkbox]{accent-color:var(--acc);cursor:pointer;width:13px;height:13
 .pivot tr:hover td.cat-cell{background:var(--s1)}
 .pivot td.heat0{color:var(--mu)}
 .heat-cell{border-radius:5px;padding:2px 5px;display:inline-block;min-width:34px;text-align:right;font-size:10px}
-.hc{border-radius:5px;padding:2px 5px;display:inline-block;min-width:28px;text-align:right;font-size:10px;background:color-mix(in srgb,var(--cc) 18%,transparent);border-left:2px solid var(--cc);color:var(--txt);font-family:var(--M)}
+.hc{display:block;margin:-6px -6px;padding:6px 7px;text-align:right;font-size:10px;background:color-mix(in srgb,var(--cc) 11%,transparent);color:var(--txt);font-family:var(--M)}
 .h0{color:var(--mu);text-align:center;font-size:10px;padding:3px 2px}
 .prow{cursor:pointer}.prow:hover td{background:rgba(94,168,216,.07)}
 .prow:hover td.cat-cell{background:var(--s1)}
-.stotal td{padding:6px 5px;font-size:10px;font-family:var(--M);background:var(--s2)}
+.stotal td{padding:7px 6px;font-size:10px;font-family:var(--M);background:rgba(139,148,158,.05)}
 .tc{text-align:right;font-family:var(--M);font-size:11px;font-weight:600;padding:3px 5px;white-space:nowrap}
 .pivot-nav{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-.an-tabs{display:flex;gap:5px;margin-bottom:14px}
-.an-tab{background:none;border:1px solid var(--bd);color:var(--mu);padding:5px 14px;cursor:pointer;font-family:var(--M);font-size:11px;border-radius:5px;transition:border-color .12s,color .12s,background .12s}
-.an-tab:hover{border-color:var(--mu);color:var(--txt)}
-.an-tab.on{border-color:var(--acc);color:var(--acc);background:rgba(94,168,216,.1)}
+.an-tabs{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.an-tab{background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--mu);padding:8px 13px;cursor:pointer;font-family:var(--M);font-size:11px;border-radius:0;transition:color .15s,border-color .15s}
+.an-tab:hover{color:var(--txt)}
+.an-tab.on{border-bottom-color:var(--acc);color:var(--acc);background:none}
+/* segmented control — filtre obdobia / účtu */
+.seg{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:none;background:transparent;color:var(--mu);font-family:var(--M);font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;transition:color .15s,background .15s}
+.seg button:hover{color:var(--txt)}
+.seg button.on{background:rgba(94,168,216,.16);color:var(--acc);font-weight:600}
 
 /* CUSTOM CATEGORIES */
 .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px 14px;margin-bottom:14px;align-items:start}
@@ -580,11 +585,12 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 .tgs-clear{background:none;border:1px solid var(--bd);color:var(--mu);cursor:pointer;font-size:10px;padding:3px 9px;border-radius:5px;white-space:nowrap;flex-shrink:0}
 .tgs-clear:hover{color:var(--red);border-color:var(--red)}
 .tgs-chips{display:flex;flex-wrap:wrap;gap:6px}
-.tgs-chip{display:inline-flex;align-items:center;border:1px solid var(--bd);border-radius:14px;overflow:hidden;font-size:11px;color:var(--mu);cursor:pointer;transition:border-color .12s,background .12s}
+.tgs-chip{display:inline-flex;align-items:center;border:1px solid var(--bd);border-radius:999px;overflow:hidden;font-size:11px;color:var(--mu);cursor:pointer;transition:border-color .15s,background .15s,color .15s}
 .tgs-chip:hover{border-color:var(--mu)}
 .tgs-name{padding:5px 4px 5px 11px;cursor:pointer;white-space:nowrap}
 .tgs-name:hover{filter:brightness(1.25)}
-.tgs-tog{background:rgba(255,255,255,.06);border:none;border-left:1px solid var(--bd);color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:4px 9px;font-weight:700;transition:background .12s}
+.tgs-tog{background:transparent;border:none;border-left:1px solid rgba(139,148,158,.25);color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:4px 9px;font-weight:700;opacity:.6;transition:background .15s,opacity .15s}
+.tgs-chip:hover .tgs-tog{opacity:1}
 .tgs-tog:hover{background:rgba(255,255,255,.16)}
 .tgs-chip.on .tgs-tog{border-left-color:rgba(0,0,0,.15)}
 
@@ -655,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v148</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v150</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -1043,32 +1049,6 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       <div id="an-stack-inc-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:7px 11px;font-size:11px;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.4)"></div>
     </div>
   </div>
-  <!-- CASHFLOW CHART -->
-  <div class="cs">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-      <div class="st" style="margin:0">CASHFLOW — PRÍJMY vs VÝDAVKY</div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <select id="cf-year" onchange="renderCashflow()" style="font-size:10px;padding:4px 7px"></select>
-        <select id="cf-mon" onchange="renderCashflow()" style="font-size:10px;padding:4px 7px">
-          <option value="">Celý rok</option>
-          <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
-          <option value="3">Apr</option><option value="4">Máj</option><option value="5">Jún</option>
-          <option value="6">Júl</option><option value="7">Aug</option><option value="8">Sep</option>
-          <option value="9">Okt</option><option value="10">Nov</option><option value="11">Dec</option>
-        </select>
-        <button class="btn" onclick="svMonStep(1)" style="font-size:10px;padding:4px 7px" title="Nasledujúci mesiac">►</button>
-      </div>
-    </div>
-    <div style="position:relative">
-      <canvas id="an-cashflow" height="220"></canvas>
-      <div id="an-cashflow-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:7px 11px;font-size:11px;pointer-events:none;z-index:10;min-width:160px;box-shadow:0 2px 12px rgba(0,0,0,.4)"></div>
-    </div>
-    <div style="display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--mu)">
-      <span><span style="color:var(--grn)">■</span> Príjmy</span>
-      <span><span style="color:var(--red)">■</span> Výdavky</span>
-      <span><span style="color:#c8f060">─</span> Úspora</span>
-    </div>
-  </div>
   <!-- LINE CHART -->
   <div class="cs">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
@@ -1339,6 +1319,32 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     </div>
   </div>
 
+  <!-- CASHFLOW CHART -->
+  <div class="cs">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div class="st" style="margin:0">CASHFLOW — PRÍJMY vs VÝDAVKY</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select id="cf-year" onchange="renderCashflow()" style="font-size:10px;padding:4px 7px"></select>
+        <select id="cf-mon" onchange="renderCashflow()" style="font-size:10px;padding:4px 7px">
+          <option value="">Celý rok</option>
+          <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+          <option value="3">Apr</option><option value="4">Máj</option><option value="5">Jún</option>
+          <option value="6">Júl</option><option value="7">Aug</option><option value="8">Sep</option>
+          <option value="9">Okt</option><option value="10">Nov</option><option value="11">Dec</option>
+        </select>
+        <button class="btn" onclick="svMonStep(1)" style="font-size:10px;padding:4px 7px" title="Nasledujúci mesiac">►</button>
+      </div>
+    </div>
+    <div style="position:relative">
+      <canvas id="an-cashflow" height="220"></canvas>
+      <div id="an-cashflow-tip" style="display:none;position:absolute;background:var(--s1);border:1px solid var(--bd);border-radius:5px;padding:7px 11px;font-size:11px;pointer-events:none;z-index:10;min-width:160px;box-shadow:0 2px 12px rgba(0,0,0,.4)"></div>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--mu)">
+      <span><span style="color:var(--grn)">■</span> Príjmy</span>
+      <span><span style="color:var(--red)">■</span> Výdavky</span>
+      <span><span style="color:#c8f060">─</span> Úspora</span>
+    </div>
+  </div>
   <!-- INCOME VS EXPENSE TREND -->
   <div class="cs">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
@@ -1985,10 +1991,10 @@ function _renderAnScopeTabs(hostId){
   if(_anBank!=='tatra' && _anBank!=='__all' && !accounts.find(a=>a.id===_anBank)) _anBank='tatra';
   host.style.display='';
   const tabs=[{id:'tatra',name:'Tatra banka'},...accounts.filter(a=>a.bankType!=='slsp').map(a=>({id:a.id,name:a.name})),{id:'__all',name:'Všetko'}];
-  host.innerHTML='<div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;align-items:center"><span style="font-size:10px;color:var(--mu);flex-shrink:0;margin-right:2px;font-weight:600">ÚČET:</span>'+tabs.map(t=>{
+  host.innerHTML='<div style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;align-items:center"><span style="font-size:10px;color:var(--mu);flex-shrink:0;font-weight:600;letter-spacing:.5px">ÚČET</span><div class="seg">'+tabs.map(t=>{
     const active=_anBank===t.id;
-    return `<button onclick="_setAnBank('${t.id}')" style="flex-shrink:0;padding:5px 12px;border-radius:8px;border:1px solid ${active?'var(--acc)':'var(--bd)'};background:${active?'var(--acc)':'var(--s2)'};color:${active?'#fff':'var(--txt)'};font-size:11px;cursor:pointer;white-space:nowrap;font-weight:${active?'600':'400'}">${esc(t.name)}</button>`;
-  }).join('')+'</div>';
+    return `<button class="${active?'on':''}" onclick="_setAnBank('${t.id}')">${esc(t.name)}</button>`;
+  }).join('')+'</div></div>';
 }
 function _setAnBank(id){ _anBank=id; _renderAnScopeTabs('an-scope-tabs'); _renderAnScopeTabs('dash-scope-tabs'); _anRerender(); }
 function _anRerender(){
@@ -3496,7 +3502,7 @@ function go(nm) {
     if (nm==='budget') renderBudget();
     if (nm==='goals') renderGoals();
     if (nm==='networth') renderNetWorth();
-    if (nm==='prehlady') initPrehlady();
+    if (nm==='prehlady'){initPrehlady(); try{renderCashflow();}catch(e){}}
   }catch(e){
     console.error('go('+nm+')',e);
     const pg=document.getElementById('pg-'+nm);
@@ -4813,7 +4819,7 @@ function renderExclTagChips(){
     const meta=inThis?` <span style="opacity:.55">(${cnt})</span>`:` <span style="opacity:.5;font-style:italic">mimo</span>`;
     const fade=inThis?'':'opacity:.55;';
     const ttl=inThis?(active?'Zahrnúť späť do výpočtu':'Vylúčiť z výpočtu ('+cnt+' tx v tomto období)'):'Vylúčený tag mimo zvoleného obdobia — klikni pre zahrnutie';
-    return `<span onclick="toggleExclTag('${escA(tag)}',this)" style="cursor:pointer;font-size:10px;padding:2px 8px;border-radius:10px;${fade}border:1px solid ${active?'var(--red)':'var(--bd)'};background:${active?'rgba(224,92,92,.15)':'transparent'};color:${active?'var(--red)':'var(--mu)'};text-decoration:${active?'line-through':'none'}" title="${ttl}">🏷 ${esc(tag)}${meta}</span>`;
+    return `<span onclick="toggleExclTag('${escA(tag)}',this)" style="cursor:pointer;font-size:10px;padding:3px 11px;border-radius:999px;transition:border-color .15s,background .15s;${fade}border:1px solid ${active?'rgba(224,92,92,.6)':'var(--bd)'};background:${active?'rgba(224,92,92,.12)':'transparent'};color:${active?'var(--red)':'var(--mu)'};text-decoration:${active?'line-through':'none'}" title="${ttl}">🏷 ${esc(tag)}${meta}</span>`;
   }).join('');
 }
 
@@ -8253,7 +8259,7 @@ function renderPeriodReport(){
   const rng=_periodRange(); const d=_periodCatData(rng.from,rng.to);
   const total=d.cats.reduce((s,c)=>s+c.sum,0)||1;
   const presets=[['thisyear','Tento rok'],['lastyear','Minulý rok'],['3m','3 mes.'],['6m','6 mes.'],['12m','12 mes.'],['all','Celé obdobie'],['custom','Vlastný']];
-  let html='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+presets.map(([k,l])=>{const on=_periodPreset===k;return `<button onclick="_setPeriodPreset('${k}')" style="padding:4px 12px;font-size:11px;font-family:var(--M);border-radius:3px;cursor:pointer;border:1px solid ${on?'var(--acc)':'var(--bd)'};color:${on?'var(--acc)':'var(--mu)'};background:${on?'rgba(94,168,216,.1)':'none'}">${l}</button>`;}).join('')+'</div>';
+  let html='<div class="seg" style="margin-bottom:12px">'+presets.map(([k,l])=>`<button class="${_periodPreset===k?'on':''}" onclick="_setPeriodPreset('${k}')">${l}</button>`).join('')+'</div>';
   if(_periodPreset==='custom'){
     html+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap"><input type="date" value="${_periodFrom}" onchange="_periodFrom=this.value;renderPeriodReport()" style="padding:5px"><span style="color:var(--mu)">→</span><input type="date" value="${_periodTo}" onchange="_periodTo=this.value;renderPeriodReport()" style="padding:5px"></div>`;
   }
@@ -8270,7 +8276,7 @@ function renderPeriodReport(){
 // ──────────── SANKEY: TOK PEŇAZÍ ────────────
 function _periodPresetBarHTML(rng){
   const presets=[['thisyear','Tento rok'],['lastyear','Minulý rok'],['3m','3 mes.'],['6m','6 mes.'],['12m','12 mes.'],['all','Celé obdobie'],['custom','Vlastný']];
-  let h='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'+presets.map(([k,l])=>{const on=_periodPreset===k;return `<button onclick="_setPeriodPreset('${k}')" style="padding:4px 12px;font-size:11px;font-family:var(--M);border-radius:3px;cursor:pointer;border:1px solid ${on?'var(--acc)':'var(--bd)'};color:${on?'var(--acc)':'var(--mu)'};background:${on?'rgba(94,168,216,.1)':'none'}">${l}</button>`;}).join('')+'</div>';
+  let h='<div class="seg" style="margin-bottom:12px">'+presets.map(([k,l])=>`<button class="${_periodPreset===k?'on':''}" onclick="_setPeriodPreset('${k}')">${l}</button>`).join('')+'</div>';
   if(_periodPreset==='custom') h+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap"><input type="date" value="${_periodFrom}" onchange="_periodFrom=this.value;_periodRerender()" style="padding:5px"><span style="color:var(--mu)">→</span><input type="date" value="${_periodTo}" onchange="_periodTo=this.value;_periodRerender()" style="padding:5px"></div>`;
   h+=`<div style="font-size:11px;color:var(--mu);margin-bottom:14px">${_pdDate(rng.from)} – ${_pdDate(rng.to)}</div>`;
   return h;
@@ -8514,7 +8520,7 @@ function renderMonthlyPivot(){
   let html=`<thead><tr>${colHdr}</tr></thead><tbody>`;
 
   // VÝDAVKY
-  const secHdr=(label,color='#e05c5c22',textColor='#e05c5c')=>
+  const secHdr=(label,color='#e05c5c0d',textColor='#e05c5c')=>
     `<tr><td colspan="${W+2}" style="padding:5px 8px 3px;font-size:9px;font-weight:700;background:${color};color:${textColor};letter-spacing:.8px;text-transform:uppercase;border-top:1px solid var(--bd)">${label}</td></tr>`;
   html+=secHdr('Výdavky');
   activeExpCats.forEach(cat=>{html+=expRow(cat);});
@@ -8523,7 +8529,7 @@ function renderMonthlyPivot(){
 
   // PRÍJMY (čisté + zmiešané s prevahou príjmov)
   if(incOnlyCats.length||incDomCats.length){
-    html+=secHdr('Príjmy','#4caf8222','#4caf82');
+    html+=secHdr('Príjmy','#4caf820d','#4caf82');
     incOnlyCats.forEach(cat=>{html+=incRow(cat);});
     incDomCats.forEach(cat=>{html+=netIncRowM(cat);});
     html+=`<tr class="stotal"><td class="cat-cell" style="color:#4caf82">∑ Príjmy</td>${totalIncWeek.map(v=>`<td style="color:#4caf82">${v>0.01?'+'+v.toFixed(0)+'€':'—'}</td>`).join('')}<td style="color:#4caf82;font-weight:700">+${fabs(grandInc)}</td></tr>`;
@@ -8534,7 +8540,7 @@ function renderMonthlyPivot(){
 
   // VYROVNANÉ
   if(balancedCats.length){
-    html+=secHdr('Vyrovnané','#4a9fd422','#4a9fd4');
+    html+=secHdr('Vyrovnané','#4a9fd40d','#4a9fd4');
     balancedCats.forEach(cat=>{
       const ss=subsOf(cat);
       const gW=weeks.map((_,wi)=>expMatrix[cat.id][wi]+ss.reduce((s,sc)=>s+(expMatrix[sc.id]?.[wi]||0),0));
@@ -8594,8 +8600,8 @@ function renderYearlyPivot(){
       const inc=(incMatrix[cat.id][mo]||0)+subs.reduce((s,sc)=>s+(incMatrix[sc.id]?.[mo]||0),0);
       const net=Math.max(0,gross-inc);
       const ct=gross>0&&inc>0?` title="${gross.toFixed(0)}€ − ${inc.toFixed(0)}€"`:' ';
-      if(net>0.005) return`<td><span class="heat-cell" style="background:${cat.c}25;border-left:3px solid ${cat.c};color:var(--txt)"${ct}>${net.toFixed(0)}€${inc>0.01?'<sup style="font-size:7px;color:#5bc17c">↩</sup>':''}</span></td>`;
-      if(gross>0.01) return`<td><span class="heat-cell" style="background:${cat.c}10;border-left:2px solid ${cat.c}44;color:var(--mu);font-size:9px" title="Plne vrátené">↩</span></td>`;
+      if(net>0.005) return`<td><span class="hc" style="--cc:${cat.c}"${ct}>${net.toFixed(0)}€${inc>0.01?'<sup style="font-size:7px;color:#5bc17c">↩</sup>':''}</span></td>`;
+      if(gross>0.01) return`<td><span class="hc" style="--cc:${cat.c};opacity:.45;font-size:9px" title="Plne vrátené">↩</span></td>`;
       return`<td class="heat0">—</td>`;
     }).join('');
     const starNote=hasRef?` <span style="font-size:9px;color:#5bc17c;cursor:help" title="${ttip}">*</span>`:'';
@@ -8608,7 +8614,7 @@ function renderYearlyPivot(){
       const sNet=Math.max(0,(expTotals[s.id]||0)-(incTotals[s.id]||0));
       hY+=`<tr style="cursor:pointer" onclick="drillCat('${s.id}','yearly')">
         <td class="cat-cell" style="padding-left:26px;color:var(--mu)">↳ <span style="color:${s.c||cat.c}">■</span> ${s.l}</td>
-        ${activeMo.map(mo=>{const n=Math.max(0,(expMatrix[s.id]?.[mo]||0)-(incMatrix[s.id]?.[mo]||0));return n>0.005?`<td><span class="heat-cell" style="background:${s.c||cat.c}20;border-left:3px solid ${s.c||cat.c};color:var(--txt);opacity:.8">${n.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
+        ${activeMo.map(mo=>{const n=Math.max(0,(expMatrix[s.id]?.[mo]||0)-(incMatrix[s.id]?.[mo]||0));return n>0.005?`<td><span class="hc" style="--cc:${s.c||cat.c};opacity:.75">${n.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
         <td style="color:${sNet>0.01?'var(--red)':'var(--mu)'};font-weight:600;opacity:.8">${fabs(sNet)}</td>
       </tr>`;
     });
@@ -8630,20 +8636,20 @@ function renderYearlyPivot(){
     const _aggVal=incTotals[cat.id]+_iSubs.reduce((s,sc)=>s+(incTotals[sc.id]||0),0);
     let iHtml=`<tr style="cursor:pointer" onclick="${_iHasSubs?`_drillExpandParent('${cat.id}','${cat.l}','yearly')`:`drillCat('${cat.id}','yearly')`}">
       <td class="cat-cell">${_iToggle}<span style="color:${cat.c}">■</span> ${cat.l}${label}</td>
-      ${_aggIM.map(mo=>{const v=mo;return v>0.005?`<td><span class="heat-cell" style="background:${cat.c}20;border-left:3px solid ${cat.c};color:var(--txt)">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
+      ${_aggIM.map(mo=>{const v=mo;return v>0.005?`<td><span class="hc" style="--cc:${cat.c}">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
       <td style="color:${isVratka?'#5bc17c':cat.c};font-weight:600">+${fabs(_aggVal)}</td>
     </tr>`;
     if(_iHasSubs&&_iExpanded) _iSubs.filter(s=>incTotals[s.id]>0.005).forEach(s=>{
       iHtml+=`<tr style="cursor:pointer" onclick="drillCat('${s.id}','yearly')">
         <td class="cat-cell" style="padding-left:26px;color:var(--mu)">↳ <span style="color:${s.c||cat.c}">■</span> ${s.l}</td>
-        ${activeMo.map(mo=>{const v=incMatrix[s.id]?.[mo]||0;return v>0.005?`<td><span class="heat-cell" style="background:${s.c||cat.c}20;border-left:3px solid ${s.c||cat.c};color:var(--txt);opacity:.8">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
+        ${activeMo.map(mo=>{const v=incMatrix[s.id]?.[mo]||0;return v>0.005?`<td><span class="hc" style="--cc:${s.c||cat.c};opacity:.75">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
         <td style="color:${s.c||cat.c};font-weight:600;opacity:.8">+${fabs(incTotals[s.id])}</td>
       </tr>`;
     });
     return iHtml;
   }
 
-  const secHdrY=(label,color='#e05c5c22',tc='#e05c5c')=>
+  const secHdrY=(label,color='#e05c5c0d',tc='#e05c5c')=>
     `<tr><td colspan="${activeMo.length+2}" style="padding:5px 8px 2px;font-size:9px;font-weight:700;background:${color};color:${tc};letter-spacing:.8px;text-transform:uppercase;border-top:1px solid var(--bd)">${label}</td></tr>`;
 
   // Section totals — z koreňových agregátov (vrátane subkategórií)
@@ -8664,7 +8670,7 @@ function renderYearlyPivot(){
 
   // ── PRÍJMY (pure income only) ─────────────────────────────────
   if(incOnlyCats.length||incDomCats.length){
-    html+=secHdrY('Príjmy','#4caf8222','#4caf82');
+    html+=secHdrY('Príjmy','#4caf820d','#4caf82');
     incOnlyCats.forEach(cat=>{html+=incRowY(cat);});
     incDomCats.forEach(cat=>{
       const val=aggIncT[cat.id]-aggExpT[cat.id];
@@ -8684,7 +8690,7 @@ function renderYearlyPivot(){
 
   // ── VYROVNANÉ (yearly) ────────────────────────────────────────────────
   if(balancedCats.length){
-    html+=secHdrY('Vyrovnané','#4a9fd422','#4a9fd4');
+    html+=secHdrY('Vyrovnané','#4a9fd40d','#4a9fd4');
     balancedCats.forEach(cat=>{
       const ss=subsOf(cat);
       const grossExp=aggExpT[cat.id];
@@ -8863,8 +8869,8 @@ function renderAnCharts(){
   renderAnPie(incTx,'an-pie-inc','an-pie-inc-tip','príjmy',true);
   renderAnStack(expTx,'an-stack','an-stack-title',false);
   renderAnStack(incTx,'an-stack-inc','an-stack-inc-title',true);
+  _syncAnLineToPivot();
   renderAnLine();
-  renderCashflow();
 }
 
 function renderAnPie(txsIn,canvasId,tipId,label,isInc=false){
@@ -9071,6 +9077,20 @@ function renderAnStack(txsIn,canvasId,titleId,isInc=false){
   }
 }
 
+// Vývoj kategórií sleduje zvolené obdobie pivotu: ročný → celý rok (mesiace), mesačný → daný mesiac (dni)
+function _syncAnLineToPivot(){
+  const yEl=document.getElementById('an-line-year'), mEl=document.getElementById('an-line-month');
+  if(!yEl||!mEl) return;
+  if(yEl.options.length<=1){
+    const ys=[...new Set(TX.filter(t=>t.date).map(t=>eDate(t).getFullYear()))].sort();
+    yEl.innerHTML='<option value="">Všetky roky</option>'+ys.map(y=>`<option value="${y}">${y}</option>`).join('');
+  }
+  if(![...yEl.options].some(o=>o.value===String(anYear))){
+    const o=document.createElement('option'); o.value=String(anYear); o.textContent=String(anYear); yEl.appendChild(o);
+  }
+  yEl.value=String(anYear);
+  mEl.value = anView==='monthly' ? String(anMonth) : '';
+}
 function renderAnLine(){
   const selYear=document.getElementById('an-line-year')?.value;
   const selMStr=document.getElementById('an-line-month')?.value;
@@ -10151,7 +10171,7 @@ function renderRecurring(){
     const isExpired=rec.endMonth&&rec.endMonth<curMK;
     const isFuture=rec.startMonth&&rec.startMonth>curMK;
     const statusBadge=isExpired
-      ?`<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#e05c5c22;color:#e05c5c;border:1px solid #e05c5c55;flex-shrink:0">skončená</span>`
+      ?`<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#e05c5c0d;color:#e05c5c;border:1px solid #e05c5c55;flex-shrink:0">skončená</span>`
       :isFuture
       ?`<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--s2);color:var(--mu);border:1px solid var(--bd);flex-shrink:0">od ${rec.startMonth}</span>`
       :'';
