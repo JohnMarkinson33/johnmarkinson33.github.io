@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v150</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v154</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -990,7 +990,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <div style="color:var(--mu);font-size:11px">Klikni na kategóriu v tabuľke pre detail transakcií</div>
   </div>
   <div id="an-scope-tabs" style="display:none"></div>
-  <div style="margin-bottom:10px">
+  <div id="an-excl-row" style="margin-bottom:10px">
     <span style="font-size:10px;color:var(--mu);font-weight:600;letter-spacing:.5px">VYLÚČIŤ TAGY Z VÝPOČTU:</span>
     <span id="an-excl-tags" style="display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:8px;vertical-align:middle"></span>
     <span style="font-size:10px;color:var(--mu);margin-left:4px">(klikni na tag pre vylúčenie)</span>
@@ -1177,6 +1177,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
       <input type="number" id="mv-amount" class="inp" placeholder="Suma €" style="flex:1" min="0" step="5">
+      <div id="mv-avail" style="width:100%;font-size:10px;color:var(--mu);margin-top:2px"></div>
       <button class="btn prim" onclick="saveMoveMoney()" style="font-size:11px;padding:6px 14px">Presunúť</button>
     </div>
     <div id="mv-list"></div>
@@ -1295,7 +1296,9 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
 </div>
 
 <!-- PREHĽADY -->
-<div id="pg-prehlady" class="page">  <div style="margin-bottom:16px">
+<div id="pg-prehlady" class="page">
+  <div id="preh-scope-tabs" style="display:none"></div>
+  <div style="margin-bottom:16px">
     <div style="font-family:var(--H);font-size:20px;margin-bottom:4px">Prehľady</div>
     <div style="color:var(--mu);font-size:11px">Porovnanie období · Príjmy vs Výdavky · Opakujúce sa platby</div>
     <button class="btn" onclick="openReportConfig()" style="margin-top:10px;font-size:12px;color:var(--acc);border-color:var(--acc)">📄 Vygenerovať mesačný report (PDF)</button>
@@ -1640,6 +1643,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn" onclick="addRuleFromTx()" style="font-size:11px">+ Pravidlo z transakcie</button>
+        <button class="btn" onclick="splitTxAcrossMonths()" style="font-size:11px" title="Platba za viac mesiacov naraz? Rozdelí sa rovnomerne s účtovným dátumom v predošlých mesiacoch.">📅 Rozdeliť medzi mesiace</button>
         <button class="btn danger" onclick="deleteTx()" style="font-size:11px;margin-left:auto">🗑 Zmazať</button>
       </div>
     </div>
@@ -1996,10 +2000,11 @@ function _renderAnScopeTabs(hostId){
     return `<button class="${active?'on':''}" onclick="_setAnBank('${t.id}')">${esc(t.name)}</button>`;
   }).join('')+'</div></div>';
 }
-function _setAnBank(id){ _anBank=id; _renderAnScopeTabs('an-scope-tabs'); _renderAnScopeTabs('dash-scope-tabs'); _anRerender(); }
+function _setAnBank(id){ _anBank=id; _renderAnScopeTabs('an-scope-tabs'); _renderAnScopeTabs('dash-scope-tabs'); _renderAnScopeTabs('preh-scope-tabs'); _anRerender(); }
 function _anRerender(){
   try{ if(document.getElementById('pg-dashboard')?.classList.contains('on')) rDash(); }catch(e){}
-  try{ if(document.getElementById('pg-analyza')?.classList.contains('on')){ renderExclTagChips(); const tr=document.getElementById('an-tag-report'); if(tr && tr.style.display!=='none') renderTagReport(); else renderPivot(); } }catch(e){}
+  try{ if(document.getElementById('pg-analyza')?.classList.contains('on')){ renderExclTagChips(); if(anView==='period')renderPeriodReport(); else if(anView==='sankey')renderSankey(); else if(anView==='tags')renderTagReport(); else renderPivot(); } }catch(e){}
+  try{ if(document.getElementById('pg-prehlady')?.classList.contains('on')){ initPrehlady(); try{renderCashflow();}catch(e){} } }catch(e){}
 }
 function openAccounts(){ _accEditId=null; const f=document.getElementById('acc-form'); if(f)f.style.display='none'; const b=document.getElementById('acc-add-btn'); if(b)b.style.display=''; _renderAccountsList(); _renderReconciliation(); document.getElementById('m-accounts').classList.add('on'); }
 
@@ -2270,15 +2275,16 @@ function _buildExportWorkbook(txns){
   const wb=XLSX.utils.book_new();
   const EUR='#,##0.00" €"';
   const txS=txns.slice().sort((a,b)=>eDate(a)-eDate(b));
-  const aoa=[['Dátum','Obchodník','Kategória','Tagy','Suma','Účet']];
-  txS.forEach(t=>{ aoa.push([ eDate(t), eMerchant(t), _rpCatName(t.category), (t.tags||[]).join(', '), t.amount||0, (typeof _accName==='function'?_accName(txBank(t)):txBank(t)) ]); });
+  const aoa=[['Dátum','Obchodník','Kategória','Tagy','Suma','Môj podiel','Účet']];
+  txS.forEach(t=>{ aoa.push([ eDate(t), eMerchant(t), _rpCatName(t.category), (t.tags||[]).join(', '), t.amount||0, Math.round(txMyAmount(t)*100)/100, (typeof _accName==='function'?_accName(txBank(t)):txBank(t)) ]); });
   const wsT=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
   const rgT=XLSX.utils.decode_range(wsT['!ref']);
   for(let r=1;r<=rgT.e.r;r++){
     const dc=wsT[XLSX.utils.encode_cell({r,c:0})]; if(dc)dc.z='dd.mm.yyyy';
     const ac=wsT[XLSX.utils.encode_cell({r,c:4})]; if(ac)ac.z=EUR;
+    const mc=wsT[XLSX.utils.encode_cell({r,c:5})]; if(mc)mc.z=EUR;
   }
-  wsT['!cols']=[{wch:11},{wch:26},{wch:16},{wch:18},{wch:12},{wch:14}];
+  wsT['!cols']=[{wch:11},{wch:26},{wch:16},{wch:18},{wch:12},{wch:12},{wch:14}];
   wsT['!freeze']={xSplit:0,ySplit:1};
   XLSX.utils.book_append_sheet(wb, wsT, 'Transakcie');
   const cmap={};
@@ -3502,7 +3508,7 @@ function go(nm) {
     if (nm==='budget') renderBudget();
     if (nm==='goals') renderGoals();
     if (nm==='networth') renderNetWorth();
-    if (nm==='prehlady'){initPrehlady(); try{renderCashflow();}catch(e){}}
+    if (nm==='prehlady'){_renderAnScopeTabs('preh-scope-tabs'); initPrehlady(); try{renderCashflow();}catch(e){}}
   }catch(e){
     console.error('go('+nm+')',e);
     const pg=document.getElementById('pg-'+nm);
@@ -4311,7 +4317,7 @@ function drawInteractiveBars(canvasId,tooltipId,period,txsAll,col,height,getVal)
 
 function rTimeChart(){
   const expTx=anTx().filter(t=>t.amount<0);
-  drawInteractiveBars('c-time','c-time-tip',period,expTx,'#5ea8d8',160,t=>Math.abs(t.amount));
+  drawInteractiveBars('c-time','c-time-tip',period,expTx,'#5ea8d8',160,t=>Math.abs(txMyAmount(t)));
 }
 
 let catPeriod='month', topMPeriod='month';
@@ -4432,7 +4438,7 @@ function rCatChart(){
 }
 function rTopM(){
   const txs=getTopMPTx().filter(t=>t.amount<0&&t.merchant);
-  const bm={};txs.forEach(t=>{const k=(t.merchantOverride||t.merchant||'').substring(0,26).trim();bm[k]=(bm[k]||0)+Math.abs(t.amount);});
+  const bm={};txs.forEach(t=>{const k=(t.merchantOverride||t.merchant||'').substring(0,26).trim();bm[k]=(bm[k]||0)+Math.abs(txMyAmount(t));});
   const top=Object.entries(bm).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const mx=top[0]?.[1]||1;
   document.getElementById('top-m').innerHTML=top.map(([n,v])=>`
@@ -5640,6 +5646,7 @@ function _catChipInner(tx){
 function _txStatusBadges(tx){
   return (tx.shared?.people?.length?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(100,160,255,.18);color:var(--acc2);margin-left:5px;vertical-align:middle;letter-spacing:.3px">÷ zdieľaná</span>`:'')
     +(isDebtLink(tx)?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(91,193,124,.18);color:var(--grn);margin-left:5px;vertical-align:middle;letter-spacing:.3px">↩ vrátka</span>`:'')
+    +(tx.monthSplitPart?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(94,168,216,.16);color:var(--acc);margin-left:5px;vertical-align:middle;letter-spacing:.3px">📅 ${tx.monthSplitPart}</span>`:'')
     +(tx.transferPair?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(140,140,200,.2);color:var(--acc2);margin-left:5px;vertical-align:middle;letter-spacing:.3px">↔ presun</span>`:(tx.excluded?`<span style="display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(180,80,80,.18);color:var(--red);margin-left:5px;vertical-align:middle;letter-spacing:.3px">⊘ vylúčená</span>`:''));
 }
 function _txTagBadges(tx){
@@ -6042,6 +6049,49 @@ function clearEditLog(){
   editLog=[];saveD();cm('m-edited');
 }
 
+// Rozdelenie platby medzi mesiace (napr. zabudnutá mesačná platba zaplatená 2× naraz).
+// Využíva existujúci dateOverride — analýza, rozpočet aj reporty ho už všade rešpektujú.
+function splitTxAcrossMonths(){
+  const tx=TX.find(t=>t.id===detId); if(!tx)return;
+  // Už rozdelená → ponúkni zlúčenie späť
+  if(tx.monthSplitGroup){
+    const grp=TX.filter(t=>t.monthSplitGroup===tx.monthSplitGroup);
+    if(!confirm('Táto platba je rozdelená na '+grp.length+' mesiacov ('+grp.map(t=>fabs(t.amount)).join(' + ')+').\n\nZlúčiť späť do jednej transakcie?')) return;
+    const total=grp.reduce((s,t)=>s+(t.amount||0),0);
+    const keep=grp.find(t=>String(t.monthSplitPart||'').indexOf('1/')===0)||tx;
+    keep.amount=Math.round(total*100)/100;
+    delete keep.monthSplitGroup; delete keep.monthSplitPart;
+    const rm=new Set(grp.filter(t=>t!==keep).map(t=>t.id));
+    TX=TX.filter(t=>!rm.has(t.id));
+    saveD(); cm('m-det'); renderTx(); try{updateBadges();}catch(e){}
+    return;
+  }
+  if(tx.transferPair){ alert('Presun medzi účtami sa nedá rozdeliť medzi mesiace.'); return; }
+  if((tx.splits&&tx.splits.length)||(tx.shared&&tx.shared.people&&tx.shared.people.length)||getDebtLinks(tx).length){
+    alert('Transakcia so splitmi, zdieľaním alebo väzbou na pohľadávku sa medzi mesiace rozdeliť nedá — absolútne sumy väzieb by sa museli deliť tiež. Rozdeľ ju radšej ručne.');
+    return;
+  }
+  const raw=prompt('Na koľko mesiacov rozdeliť platbu „'+(tx.merchantOverride||tx.merchant||'?')+'" ('+fe(tx.amount)+')?\n\nSuma sa rozdelí rovnomerne; ďalšie časti dostanú účtovný dátum v predchádzajúcich mesiacoch.','2');
+  if(raw===null) return;
+  const n=parseInt(raw,10);
+  if(isNaN(n)||n<2||n>12){ alert('Zadaj počet mesiacov 2–12.'); return; }
+  const totalC=Math.round((tx.amount||0)*100);
+  const baseC=Math.trunc(totalC/n);           // centy na časť
+  const firstC=totalC-baseC*(n-1);            // zvyšok do prvej časti → súčet sedí presne
+  const d0=eDate(tx), day=d0.getDate();
+  const gid='ms_'+Math.random().toString(36).slice(2);
+  const parts=[];
+  for(let k=1;k<n;k++){
+    const t2=new Date(d0.getFullYear(), d0.getMonth()-k, 1);
+    const dim=new Date(t2.getFullYear(), t2.getMonth()+1, 0).getDate();
+    t2.setDate(Math.min(day, dim));            // 31. → posledný deň kratšieho mesiaca
+    parts.push({...tx, id:'tx_'+Math.random().toString(36).slice(2), amount:baseC/100, dateOverride:t2, monthSplitGroup:gid, monthSplitPart:(k+1)+'/'+n});
+  }
+  tx.amount=firstC/100; tx.monthSplitGroup=gid; tx.monthSplitPart='1/'+n;
+  TX.push(...parts);
+  saveD(); cm('m-det'); renderTx(); try{updateBadges();}catch(e){}
+  alert('Rozdelené na '+n+' mesiacov. Každý mesiac teraz vidí svoju časť v analýze aj rozpočte.\n(Zlúčiť späť: detail ktorejkoľvek časti → 📅.)');
+}
 function deleteTx(){
   const tx=TX.find(t=>t.id===detId); if(!tx)return;
   if(!confirm(`Zmazať transakciu "${tx.merchantOverride||tx.merchant||'?'}" (${fd(tx.date)}, ${fe(tx.amount)})?`))return;
@@ -6875,7 +6925,7 @@ function exportBackup(){
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`fintb_zaloha_${new Date().toISOString().slice(0,10)}.json`;
+  a.download=`fintb_zaloha_${localDateKey(new Date())}.json`;
   a.click(); URL.revokeObjectURL(a.href);
 }
 
@@ -7098,6 +7148,8 @@ function _renderGoalTxSearch(){
   const q=(document.getElementById('gtx-search')?.value||'').toLowerCase().trim();
   let list=(TX||[]).filter(t=>{
     if(_txGoal(t.id)) return false; // už priradené k niektorému cieľu
+    if(txMyAmount(t)<=0.005) return false; // len príjmy — výdavok cieľu nič nešetrí (Math.abs by ho chybne pripočítal)
+    if(t.excluded||t.transferPair||isCCRepayment(t)) return false; // presuny medzi účtami, korekcie a splátky KK nie sú úspory
     if(!q) return true;
     const m=(t.merchantOverride||t.merchant||'').toLowerCase(), d=(t.description||'').toLowerCase(), n=(t.noteOverride||'').toLowerCase();
     return m.indexOf(q)>=0||d.indexOf(q)>=0||n.indexOf(q)>=0;
@@ -8045,7 +8097,7 @@ function openBudgetDrill(catId,catLabel,period,isYearly){
     const [yr,mo]=period.split('-').map(Number);
     txs=anTx({year:yr,month:mo-1}).filter(t=>t.amount<0&&getTxCatAmounts(t).some(p=>_bdrCatIds.has(p.category)&&Math.abs(p.amount)>0));
   }
-  txs=txs.sort((a,b)=>b.date-a.date);
+  txs=txs.sort((a,b)=>eDate(b)-eDate(a));
   // B10: pri splitoch rátaj len podiel patriaci tejto kategórii
   const _bdrShare=t=>Math.abs(getTxCatAmounts(t).filter(p=>_bdrCatIds.has(p.category)).reduce((s,p)=>s+p.amount,0));
   const total=txs.reduce((s,t)=>s+_bdrShare(t),0);
@@ -8138,6 +8190,7 @@ function openMoveMoney(prefillFrom, prefillAmount){
   }
   document.getElementById('mv-month-info').textContent='Mesiac '+bgMon+' — presun upraví dostupný rozpočet kategórie (a ak je cieľom cieľ, pripíše doň) len v tomto mesiaci.';
   document.getElementById('mv-amount').value=(prefillAmount&&prefillAmount>0)?prefillAmount.toFixed(2):'';
+  fromS.onchange=_mvUpdateAvail; _mvUpdateAvail();
   _renderMoveList(bgMon);
   document.getElementById('m-move-money').classList.add('on');
 }
@@ -8158,6 +8211,26 @@ function _renderMoveList(bgMon){
       <button class="btn danger" onclick="deleteMoveMoney('${escA(m.id)}')" style="padding:2px 8px;font-size:10px;flex-shrink:0">✕</button>
     </div>`).join('');
 }
+// Dostupný prebytok kategórie v mesiaci = limit + rollover + presuny dnu − presuny von − minuté
+function _catAvailForMove(catId, mon){
+  const l=(budgetLimits||[]).find(x=>x.catId===catId && x.type==='monthly');
+  if(!l) return null; // bez mesačného limitu prebytok nedefinovaný
+  const [yr,mo]=mon.split('-').map(Number); if(!yr||!mo) return null;
+  const txs=anTx({year:yr, month:mo-1}).filter(t=>t.amount<0);
+  const bc={}; txs.forEach(t=>{ getTxCatAmounts(t).forEach(p=>{ const v=Math.abs(p.amount||0); if(v>0){ const k=p.category||'__none'; bc[k]=(bc[k]||0)+v; } }); });
+  const spent=(bc[catId]||0)+getSubcatIds(catId).reduce((s,sid)=>s+(bc[sid]||0),0);
+  const mv=_movesForCat(catId, mon);
+  const carry=l.rollover?_rolloverCarry(l, yr, mo):0;
+  return Math.round((l.amount + carry + mv.in - mv.out - spent)*100)/100;
+}
+function _mvUpdateAvail(){
+  const el=document.getElementById('mv-avail'); if(!el) return;
+  const bgMon=document.getElementById('bg-mon')?.value, from=document.getElementById('mv-from')?.value;
+  if(!bgMon||!from){ el.textContent=''; return; }
+  const avail=_catAvailForMove(from, bgMon);
+  if(avail===null){ el.innerHTML='<span style="color:var(--mu)">Kategória nemá mesačný limit — prebytok sa nedá určiť.</span>'; return; }
+  el.innerHTML='Dostupný prebytok: <b style="font-family:var(--M);color:'+(avail>0.005?'var(--grn)':'var(--red)')+'">'+(avail>=0?'':'−')+fabs(avail)+'</b>'+(avail<=0.005?' — nie je čo presúvať':'');
+}
 function saveMoveMoney(){
   const bgMon=document.getElementById('bg-mon')?.value; if(!bgMon) return;
   const from=document.getElementById('mv-from').value;
@@ -8166,6 +8239,11 @@ function saveMoveMoney(){
   if(!from||!to){ alert('Vyber zdroj aj cieľ presunu.'); return; }
   if(from===to){ alert('Vyber dve rôzne destinácie.'); return; }
   if(amount<=0){ alert('Zadaj kladnú sumu.'); return; }
+  const avail=_catAvailForMove(from, bgMon);
+  if(avail!==null && amount>avail+0.005){
+    alert('V kategórii ostáva len '+(avail>0?fabs(avail):'0 €')+' — nedá sa presunúť viac, než reálne zostalo.');
+    return;
+  }
   budgetMoves.push({id:'mv_'+Math.random().toString(36).slice(2),from,to,amount,month:bgMon});
   saveD(); _renderMoveList(bgMon); document.getElementById('mv-amount').value=''; renderBudget(); if(typeof renderGoals==='function') renderGoals();
 }
@@ -8193,6 +8271,7 @@ function setAnView(v, btn){
   anView=v;
   document.querySelectorAll('.an-tab').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
+  const exclRow=document.getElementById('an-excl-row'); if(exclRow) exclRow.style.display = v==='tags' ? 'none' : '';
   const tagRep=document.getElementById('an-tag-report');
   const periodEl=document.getElementById('an-period');
   const sankeyEl=document.getElementById('an-sankey');
@@ -8228,6 +8307,7 @@ function setAnView(v, btn){
 
 // ──────────── VŠETKY KATEGÓRIE ZA OBDOBIE ────────────
 let _periodPreset='thisyear', _periodFrom='', _periodTo='';
+let _periodOpenCats=new Set(); // rozkliknuté kategórie v Za obdobie
 function _pdDate(d){ return d?String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear():''; }
 function _periodRange(){
   const now=new Date(); let from, to=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59);
@@ -8250,10 +8330,33 @@ function _periodCatData(from, to){
   });
   const cats=Object.entries(catMap).map(([id,o])=>({id, sum:o.sum, cnt:o.cnt})).sort((a,b)=>b.sum-a.sum);
   const months=Math.max(1,(to.getFullYear()-from.getFullYear())*12+(to.getMonth()-from.getMonth())+1);
-  return { income, expense, net:income-expense, cats, months, count:txns.length };
+  const days=Math.max(1,Math.round((to-from)/86400000)+1);
+  const avgMonths=days/30.44; // Ø podľa reálnej dĺžky obdobia, nie počtu dotknutých kalendárnych mesiacov
+  return { income, expense, net:income-expense, cats, months, avgMonths, count:txns.length };
 }
 function _periodRerender(){ if(anView==='sankey')renderSankey(); else renderPeriodReport(); }
 function _setPeriodPreset(preset){ _periodPreset=preset; _periodRerender(); }
+function _periodToggleCat(id){ if(_periodOpenCats.has(id))_periodOpenCats.delete(id); else _periodOpenCats.add(id); renderPeriodReport(); }
+// Transakcie kategórie v rozsahu — môj podiel (splity aj shared cez getTxCatAmounts)
+function _periodCatTxList(catId, from, to){
+  const rows=[];
+  anTx({}).forEach(t=>{ const d=eDate(t); if(!d||d<from||d>to||(t.amount||0)>=0) return;
+    const share=Math.abs(getTxCatAmounts(t).filter(p=>String(p.category)===String(catId)).reduce((s,p)=>s+p.amount,0));
+    if(share>0.005) rows.push({t, d, share});
+  });
+  rows.sort((a,b)=>b.d-a.d);
+  const MAXR=40; const shown=rows.slice(0,MAXR);
+  let h='<div style="margin:7px 0 4px 18px;border-left:2px solid var(--bd);padding-left:10px">';
+  h+=shown.map(r=>{ const gross=Math.abs(r.t.amount||0); const note=(gross-r.share)>0.005?` <span style="color:var(--mu);font-size:9px">z ${fabs(gross)}</span>`:'';
+    return `<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:11px;border-bottom:1px solid rgba(139,148,158,.07)">
+      <span style="color:var(--mu);width:52px;flex-shrink:0;font-family:var(--M);font-size:10px">${_pdDate(r.d).slice(0,6)}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(eMerchant(r.t))}</span>
+      <span style="font-family:var(--M);flex-shrink:0">${fabs(r.share)}${note}</span>
+    </div>`; }).join('');
+  if(rows.length>MAXR) h+=`<div style="font-size:10px;color:var(--mu);padding:5px 0">… a ${rows.length-MAXR} ďalších</div>`;
+  h+='</div>';
+  return h;
+}
 function renderPeriodReport(){
   const host=document.getElementById('an-period'); if(!host)return;
   const rng=_periodRange(); const d=_periodCatData(rng.from,rng.to);
@@ -8265,10 +8368,13 @@ function renderPeriodReport(){
   }
   html+=`<div style="font-size:11px;color:var(--mu);margin-bottom:14px">${_pdDate(rng.from)} – ${_pdDate(rng.to)} · ${d.count} transakcií · ${d.months} ${d.months===1?'mesiac':(d.months<5?'mesiace':'mesiacov')}</div>`;
   const card=(l,v,clr)=>`<div style="flex:1;min-width:108px;padding:10px;background:var(--s2);border-radius:8px;text-align:center"><div style="font-size:9px;color:var(--mu);text-transform:uppercase">${l}</div><div style="font-size:15px;font-weight:700;font-family:var(--M)${clr?';color:'+clr:''}">${v}</div></div>`;
-  html+='<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">'+card('Príjmy',fabs(d.income),'var(--grn)')+card('Výdavky',fabs(d.expense),'var(--red)')+card('Rozdiel',(d.net>=0?'+':'−')+fabs(d.net),d.net>=0?'var(--grn)':'var(--red)')+card('Ø výdavky / mes.',fabs(d.expense/d.months))+'</div>';
+  html+='<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">'+card('Príjmy',fabs(d.income),'var(--grn)')+card('Výdavky',fabs(d.expense),'var(--red)')+card('Rozdiel',(d.net>=0?'+':'−')+fabs(d.net),d.net>=0?'var(--grn)':'var(--red)')+card('Ø výdavky / mes.',fabs(d.expense/d.avgMonths))+'</div>';
   if(d.cats.length){
     const maxSum=d.cats[0].sum;
-    html+='<div style="display:flex;flex-direction:column;gap:9px">'+d.cats.map((c,i)=>{const clr=_rpCatColor(c.id,i);const pct=c.sum/total*100;return `<div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px"><span style="font-size:12px"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${clr};margin-right:6px"></span>${esc(_rpCatName(c.id))} <span style="font-size:10px;color:var(--mu)">${c.cnt}×</span></span><span style="font-size:12px;font-family:var(--M)"><b>${fabs(c.sum)}</b> <span style="color:var(--mu);font-size:10px">${pct.toFixed(1)}%</span></span></div><div style="height:7px;background:var(--s1);border-radius:4px;overflow:hidden"><div style="height:100%;width:${(c.sum/maxSum*100).toFixed(1)}%;background:${clr};border-radius:4px"></div></div></div>`;}).join('')+'</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:9px">'+d.cats.map((c,i)=>{const clr=_rpCatColor(c.id,i);const pct=c.sum/total*100;const open=_periodOpenCats.has(String(c.id));
+      let row=`<div><div onclick="_periodToggleCat('${escA(String(c.id))}')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px"><span style="font-size:12px"><span style="color:var(--mu);font-size:9px;margin-right:4px">${open?'▾':'▸'}</span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${clr};margin-right:6px"></span>${esc(_rpCatName(c.id))} <span style="font-size:10px;color:var(--mu)">${c.cnt}×</span></span><span style="font-size:12px;font-family:var(--M)"><b>${fabs(c.sum)}</b> <span style="color:var(--mu);font-size:10px">${pct.toFixed(1)}%</span></span></div><div style="height:7px;background:var(--s1);border-radius:4px;overflow:hidden"><div style="height:100%;width:${(c.sum/maxSum*100).toFixed(1)}%;background:${clr};border-radius:4px"></div></div>`;
+      if(open) row+=_periodCatTxList(c.id, rng.from, rng.to);
+      return row+'</div>';}).join('')+'</div>';
   } else { html+='<div style="text-align:center;color:var(--mu);font-size:12px;padding:30px">Žiadne výdavky v tomto období.</div>'; }
   host.innerHTML=html;
 }
@@ -8305,13 +8411,14 @@ function _sankeySVG(d){
   const leftH=inflows.reduce((s,n)=>s+n.v*scale,0)+(inflows.length-1)*GAP;
   const rightH=outflows.reduce((s,n)=>s+n.v*scale,0)+(outflows.length-1)*GAP;
   const midH=mid*scale, H=Math.round(Math.max(leftH,rightH,midH)+26);
-  let ly=(H-leftH)/2; inflows.forEach(n=>{ n.h=n.v*scale; n.y=ly; ly+=n.h+GAP; });
-  let ry=(H-rightH)/2; outflows.forEach(n=>{ n.h=n.v*scale; n.y=ry; ry+=n.h+GAP; });
-  const midY=(H-midH)/2;
+  const TOP=34; // vyhradený pás hore pre label — nekoliduje so stužkami
+  let ly=(H-leftH)/2+TOP; inflows.forEach(n=>{ n.h=n.v*scale; n.y=ly; ly+=n.h+GAP; });
+  let ry=(H-rightH)/2+TOP; outflows.forEach(n=>{ n.h=n.v*scale; n.y=ry; ry+=n.h+GAP; });
+  const midY=(H-midH)/2+TOP;
   let ribbons='', nodes='', labels='';
   nodes+=`<rect x="${midX}" y="${midY}" width="${NW}" height="${midH}" rx="2" fill="#5ea8d8"/>`;
-  labels+=`<text x="${midX+NW/2}" y="${midY-11}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--txt)">Rozpočet</text>`;
-  labels+=`<text x="${midX+NW/2}" y="${midY-11+13}" text-anchor="middle" font-size="10" fill="var(--mu)">${fabs(mid)}</text>`;
+  labels+=`<text x="${midX+NW/2}" y="15" text-anchor="middle" font-size="12" font-weight="700" fill="var(--txt)">Rozpočet</text>`;
+  labels+=`<text x="${midX+NW/2}" y="29" text-anchor="middle" font-size="10" fill="var(--mu)">${fabs(mid)}</text>`;
   let inOff=midY;
   inflows.forEach(n=>{
     nodes+=`<rect x="${leftX}" y="${n.y}" width="${NW}" height="${Math.max(1,n.h)}" rx="2" fill="${n.color}"/>`;
@@ -8326,7 +8433,7 @@ function _sankeySVG(d){
     labels+=`<text x="${rightX+NW+6}" y="${n.y+n.h/2+3.5}" text-anchor="start" font-size="11" fill="var(--txt)">${esc(n.label)} <tspan fill="var(--mu)">${fabs(n.v)}</tspan></text>`;
     outOff+=n.h;
   });
-  return `<svg viewBox="0 0 ${VW} ${H}" style="width:100%;height:auto;min-width:660px" xmlns="http://www.w3.org/2000/svg">${ribbons}${nodes}${labels}</svg>`;
+  return `<svg viewBox="0 0 ${VW} ${H+TOP}" style="width:100%;height:auto;min-width:660px" xmlns="http://www.w3.org/2000/svg">${ribbons}${nodes}${labels}</svg>`;
 }
 function renderSankey(){
   const host=document.getElementById('an-sankey'); if(!host)return;
@@ -9240,7 +9347,7 @@ function renderCashflow(){
   const selMon=cfMonEl&&cfMonEl.value!==''?+cfMonEl.value:null;
 
   // Filter TX
-  let txFiltered=TX.filter(t=>t.date);
+  let txFiltered=anTx({}).filter(t=>t.date); // v153: bez presunov medzi účtami, korekcií a splátok KK; scope účtu
   if(selYear) txFiltered=txFiltered.filter(t=>eDate(t).getFullYear()===+selYear);
 
   // Build data buckets — daily if single month selected, monthly otherwise
@@ -9252,16 +9359,16 @@ function renderCashflow(){
       const day=String(d).padStart(2,'0');
       const key=`${selYear}-${String(selMon+1).padStart(2,'0')}-${day}`;
       const dayTx=txFiltered.filter(t=>eDate(t).getMonth()===selMon&&eDate(t).getDate()===d);
-      const inc=dayTx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
-      const exp=dayTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+      const inc=dayTx.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
+      const exp=dayTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
       buckets.push({m:key,label:`${d}.`,inc,exp,saved:inc-exp});
     }
   } else {
     const monthKeys=[...new Set(txFiltered.map(t=>mKey(eDate(t))))].sort();
     buckets=monthKeys.map(m=>{
       const mTx=txFiltered.filter(t=>mKey(eDate(t))===m);
-      const inc=mTx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
-      const exp=mTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+      const inc=mTx.filter(t=>t.amount>0).reduce((s,t)=>s+txMyAmount(t),0);
+      const exp=mTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
       return{m,label:m.slice(5),inc,exp,saved:inc-exp};
     });
   }
@@ -9411,10 +9518,12 @@ function renderComparison(){
   const ma=document.getElementById('cmp-a')?.value;
   const mb=document.getElementById('cmp-b')?.value;
   if(!ma||!mb)return;
-  const txA=TX.filter(t=>mKey(eDate(t))===ma);
-  const txB=TX.filter(t=>mKey(eDate(t))===mb);
-  const expA=txA.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
-  const expB=txB.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+  // v153 audit: cez anTx (scope účtu, vylúčené, splátky KK, vylúčené tagy) + môj podiel — konzistentné s pivotom
+  const _cmpBase=anTx({});
+  const txA=_cmpBase.filter(t=>mKey(eDate(t))===ma);
+  const txB=_cmpBase.filter(t=>mKey(eDate(t))===mb);
+  const expA=txA.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
+  const expB=txB.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(txMyAmount(t)),0);
   const diff=expA-expB;
   const diffPct=expB?((diff/expB)*100):0;
   document.getElementById('cmp-stats').innerHTML=`
@@ -9423,8 +9532,8 @@ function renderComparison(){
     <div class="sc r" style="margin:0"><div class="sc-l">Výdavky ${mb}</div><div class="sc-v neg">${fabs(expB)}</div><div class="sc-s">${txB.filter(t=>t.amount<0).length} txn</div></div>`;
   const catd=getCatD().filter(c=>c.id!=='sporenie');
   const bcA={},bcB={};
-  txA.filter(t=>!isCCRepayment(t)&&!t.excluded&&_inAnScope(t)).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcA[root]=(bcA[root]||0)+Math.abs(amount);}});});
-  txB.filter(t=>!isCCRepayment(t)&&!t.excluded&&_inAnScope(t)).forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcB[root]=(bcB[root]||0)+Math.abs(amount);}});});
+  txA.forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcA[root]=(bcA[root]||0)+Math.abs(amount);}});});
+  txB.forEach(t=>{getTxCatAmounts(t).forEach(({category,amount})=>{if(amount<0){const root=getCatRootId(category)||'__none';bcB[root]=(bcB[root]||0)+Math.abs(amount);}});});
   // Only show root categories (subcats aggregated)
   const activeCats=catd.filter(c=>!c.parentId&&(bcA[c.id]||0)+(bcB[c.id]||0)>0);
   const maxV=Math.max(...activeCats.flatMap(c=>[bcA[c.id]||0,bcB[c.id]||0]),1);
