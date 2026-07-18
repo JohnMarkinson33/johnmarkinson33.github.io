@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v154</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v155</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -1148,6 +1148,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
         </span>
       </div>
       <div id="bdr-limit-info" style="font-size:10px;color:var(--mu);margin-top:6px"></div>
+      <div id="bdr-move-row" style="display:none;margin-top:8px"><button class="btn" id="bdr-move-btn" style="font-size:11px;color:var(--acc);border-color:var(--acc)"></button></div>
     </div>
     <div id="bdr-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
     <div style="overflow-x:auto">
@@ -5783,7 +5784,8 @@ function openDet(id){
   document.getElementById('md-t').textContent=`${tx.merchantOverride||tx.merchant||'Transakcia'} · ${fd(tx.dateOverride||tx.date)}`;
   const flds=[
     {l:'Dátum transakcie',v:fd(tx.date)+(tx.dateOverride?' → '+fd(tx.dateOverride)+' ✎':'')+(tx.dateBank?' (banka: '+fd(tx.dateBank)+')':'')},
-    {l:'Suma',v:(tx.amount>=0?'+':'')+fe(tx.amount)+(tx.shared?.people?.length?(()=>{const ot=tx.shared.people.reduce((s,p)=>s+(p.amount||0),0);const my=Math.abs(tx.amount)-ot;return` · tvoja časť: ${fabs(my)}€`;})():''),cls:tx.amount>=0?'pos':'neg'},
+    {l:'Suma',v:(tx.amount>=0?'+':'')+fe(tx.amount)+(()=>{const my=txMyAmount(tx);if(Math.abs(my-tx.amount)<=0.005)return'';return tx.amount>=0?` · tvoj príjem (zostatok po vrátkach): +${fabs(my)}`:` · tvoja časť: ${fabs(my)}`;})(),cls:tx.amount>=0?'pos':'neg'},
+    ...(tx.monthSplitPart?[{l:'Rozdelená platba',v:'📅 časť '+tx.monthSplitPart+' — rozdelená medzi mesiace (zlúčenie: tlačidlo 📅 nižšie)'}]:[]),
     {l:'Zdroj',v:tx.source==='account'?'Bežný účet':'Kreditná karta'},
     {l:'Stav',v:tx.status||'—'},
     {l:'Cyklus (zúčt.)',v:tx.dateProcParsed?fd(tx.dateProcParsed)+' → '+cycMKey(tx):'—'},
@@ -8124,6 +8126,16 @@ function openBudgetDrill(catId,catLabel,period,isYearly){
   const ltRollEnd=document.getElementById('bdr-rollover-end');
   if(ltRollEnd) ltRollEnd.value=existingLimit?.rolloverEnd||'';
   if(ltRollWrap) ltRollWrap.style.display=existingLimit?.rollover?'inline-flex':'none';
+  // v155: presun prebytku do cieľa/kategórie priamo z detailu rozpočtu (vedľa rolloveru)
+  const _mvRow=document.getElementById('bdr-move-row'), _mvBtn=document.getElementById('bdr-move-btn');
+  if(_mvRow&&_mvBtn){
+    const _avail=!isYearly?_catAvailForMove(catId, period):null;
+    if(_avail!==null&&_avail>0.005){
+      _mvRow.style.display='';
+      _mvBtn.textContent='🎯 Presunúť prebytok ('+fabs(_avail)+') do cieľa / inej kategórie';
+      _mvBtn.onclick=function(){ cm('m-budget-drill'); openMoveMoney(catId, Math.round(_avail*100)/100); };
+    } else _mvRow.style.display='none';
+  }
   if(ltRollRow) ltRollRow.style.display=limitType==='monthly'?'flex':'none'; // rollover len pre mesačné/flexible
   if(ltInfo){
     if(existingLimit) ltInfo.textContent=existingLimit.amount?`Aktuálny limit: ${fabs(existingLimit.amount)} (${limitType==='monthly'?'mesačný':'ročný'})`:'Kategória sledovaná (bez limitu)';
@@ -8618,7 +8630,7 @@ function renderMonthlyPivot(){
     const val=aggIncT[cat.id]-aggExpT[cat.id];
     return`<tr class="prow" onclick="drillCat('${cat.id}','monthly')">
       <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l} <span style="font-size:9px;color:var(--mu)" title="Príjmy v kategórii prevyšujú výdavky — zobrazený čistý príjem">↩</span></td>
-      ${nW.map(v=>{const d=Math.max(0,-v);return d>0.005?`<td><span class="hc" style="--cc:#4caf82">+${d.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
+      ${nW.map(v=>{const net=-v;if(Math.abs(net)<=0.005)return`<td class="h0">—</td>`;const p=net>0;return`<td><span class="hc" style="--cc:${p?'#4caf82':'var(--red)'}${p?'':';color:var(--red)'}">${p?'+':'−'}${Math.abs(net).toFixed(0)}€</span></td>`;}).join('')}
       <td class="tc" style="color:#4caf82">+${fabs(val)}</td>
     </tr>`;
   }
@@ -8740,17 +8752,19 @@ function renderYearlyPivot(){
     const _iExpanded=_pivotExpandedParents.has(cat.id);
     const _iToggle=_iHasSubs?`<span onclick="event.stopPropagation();togglePivotParent('${cat.id}')" class="ptoggle" style="cursor:pointer;margin-right:3px;font-size:11px;color:var(--mu)">${_iExpanded?'▾':'▸'}</span>`:'';
     const _aggIM=activeMo.map(mo=>incMatrix[cat.id][mo]+_iSubs.reduce((s,sc)=>s+(incMatrix[sc.id]?.[mo]||0),0));
+    const _aggEM=activeMo.map(mo=>(expMatrix[cat.id]?.[mo]||0)+_iSubs.reduce((s,sc)=>s+(expMatrix[sc.id]?.[mo]||0),0)); // v155: aj výdavková strana → čistý tok
     const _aggVal=incTotals[cat.id]+_iSubs.reduce((s,sc)=>s+(incTotals[sc.id]||0),0);
+    const _netVal=_aggVal-((expTotals[cat.id]||0)+_iSubs.reduce((s,sc)=>s+(expTotals[sc.id]||0),0));
     let iHtml=`<tr style="cursor:pointer" onclick="${_iHasSubs?`_drillExpandParent('${cat.id}','${cat.l}','yearly')`:`drillCat('${cat.id}','yearly')`}">
       <td class="cat-cell">${_iToggle}<span style="color:${cat.c}">■</span> ${cat.l}${label}</td>
-      ${_aggIM.map(mo=>{const v=mo;return v>0.005?`<td><span class="hc" style="--cc:${cat.c}">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
-      <td style="color:${isVratka?'#5bc17c':cat.c};font-weight:600">+${fabs(_aggVal)}</td>
+      ${_aggIM.map((mo,_mi)=>{const net=mo-(_aggEM[_mi]||0);if(Math.abs(net)<=0.005)return`<td class="heat0">—</td>`;const p=net>0;return`<td><span class="hc" style="--cc:${p?cat.c:'var(--red)'}${p?'':';color:var(--red)'}">${p?'+':'−'}${Math.abs(net).toFixed(0)}€</span></td>`;}).join('')}
+      <td style="color:${_netVal>=0?(isVratka?'#5bc17c':cat.c):'var(--red)'};font-weight:600">${_netVal>=0?'+':'−'}${fabs(_netVal)}</td>
     </tr>`;
-    if(_iHasSubs&&_iExpanded) _iSubs.filter(s=>incTotals[s.id]>0.005).forEach(s=>{
+    if(_iHasSubs&&_iExpanded) _iSubs.filter(s=>(incTotals[s.id]||0)>0.005||(expTotals[s.id]||0)>0.005).forEach(s=>{
       iHtml+=`<tr style="cursor:pointer" onclick="drillCat('${s.id}','yearly')">
         <td class="cat-cell" style="padding-left:26px;color:var(--mu)">↳ <span style="color:${s.c||cat.c}">■</span> ${s.l}</td>
-        ${activeMo.map(mo=>{const v=incMatrix[s.id]?.[mo]||0;return v>0.005?`<td><span class="hc" style="--cc:${s.c||cat.c};opacity:.75">+${v.toFixed(0)}€</span></td>`:`<td class="heat0">—</td>`;}).join('')}
-        <td style="color:${s.c||cat.c};font-weight:600;opacity:.8">+${fabs(incTotals[s.id])}</td>
+        ${activeMo.map(mo=>{const net=(incMatrix[s.id]?.[mo]||0)-(expMatrix[s.id]?.[mo]||0);if(Math.abs(net)<=0.005)return`<td class="heat0">—</td>`;const p=net>0;return`<td><span class="hc" style="--cc:${p?(s.c||cat.c):'var(--red)'};opacity:.75${p?'':';color:var(--red)'}">${p?'+':'−'}${Math.abs(net).toFixed(0)}€</span></td>`;}).join('')}
+        ${(()=>{const n=(incTotals[s.id]||0)-(expTotals[s.id]||0);return`<td style="color:${n>=0?(s.c||cat.c):'var(--red)'};font-weight:600;opacity:.8">${n>=0?'+':'−'}${fabs(n)}</td>`;})()}
       </tr>`;
     });
     return iHtml;
@@ -8783,13 +8797,13 @@ function renderYearlyPivot(){
       const val=aggIncT[cat.id]-aggExpT[cat.id];
       html+=`<tr class="prow" onclick="drillCat('${cat.id}','yearly')">
         <td class="cat-cell"><span style="color:${cat.c}">■</span> ${cat.l} <span style="font-size:9px;color:var(--mu)" title="Príjmy v kategórii prevyšujú výdavky — zobrazený čistý príjem">↩</span></td>
-        ${activeMo.map(mo=>{const v=Math.max(0,-aggNetMo(cat,mo));return v>0.005?`<td><span class="hc" style="--cc:#4caf82">+${v.toFixed(0)}€</span></td>`:`<td class="h0">—</td>`;}).join('')}
+        ${activeMo.map(mo=>{const net=-aggNetMo(cat,mo);if(Math.abs(net)<=0.005)return`<td class="h0">—</td>`;const p=net>0;return`<td><span class="hc" style="--cc:${p?'#4caf82':'var(--red)'}${p?'':';color:var(--red)'}">${p?'+':'−'}${Math.abs(net).toFixed(0)}€</span></td>`;}).join('')}
         <td class="tc" style="color:#4caf82">+${fabs(val)}</td>
       </tr>`;
     });
     const grandIncTotal=grandIncY+incDomCats.reduce((s,r)=>s+(aggIncT[r.id]-aggExpT[r.id]),0);
-    const sumIncMo=activeMo.map((mo,ii)=>incOnlyMo[ii]+incDomCats.reduce((s,r)=>s+Math.max(0,-aggNetMo(r,mo)),0));
-    html+=`<tr class="stotal"><td class="cat-cell" style="color:#4caf82">∑ Príjmy</td>${sumIncMo.map(v=>`<td style="color:#4caf82">${v>0.01?'+'+v.toFixed(0)+'€':'—'}</td>`).join('')}<td class="tc" style="color:#4caf82">+${fabs(grandIncTotal)}</td></tr>`;
+    const sumIncMo=activeMo.map((mo,ii)=>incOnlyMo[ii]+incDomCats.reduce((s,r)=>s+(-aggNetMo(r,mo)),0));
+    html+=`<tr class="stotal"><td class="cat-cell" style="color:#4caf82">∑ Príjmy</td>${sumIncMo.map(v=>`<td style="color:${v>=-0.01?'#4caf82':'var(--red)'}">${Math.abs(v)>0.01?(v>0?'+':'−')+Math.abs(v).toFixed(0)+'€':'—'}</td>`).join('')}<td class="tc" style="color:#4caf82">+${fabs(grandIncTotal)}</td></tr>`;
     const netRowCells=activeMo.map((mo,ii)=>{const n=sumIncMo[ii]-expNetMo[ii];const c=n>=0?'#4caf82':'var(--red)';return`<td style="color:${c};font-weight:700">${n>=0?'+':''}${n.toFixed(0)}€</td>`;}).join('');
     const grandNetAll=grandIncY+incDomCats.reduce((s,c)=>s+Math.abs(netCatTotals[c.id]),0)-grandExpNet;
     html+=`<tr class="stotal" style="border-top:2px solid var(--bd)"><td class="cat-cell" style="font-weight:700">Čistý zostatok</td>${netRowCells}<td class="tc" style="color:${grandNetAll>=0?'#4caf82':'var(--red)'}">${grandNetAll>=0?'+':'−'}${fabs(Math.abs(grandNetAll))}</td></tr>`;
@@ -8896,7 +8910,8 @@ function drillCat(catId,scope){
         '<div class="drow-amt pos">+'+fabs(r.linkAmt)+'</div></div>';
     }).join('');
     const icons=(isSplit?'<span style="font-size:9px;color:var(--acc2);margin-left:3px">✂</span>':'')+
-      (tx.shared?.people?.length?'<span style="font-size:9px;color:var(--acc2);margin-left:3px">÷</span>':'');
+      (tx.shared?.people?.length?'<span style="font-size:9px;color:var(--acc2);margin-left:3px">÷</span>':'')+
+      (tx.monthSplitPart?'<span style="font-size:9px;color:var(--acc);margin-left:3px" title="rozdelená medzi mesiace">📅 '+tx.monthSplitPart+'</span>':'');
     // DebtLink sub-rows for income transactions
     // For split txs: debtLink belongs to whole tx, not to individual split — skip sub-rows
     // dlRows: only for income txs whose expense is NOT shown in this drilldown (no ↳ sub-row exists)
