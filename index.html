@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v155</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v156</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -1693,6 +1693,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
     <input type="file" id="acc-import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="_doAccImport(this)">
     <button class="btn" onclick="openTransferReview()" style="width:100%;margin-top:8px;font-size:12px;color:var(--acc2);border-color:var(--acc2)">🔎 Nájsť presuny medzi účtami</button>
     <div id="reconcile-sec" style="margin-top:18px"></div>
+    <div id="sync-sec" style="margin-top:18px"></div>
   </div>
 </div>
 <div class="modal-bg" id="m-betting">
@@ -1959,6 +1960,7 @@ function scheduleSave() {
     await S('exctags', [...excludedTags]);
     await S('accounts', accounts);
     await S('reconciliations', reconciliations);
+    await S('syncCfg', syncCfg);
     const dot = document.getElementById('save-dot');
     dot.classList.remove('on','err');
     if (ok) {
@@ -1976,6 +1978,7 @@ function saveD() { scheduleSave(); _returnMap=null; _selfRefundMap=null; try{loc
 
 let accounts = []; // sekundárne účty: [{id,name,purpose,openingBalance}]
 let reconciliations = {}; // { bankId: {balance, date} } — posledná rekonciliácia
+let syncCfg = {url:'', key:'', iban:'', last:null}; // Premium API sync: Worker URL, APP_KEY, zvolený IBAN, dátum poslednej synchronizácie
 let _accEditId = null;
 let _accImportTarget = null;
 let _txBankFilter = 'tatra'; // prepínač účtu v zozname transakcií
@@ -2007,7 +2010,136 @@ function _anRerender(){
   try{ if(document.getElementById('pg-analyza')?.classList.contains('on')){ renderExclTagChips(); if(anView==='period')renderPeriodReport(); else if(anView==='sankey')renderSankey(); else if(anView==='tags')renderTagReport(); else renderPivot(); } }catch(e){}
   try{ if(document.getElementById('pg-prehlady')?.classList.contains('on')){ initPrehlady(); try{renderCashflow();}catch(e){} } }catch(e){}
 }
-function openAccounts(){ _accEditId=null; const f=document.getElementById('acc-form'); if(f)f.style.display='none'; const b=document.getElementById('acc-add-btn'); if(b)b.style.display=''; _renderAccountsList(); _renderReconciliation(); document.getElementById('m-accounts').classList.add('on'); }
+
+// ──────────── SYNCHRONIZÁCIA S BANKOU (Tatra Premium API cez Cloudflare Worker) ────────────
+let _syncAccCache = null; // posledný /accounts výsledok (nepersistuje sa)
+
+function _syncSaveCfg(){
+  syncCfg.url = (document.getElementById('sync-url')?.value || '').trim();
+  syncCfg.key = (document.getElementById('sync-key')?.value || '').trim();
+  const sel = document.getElementById('sync-iban'); if (sel && sel.value) syncCfg.iban = sel.value;
+  saveD();
+}
+async function _syncFetch(path){
+  if(!syncCfg.url) throw new Error('Nastav URL workera.');
+  const base = syncCfg.url.replace(/\/+$/, '');
+  const r = await fetch(base + path, { headers: { 'x-app-key': syncCfg.key || '' } }); // hlavička znesie aj # v hesle
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error || ('HTTP '+r.status));
+  return d;
+}
+// Surová API transakcia → tvar finTB (rovnaké polia ako Tatra XLSX parser)
+function _syncMapTx(rt){
+  const [y,m,d] = String(rt.bookingDate||'').split('-').map(Number);
+  const amount = (rt.transactionAmount && rt.transactionAmount.amount) || 0;
+  const isCard = !!rt.cardNumber || !!rt.tradingPartyIdentification;
+  let merchant, iban;
+  if (isCard) { merchant = rt.tradingPartyIdentification || 'Kartová platba'; }
+  else if (amount < 0) { merchant = rt.creditorName || rt.additionalInformation || '—'; iban = rt.creditorAccount?.iban; }
+  else { merchant = rt.debtorName || rt.additionalInformation || '—'; iban = rt.debtorAccount?.iban; }
+  return {
+    tbId: String(rt.transactionId),
+    date: new Date(y, (m||1)-1, d||1), // lokálny čas — žiadny UTC posun
+    amount, merchant,
+    description: rt.additionalInformation || undefined,
+    info: rt.remittanceInformationUnstructured || undefined,
+    iban, vs: rt.variableSymbol || undefined,
+    cardNo: rt.cardNumber || undefined,
+    place: rt.tradingPartyAddress || undefined,
+    source: 'account',
+  };
+}
+function _syncRuleCat(t){ // auto-kategorizácia rovnakým matcherom ako import
+  try{ const m=_matchRule(t); if(!m) return;
+    const cid = (typeof m==='string') ? m : (m.catId || m.cat || m.category);
+    if(cid) t.category = cid;
+  }catch(e){}
+}
+// Aplikácia stiahnutých transakcií: dedup cez tbId + "claim" starých XLSX riadkov
+function _syncApply(list){
+  const have = new Set(TX.map(t=>t.tbId).filter(Boolean));
+  let added=0, claimed=0, skipped=0;
+  (list||[]).forEach(rt=>{
+    if ((rt.transactionState||'BOOKED') !== 'BOOKED') { skipped++; return; } // pending sa ešte mení
+    const mt = _syncMapTx(rt);
+    if (have.has(mt.tbId)) { skipped++; return; }
+    // rovnaká suma + bankový dátum + tatra + ešte bez tbId → je to tá istá tx z XLSX importu; len ju označkujeme
+    const dk = localDateKey(mt.date);
+    const cand = TX.find(t=>!t.tbId && txBank(t)==='tatra' && t.date && localDateKey(t.date)===dk && Math.abs((t.amount||0)-mt.amount)<0.005);
+    if (cand) { cand.tbId = mt.tbId; have.add(mt.tbId); claimed++; return; }
+    const nt = { id:'tx_'+Math.random().toString(36).slice(2), ...mt };
+    _syncRuleCat(nt);
+    TX.push(nt); have.add(mt.tbId); added++;
+  });
+  if (added) TX.sort((a,b)=>b.date-a.date);
+  return {added, claimed, skipped};
+}
+async function _syncLoadAccounts(){
+  const st=document.getElementById('sync-status');
+  try{
+    _syncSaveCfg();
+    if(st) st.textContent='Načítavam účty…';
+    const d = await _syncFetch('/accounts');
+    _syncAccCache = d.accounts || [];
+    const sel=document.getElementById('sync-iban');
+    if(sel){
+      sel.innerHTML = _syncAccCache.map(a=>{
+        const ib=a.accountReference?.iban||''; const bal=(a.balances||[]).find(b=>b.balanceType==='interimAvailable');
+        return `<option value="${escA(ib)}">${esc(a.bankName||a.bankCode||'?')} · ${esc(ib)}${bal?(' · '+fe(bal.balanceAmount.amount)):''}</option>`;
+      }).join('');
+      if (syncCfg.iban && [...sel.options].some(o=>o.value===syncCfg.iban)) sel.value=syncCfg.iban;
+      syncCfg.iban = sel.value; saveD();
+    }
+    const acc=_syncAccCache.find(a=>a.accountReference?.iban===syncCfg.iban)||_syncAccCache[0];
+    const ce=document.getElementById('sync-consent');
+    if(ce&&acc&&acc.consentExpirationDate){ const dt=new Date(acc.consentExpirationDate); const days=Math.round((dt-Date.now())/864e5);
+      ce.innerHTML='Súhlas platný do <b>'+dt.toLocaleDateString('sk')+'</b>'+(days<=7?' <span style="color:var(--red)">(o '+days+' dní vyprší — obnov cez ▶ Pripojiť)</span>':''); }
+    if(st) st.textContent='Účty načítané ('+_syncAccCache.length+').';
+  }catch(e){ if(st) st.innerHTML='<span style="color:var(--red)">'+esc(String(e.message||e))+'</span>'; }
+}
+async function _syncNow(){
+  const st=document.getElementById('sync-status');
+  try{
+    _syncSaveCfg();
+    if(!syncCfg.iban){ alert('Najprv klikni „Načítať účty" a vyber účet.'); return; }
+    if(st) st.textContent='Sťahujem transakcie…';
+    let from;
+    if(syncCfg.last){ const d=new Date(syncCfg.last); d.setDate(d.getDate()-5); from=localDateKey(d); } // 5-dňový presah pre istotu
+    else { const d=new Date(Date.now()-90*864e5); from=localDateKey(d); }
+    const d = await _syncFetch('/sync?iban='+encodeURIComponent(syncCfg.iban)+'&from='+from);
+    const res = _syncApply(d.transactions||[]);
+    syncCfg.last = localDateKey(new Date());
+    saveD();
+    try{ updateFilters(); }catch(e){}
+    try{ if(document.getElementById('pg-transactions')?.classList.contains('on')) renderTx(); }catch(e){}
+    try{ if(typeof updateBkInfo==='function') updateBkInfo(); }catch(e){}
+    try{ _renderReconciliation(); }catch(e){}
+    if(st) st.innerHTML='✓ Hotovo: <b style="color:var(--grn)">'+res.added+' nových</b> · '+res.claimed+' spárovaných s importom · '+res.skipped+' preskočených (duplicitné/pending). Stiahnuté od '+from+'.';
+  }catch(e){ if(st) st.innerHTML='<span style="color:var(--red)">'+esc(String(e.message||e))+'</span>'+(String(e.message||'').includes('not_connected')?' — klikni ▶ Pripojiť banku.':''); }
+}
+function _renderSyncSec(){
+  const host=document.getElementById('sync-sec'); if(!host) return;
+  host.innerHTML=`<div style="border-top:1px solid var(--bd);padding-top:14px">
+    <div class="mt" style="font-size:13px;margin-bottom:4px">🔄 Synchronizácia s bankou <span style="font-size:9px;color:var(--mu);font-weight:400">(Premium API cez Worker)</span></div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:10px;line-height:1.5">Transakcie sa stiahnu priamo z banky. Duplicitám bráni bankové ID transakcie; staršie XLSX importy sa automaticky spárujú.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <input id="sync-url" placeholder="URL workera (https://…workers.dev)" value="${escA(syncCfg.url||'')}" onchange="_syncSaveCfg()" style="flex:2;min-width:200px;padding:6px">
+      <input id="sync-key" type="password" placeholder="APP_KEY" value="${escA(syncCfg.key||'')}" onchange="_syncSaveCfg()" style="flex:1;min-width:120px;padding:6px">
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <button class="btn" onclick="window.open((syncCfg.url||'').replace(/\\/+$/,'')+'/connect','_blank')" style="font-size:11px;color:var(--acc2);border-color:var(--acc2)">▶ Pripojiť banku</button>
+      <button class="btn" onclick="_syncLoadAccounts()" style="font-size:11px">Načítať účty</button>
+      <select id="sync-iban" onchange="_syncSaveCfg()" style="flex:1;min-width:180px;padding:6px">${syncCfg.iban?`<option value="${escA(syncCfg.iban)}">${esc(syncCfg.iban)}</option>`:'<option value="">— najprv načítaj účty —</option>'}</select>
+    </div>
+    <div id="sync-consent" style="font-size:10px;color:var(--mu);margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn prim" onclick="_syncNow()" style="font-size:12px;padding:7px 16px">🔄 Synchronizovať teraz</button>
+      <span id="sync-status" style="font-size:11px;color:var(--mu)">${syncCfg.last?('Naposledy: '+syncCfg.last):''}</span>
+    </div>
+  </div>`;
+}
+
+function openAccounts(){ _accEditId=null; const f=document.getElementById('acc-form'); if(f)f.style.display='none'; const b=document.getElementById('acc-add-btn'); if(b)b.style.display=''; _renderAccountsList(); _renderReconciliation(); _renderSyncSec(); document.getElementById('m-accounts').classList.add('on'); }
 
 // ──────────── REKONCILIÁCIA ZOSTATKOV ────────────
 function _reconResHTML(bankId,diff,ok,date){
@@ -2480,6 +2612,7 @@ async function loadAll() {
   if (openingBalance) document.getElementById('ob').value = openingBalance;
   accounts = (await Store.get('accounts')) || [];
   reconciliations = (await Store.get('reconciliations')) || {};
+  syncCfg = Object.assign({url:'',key:'',iban:'',last:null}, (await Store.get('syncCfg')) || {});
   rules = (await Store.get('rules')) || [];
   customCats = (await Store.get('customcats')) || [];
   const savedBuiltin = await Store.get('builtincats');
@@ -6922,7 +7055,7 @@ function exportBackup(){
     detFieldsHidden:[...detFieldsHidden],
     ccLimit:document.getElementById('cc-lim')?.value||'',
     ibanNames, editLog:editLog.slice(0,500),
-    excludedTags:[...excludedTags], recurMarks, colWidths, accounts, reconciliations
+    excludedTags:[...excludedTags], recurMarks, colWidths, accounts, reconciliations, syncCfg
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
@@ -6951,6 +7084,7 @@ async function importBackup(inp){
     excludedTags=new Set(data.excludedTags||[]);
     accounts=data.accounts||[];
     reconciliations=data.reconciliations||{};
+    syncCfg=Object.assign({url:'',key:'',iban:'',last:null}, data.syncCfg||{});
     recurMarks=data.recurMarks||{pins:{},blocks:{},excl:{},incl:{}};
     recurMarks.pins=recurMarks.pins||{};recurMarks.blocks=recurMarks.blocks||{};recurMarks.excl=recurMarks.excl||{};recurMarks.incl=recurMarks.incl||{};
     if(data.colWidths) colWidths=data.colWidths;
@@ -11318,7 +11452,7 @@ function _gdBuildPayload() {
     detFieldsHidden: [...detFieldsHidden],
     ccLimit: document.getElementById('cc-lim')?.value || '',
     editLog: editLog.slice(0, 500), ibanNames,
-    excludedTags: [...excludedTags], recurMarks, colWidths, accounts, reconciliations
+    excludedTags: [...excludedTags], recurMarks, colWidths, accounts, reconciliations, syncCfg
   };
 }
 async function _gdApplyData(data) {
@@ -11349,6 +11483,7 @@ async function _gdApplyData(data) {
   if (data.colWidths) colWidths = data.colWidths;
   accounts = data.accounts || [];
   reconciliations = data.reconciliations || {};
+  syncCfg = Object.assign({url:'',key:'',iban:'',last:null}, data.syncCfg || {});
   if (data.ccLimit) { const el = document.getElementById('cc-lim'); if (el) el.value = data.ccLimit; }
   if (openingBalance) { const el = document.getElementById('ob'); if (el) el.value = openingBalance; }
   const txcEl = document.getElementById('txc'); if (txcEl) txcEl.textContent = TX.length + ' transakcií';
