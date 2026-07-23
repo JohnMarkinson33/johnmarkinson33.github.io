@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v156</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v158</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -2033,15 +2033,21 @@ function _syncMapTx(rt){
   const [y,m,d] = String(rt.bookingDate||'').split('-').map(Number);
   const amount = (rt.transactionAmount && rt.transactionAmount.amount) || 0;
   const isCard = !!rt.cardNumber || !!rt.tradingPartyIdentification;
+  // Poradie podľa informačnej hodnoty. bankTransactionCode (napr. „PMNT") je KÓD typu platby,
+  // nie obchodník — berie sa až úplne nakoniec, aby riadok nebol prázdny.
+  const party = amount < 0 ? rt.creditorName : rt.debtorName;
   let merchant, iban;
   if (isCard) { merchant = rt.tradingPartyIdentification || 'Kartová platba'; }
-  else if (amount < 0) { merchant = rt.creditorName || rt.additionalInformation || '—'; iban = rt.creditorAccount?.iban; }
-  else { merchant = rt.debtorName || rt.additionalInformation || '—'; iban = rt.debtorAccount?.iban; }
+  else {
+    merchant = party || rt.remittanceInformationUnstructured || rt.additionalInformation || rt.bankTransactionCode || '—';
+    iban = amount < 0 ? rt.creditorAccount?.iban : rt.debtorAccount?.iban;
+  }
+  if (merchant && merchant.length > 60) merchant = merchant.slice(0, 60).trim();
   return {
     tbId: String(rt.transactionId),
     date: new Date(y, (m||1)-1, d||1), // lokálny čas — žiadny UTC posun
     amount, merchant,
-    description: rt.additionalInformation || undefined,
+    description: rt.additionalInformation || rt.bankTransactionCode || undefined,
     info: rt.remittanceInformationUnstructured || undefined,
     iban, vs: rt.variableSymbol || undefined,
     cardNo: rt.cardNumber || undefined,
@@ -2063,11 +2069,16 @@ function _syncApply(list){
     if ((rt.transactionState||'BOOKED') !== 'BOOKED') { skipped++; return; } // pending sa ešte mení
     const mt = _syncMapTx(rt);
     if (have.has(mt.tbId)) { skipped++; return; }
-    // rovnaká suma + bankový dátum + tatra + ešte bez tbId → je to tá istá tx z XLSX importu; len ju označkujeme
-    const dk = localDateKey(mt.date);
-    const cand = TX.find(t=>!t.tbId && txBank(t)==='tatra' && t.date && localDateKey(t.date)===dk && Math.abs((t.amount||0)-mt.amount)<0.005);
-    if (cand) { cand.tbId = mt.tbId; have.add(mt.tbId); claimed++; return; }
-    const nt = { id:'tx_'+Math.random().toString(36).slice(2), ...mt };
+    // Rovnaká suma + blízky dátum + tatra + ešte bez tbId → tá istá tx z XLSX importu, len ju označkujeme.
+    // Tolerancia ±4 dni: banka posiela dátum zaúčtovania, výpis môže mať dátum transakcie.
+    const cands = TX.filter(t=>!t.tbId && txBank(t)==='tatra' && t.date
+      && Math.abs((t.amount||0)-mt.amount)<0.005
+      && Math.abs(eDate(t)-mt.date) <= 4*864e5);
+    if (cands.length) {
+      cands.sort((a,b)=>Math.abs(eDate(a)-mt.date)-Math.abs(eDate(b)-mt.date)); // najbližší dátum vyhráva
+      cands[0].tbId = mt.tbId; have.add(mt.tbId); claimed++; return;
+    }
+    const nt = { id:'tx_'+Math.random().toString(36).slice(2), syncAdded:true, ...mt };
     _syncRuleCat(nt);
     TX.push(nt); have.add(mt.tbId); added++;
   });
@@ -2117,6 +2128,41 @@ async function _syncNow(){
     if(st) st.innerHTML='✓ Hotovo: <b style="color:var(--grn)">'+res.added+' nových</b> · '+res.claimed+' spárovaných s importom · '+res.skipped+' preskočených (duplicitné/pending). Stiahnuté od '+from+'.';
   }catch(e){ if(st) st.innerHTML='<span style="color:var(--red)">'+esc(String(e.message||e))+'</span>'+(String(e.message||'').includes('not_connected')?' — klikni ▶ Pripojiť banku.':''); }
 }
+// Prevzatie zostatku z banky: upraví počiatočný zostatok tak, aby vypočítaný == bankový (interimAvailable)
+function _syncAdoptBalance(){
+  const acc=(_syncAccCache||[]).find(a=>a.accountReference?.iban===syncCfg.iban) || (_syncAccCache||[])[0];
+  const bal=acc && ((acc.balances||[]).find(b=>b.balanceType==='interimAvailable') || (acc.balances||[])[0]);
+  if(!bal){ alert('Najprv klikni „Načítať účty".'); return; }
+  const bank=bal.balanceAmount.amount;
+  const cur=accountBalance('tatra');
+  const diff=Math.round((bank-cur)*100)/100;
+  if(Math.abs(diff)<0.005){ alert('Zostatok už sedí s bankou ('+fe(bank)+').'); return; }
+  if(!confirm('Bankový zostatok: '+fe(bank)+'\nVypočítaný v appke: '+fe(cur)+'\n\nUpraviť počiatočný zostatok o '+fe(diff)+', aby sedeli na cent?')) return;
+  openingBalance=Math.round((openingBalance+diff)*100)/100;
+  saveD();
+  try{ _renderReconciliation(); }catch(e){}
+  try{ if(document.getElementById('pg-dashboard')?.classList.contains('on')) rDash(); }catch(e){}
+  const st=document.getElementById('sync-status');
+  if(st) st.innerHTML='✓ Počiatočný zostatok upravený — vypočítaný teraz sedí s bankou: <b style="color:var(--grn)">'+fe(accountBalance('tatra'))+'</b>';
+}
+// Odstránenie transakcií pridaných synchronizáciou. Spárované (claimnuté) XLSX riadky
+// sa NEMAŽÚ — len sa im odoberie bankové ID, takže ostávajú aj s kategóriami a tagmi.
+function _syncPurge(){
+  const added = TX.filter(t=>t.syncAdded);
+  const marked = TX.filter(t=>t.tbId && !t.syncAdded);
+  if(!added.length && !marked.length){ alert('Žiadne synchronizované transakcie.'); return; }
+  if(!confirm('Odstrániť '+added.length+' transakcií pridaných synchronizáciou?\n\n'+marked.length+' pôvodných (spárovaných) sa zachová — odoberie sa im len bankové ID.\n\nTáto akcia sa nedá vrátiť.')) return;
+  const rm=new Set(added.map(t=>t.id));
+  TX=TX.filter(t=>!rm.has(t.id));
+  marked.forEach(t=>{ delete t.tbId; });
+  syncCfg.last=null;
+  saveD();
+  try{ updateFilters(); }catch(e){}
+  try{ if(document.getElementById('pg-transactions')?.classList.contains('on')) renderTx(); }catch(e){}
+  try{ _renderReconciliation(); }catch(e){}
+  const st=document.getElementById('sync-status');
+  if(st) st.innerHTML='🧹 Odstránených '+added.length+' · zachovaných '+marked.length+' pôvodných.';
+}
 function _renderSyncSec(){
   const host=document.getElementById('sync-sec'); if(!host) return;
   host.innerHTML=`<div style="border-top:1px solid var(--bd);padding-top:14px">
@@ -2134,6 +2180,8 @@ function _renderSyncSec(){
     <div id="sync-consent" style="font-size:10px;color:var(--mu);margin-bottom:8px"></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn prim" onclick="_syncNow()" style="font-size:12px;padding:7px 16px">🔄 Synchronizovať teraz</button>
+      <button class="btn" onclick="_syncAdoptBalance()" style="font-size:11px" title="Nastaví počiatočný zostatok tak, aby vypočítaný zostatok sedel s bankou na cent">📥 Prevziať zostatok z banky</button>
+      <button class="btn" onclick="_syncPurge()" style="font-size:11px;color:var(--red);border-color:var(--red)" title="Vymaže len transakcie pridané synchronizáciou; pôvodné importované ostávajú">🧹 Odstrániť synchronizované</button>
       <span id="sync-status" style="font-size:11px;color:var(--mu)">${syncCfg.last?('Naposledy: '+syncCfg.last):''}</span>
     </div>
   </div>`;
