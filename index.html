@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v158</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v159</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -2032,16 +2032,18 @@ async function _syncFetch(path){
 function _syncMapTx(rt){
   const [y,m,d] = String(rt.bookingDate||'').split('-').map(Number);
   const amount = (rt.transactionAmount && rt.transactionAmount.amount) || 0;
-  const isCard = !!rt.cardNumber || !!rt.tradingPartyIdentification;
-  // Poradie podľa informačnej hodnoty. bankTransactionCode (napr. „PMNT") je KÓD typu platby,
-  // nie obchodník — berie sa až úplne nakoniec, aby riadok nebol prázdny.
+  const isCard = !!rt.cardNumber || !!rt.tradingPartyIdentification || rt.btcCode === 'CCRD';
+  // Poradie podľa informačnej hodnoty. „PMNT" je KÓD typu platby, nie obchodník.
+  // Pozn.: Tatra cez PSD2 pri KARTOVÝCH platbách meno obchodníka NEPOSIELA (creditor=null)
+  // → dá sa doplniť len importom výpisu; sync vtedy označí tx ako placeholder.
   const party = amount < 0 ? rt.creditorName : rt.debtorName;
-  let merchant, iban;
-  if (isCard) { merchant = rt.tradingPartyIdentification || 'Kartová platba'; }
-  else {
-    merchant = party || rt.remittanceInformationUnstructured || rt.additionalInformation || rt.bankTransactionCode || '—';
-    iban = amount < 0 ? rt.creditorAccount?.iban : rt.debtorAccount?.iban;
-  }
+  let merchant, iban, placeholder = false;
+  if (rt.tradingPartyIdentification) merchant = rt.tradingPartyIdentification;
+  else if (party) { merchant = party; iban = amount < 0 ? rt.creditorAccount?.iban : rt.debtorAccount?.iban; }
+  else if (rt.remittanceInformationUnstructured) merchant = rt.remittanceInformationUnstructured;
+  else if (rt.btcCode === 'CCRD' && rt.btcSub === 'CWDL') { merchant = 'Výber hotovosti'; placeholder = true; }
+  else if (rt.btcCode === 'CCRD') { merchant = 'Kartová platba'; placeholder = true; }
+  else { merchant = rt.additionalInformation || rt.bankTransactionCode || 'Platba'; placeholder = true; }
   if (merchant && merchant.length > 60) merchant = merchant.slice(0, 60).trim();
   return {
     tbId: String(rt.transactionId),
@@ -2052,6 +2054,7 @@ function _syncMapTx(rt){
     iban, vs: rt.variableSymbol || undefined,
     cardNo: rt.cardNumber || undefined,
     place: rt.tradingPartyAddress || undefined,
+    syncPlaceholder: placeholder || undefined, // meno obchodníka banka nedodala
     source: 'account',
   };
 }
