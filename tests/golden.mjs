@@ -15,11 +15,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const GOLDEN = path.join(HERE, 'pivot_golden.json');
 const WRITE = process.argv.includes('--write');
 
-const { doc, E } = loadApp(seed);
+const { doc, E } = await loadApp(seed);
 
-// Kandidáti na kontajner pivotu — prvý existujúci vyhrá.
-// ⚠️ PRVÝ BEH: over cez  grep -n 'id="piv' ../index.html  a nechaj len správne ID.
-const PIVOT_IDS = ['piv-wrap', 'pivot', 'piv-body', 'an-pivot', 'piv-tbl'];
+// Kontajner pivotu — overené: grep -n 'id="piv' ../index.html → <table id="pivot-tbl">
+// (naplní ho funkcia renderPivot(), ktorá je volaná nižšie).
+const PIVOT_IDS = ['pivot-tbl'];
 
 function snapshot() {
   try { E('renderPivot()'); } catch (e) { /* render sa mohol vykonať už pri štarte */ }

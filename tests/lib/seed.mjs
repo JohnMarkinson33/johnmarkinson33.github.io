@@ -18,10 +18,13 @@ export function d(day) {
 
 // Kategórie mimo BUILTIN ID (potraviny, doprava, restauracie, nakupy, byvanie,
 // zdravie, zabava, cestovanie, sluzby, sporenie, ostatne).
+// Tvar zodpovedá customCats v appke: {id, l:label, c:color, builtin:false}
+// (over: grep -n "customCats.push" ../index.html). Príjem sa nerozlišuje cez
+// kategóriu, ale znamienkom amount > 0.
 export const CATS = [
-  { id: 'tst_jedlo',  name: 'TEST jedlo',  color: '#4caf50' },
-  { id: 'tst_bydlo',  name: 'TEST bývanie', color: '#2196f3' },
-  { id: 'tst_prijem', name: 'TEST príjem', color: '#ff9800', income: true }
+  { id: 'tst_jedlo',  l: 'TEST jedlo',   c: '#4caf50', builtin: false },
+  { id: 'tst_bydlo',  l: 'TEST bývanie', c: '#2196f3', builtin: false },
+  { id: 'tst_prijem', l: 'TEST príjem',  c: '#ff9800', builtin: false }
 ];
 
 export const TX = [
@@ -43,8 +46,11 @@ export const TX = [
     dateOverride: d(10) }
 ];
 
-/** Seed objekt pre loadApp(). Kľúče doplniť podľa skutočnosti v appke. */
+/** Seed objekt pre loadApp(). Kľúče overené proti Store.get()/Store.set() v index.html:
+ *  TX          → Store.get('tx')         → localStorage kľúč fintb_tx
+ *  CATS (custom) → Store.get('customcats') → localStorage kľúč fintb_customcats
+ *  (BUILTIN_CATS sú natvrdo v appke, nie je ich treba seedovať) */
 export const seed = {
   fintb_tx: TX,
-  fintb_cats: CATS
+  fintb_customcats: CATS
 };

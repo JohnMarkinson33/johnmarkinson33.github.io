@@ -11,7 +11,7 @@ const ok = (name, cond, detail = '') => {
   else { fail++; console.error(`  ✗ ${name}${detail ? ' — ' + detail : ''}`); }
 };
 
-const { w, doc, E } = loadApp(seed);
+const { w, doc, E } = await loadApp(seed);
 
 console.log(`finTB smoke testy — ${appVersion()}\n`);
 
@@ -30,9 +30,9 @@ ok('TX sa načítalo zo seedu', txCount > 0,
    txCount === 0 ? 'TODO: skontroluj názvy kľúčov v lib/seed.mjs' : `TX.length=${txCount}`);
 
 if (txCount > 0) {
-  // --- 4. eDate rešpektuje dateOverride ---
-  const eD = E('eDate(TX.find(t=>t.id==="t8"))');
-  ok('eDate() použije dateOverride', String(eD).includes('-10'), `dostal: ${eD}`);
+  // --- 4. eDate rešpektuje dateOverride (t8: date=deň 25, dateOverride=deň 10) ---
+  const eD = E('localDateKey(eDate(TX.find(t=>t.id==="t8")))');
+  ok('eDate() použije dateOverride', /-10$/.test(eD), `dostal: ${eD}`);
 
   // --- 5. txMyAmount delí shared výdavok ---
   const my = E('txMyAmount(TX.find(t=>t.id==="t5"))');

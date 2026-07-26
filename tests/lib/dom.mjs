@@ -10,10 +10,14 @@ export const APP = path.resolve(HERE, '../../index.html');
 
 /**
  * Načíta appku v jsdom.
+ * Appka na štarte spúšťa `loadAll().then(...)` (async, cez Store.get/localStorage) —
+ * musíme počkať, kým sa TX/customCats naozaj naplnia, inak testy bežia proti prázdnemu
+ * stavu. loadAll() nepoužíva reálne časovače, len reťaz microtaskov, takže stačí počkať
+ * na najbližší macrotask (setTimeout 0), aby sa celá reťaz stihla odvíjať.
  * @param {object} seed  objekt {kluc: hodnota} do localStorage (hodnoty sa JSON.stringify-ujú)
- * @returns {{dom, w, doc, E}}  E = eval v kontexte okna (nutné pre module-level `let`)
+ * @returns {Promise<{dom, w, doc, E}>}  E = eval v kontexte okna (nutné pre module-level `let`)
  */
-export function loadApp(seed = {}) {
+export async function loadApp(seed = {}) {
   const html = fs.readFileSync(APP, 'utf8');
 
   const dom = new JSDOM(html, {
@@ -60,6 +64,11 @@ export function loadApp(seed = {}) {
 
   // saveD stubneme, aby testy nezapisovali do localStorage medzi krokmi
   try { E('saveD = function(){}'); } catch { /* funkcia sa môže volať inak */ }
+
+  // Počkaj, kým appka dobehne loadAll().then(...) (async reťaz bez reálnych timerov —
+  // stačí uvoľniť aktuálny macrotask, aby sa všetky microtasky vykonali).
+  await new Promise(r => setTimeout(r, 0));
+  await new Promise(r => setTimeout(r, 0));
 
   return { dom, w, doc: w.document, E };
 }
