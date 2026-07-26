@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const APP = path.resolve(HERE, '../../index.html');
+// FINTB_APP umožní pustiť testy proti inej verzii súboru (napr. `git show HEAD:index.html`)
+// — slúži na overenie, že regresný test na starom kóde naozaj padá.
+export const APP = process.env.FINTB_APP || path.resolve(HERE, '../../index.html');
 
 /**
  * Načíta appku v jsdom.

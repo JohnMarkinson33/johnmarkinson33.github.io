@@ -59,6 +59,36 @@ každý mesiac** (príčina: clamp `Math.max(0,-v)` orezával záporné mesiace 
 
 **v156–v159:** banková synchronizácia — viď §3.
 
+**v160 (oprava nesedícich zostatkov po importe):** dve tiché chyby zavedené so syncom (v156).
+
+*Root cause A — sync claim bral aj transakcie kreditky.* Filter kandidátov v `_syncApply`
+používal `txBank(t)==='tatra'`, ale `txBank()` = `t.bank || 'tatra'` a transakcie kreditky
+sa vytvárajú **bez** poľa `bank` → vrátil im 'tatra'. Filtru zároveň chýbalo
+`source==='account'`. Sync tak mohol „claimnúť" tx kreditky (zhodná suma, dátum ±4 dni):
+claim robí `return`, takže sa **účtová tx vôbec nepridala**, a `accountBalance('tatra')`
+(ráta len `source==='account'`) o ňu natrvalo prišiel. Navyše dostala `tbId`, takže ju
+každý ďalší sync preskočil — chyba sa sama neopravila. Fix: `source==='account'` +
+`!reconAdjust` vo filtri (korekčné riadky rekonciliácie nemajú náprotivok v banke).
+
+*Root cause B — import vyžadoval presnú zhodu mena obchodníka.* Sync placeholdery majú
+merchant `'Kartová platba'` / `'Výber hotovosti'`, XLSX skutočné meno → zhoda zlyhala →
+import pridal **duplikát** a zostatok narástol. Sync smerom von je pritom fuzzy, takže
+vznikla asymetria: „import → sync" fungovalo, „sync → import" vyrábalo duplikáty.
+Fix: import teraz pri zlyhaní presnej zhody hľadá `syncPlaceholder` (suma + dátum ±4 dni)
+a **doplní doň meno** namiesto pridania novej tx; `tbId`/`syncAdded` ostávajú. Tým je
+vyriešená aj dlho otvorená úloha §4.1 — pravidlo „najprv import, potom sync" už neplatí.
+
+*Root cause C (latentná)* — refresh existujúceho riadku pri re-importe nezachovával `tbId`
+ani `syncAdded`, takže opakovaný import strhol bankové ID a ďalší sync pridal duplikát.
+Fix: oba kľúče sa zachovávajú rovnakým patternom ako `splits`/`shared`.
+
+Náprava už poškodených dát: tlačidlo **🩹 Opraviť chybné bankové ID** (`_syncFixBadIds()`)
+odoberie `tbId` transakciám s `source!=='account'` a resetne `syncCfg.last`, aby sa
+chýbajúce účtové transakcie stiahli nanovo.
+
+Regresné testy v `tests/smoke.mjs` (5 nových asercií) — overené, že na v159 kóde padajú
+(`FINTB_APP=… node smoke.mjs` proti `git show HEAD:index.html`). Golden pivot nedotknutý.
+
 ---
 
 ## 2. Stav roadmapy
@@ -156,14 +186,11 @@ XLSX/CSV import = mená obchodníkov a kreditka.
 
 ## 4. Otvorené úlohy
 
-### 4.1 🔴 Obohacovanie pri importe (schválené v princípe, čaká na „poďme")
-**Problém:** ak sync pridá kartovú platbu ako „Kartová platba" a **potom** sa importuje
-XLSX s „ALZA.SK", merge to vyhodnotí ako novú transakciu → **duplikát**. Dnes preto platí
-krehké pravidlo „najprv import, potom sync".
-
-**Riešenie:** import pri zhode (suma + dátum ±4 dni + `syncPlaceholder:true`) **nepridá
-novú tx, ale doplní meno obchodníka** do existujúcej sync transakcie (+ prípadne
-miesto/číslo karty) a spustí naň `_matchRule`. Flag `syncPlaceholder` už existuje.
+### 4.1 ✅ Obohacovanie pri importe — HOTOVÉ vo v160
+Import pri zhode (suma + dátum ±4 dni + `syncPlaceholder:true`) nepridá novú tx, ale
+doplní meno obchodníka (+ miesto/číslo karty/VS) do existujúcej sync transakcie a spustí
+`autocat()`. `tbId`/`syncAdded` ostávajú zachované. Pravidlo „najprv import, potom sync"
+už **neplatí** — poradie je ľubovoľné. Detaily a root cause v §1, v160.
 
 ### 4.2 🔐 Bezpečnosť — overiť
 Hodnota `APP_KEY` bola omylom vložená do chatu. Odporúčaná výmena

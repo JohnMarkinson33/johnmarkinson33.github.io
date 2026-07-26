@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v159</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v160</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -2074,7 +2074,12 @@ function _syncApply(list){
     if (have.has(mt.tbId)) { skipped++; return; }
     // Rovnaká suma + blízky dátum + tatra + ešte bez tbId → tá istá tx z XLSX importu, len ju označkujeme.
     // Tolerancia ±4 dni: banka posiela dátum zaúčtovania, výpis môže mať dátum transakcie.
-    const cands = TX.filter(t=>!t.tbId && txBank(t)==='tatra' && t.date
+    // POZOR: kandidát musí byť z BEŽNÉHO ÚČTU. Transakcie kreditky nemajú pole `bank`,
+    // takže txBank() im vráti 'tatra' — bez `source==='account'` by sync claimol tx kreditky,
+    // účtová tx by sa nepridala a accountBalance() (ráta len source==='account') by o ňu prišiel.
+    // Korekčné riadky rekonciliácie (reconAdjust) sú tiež mimo — nemajú náprotivok v banke.
+    const cands = TX.filter(t=>!t.tbId && t.source==='account' && !t.reconAdjust
+      && txBank(t)==='tatra' && t.date
       && Math.abs((t.amount||0)-mt.amount)<0.005
       && Math.abs(eDate(t)-mt.date) <= 4*864e5);
     if (cands.length) {
@@ -2166,6 +2171,23 @@ function _syncPurge(){
   const st=document.getElementById('sync-status');
   if(st) st.innerHTML='🧹 Odstránených '+added.length+' · zachovaných '+marked.length+' pôvodných.';
 }
+// Náprava po chybe do v159: claim v _syncApply nebol obmedzený na source==='account',
+// takže sync mohol označiť tx KREDITKY cudzím bankovým ID. Účtová tx sa vtedy nepridala
+// a accountBalance() o ňu prišiel — a ďalší sync ju už preskakoval (tbId je „videná").
+// Toto tie chybné ID odoberie a resetne kurzor, aby sa transakcie stiahli nanovo.
+function _syncFixBadIds(){
+  const bad = TX.filter(t=>t.tbId && t.source!=='account');
+  if(!bad.length){ alert('Žiadne chybné bankové ID — všetky sú na transakciách bežného účtu.'); return; }
+  if(!confirm('Nájdených '+bad.length+' transakcií mimo bežného účtu s bankovým ID (chyba do v159).\n\nOdobrať im ID a stiahnuť pri najbližšej synchronizácii nanovo?\n\nSamotné transakcie sa nemažú.')) return;
+  bad.forEach(t=>{ delete t.tbId; });
+  syncCfg.last=null; // ďalší sync ide znova od začiatku, nech doplní chýbajúce účtové tx
+  saveD();
+  try{ updateFilters(); }catch(e){}
+  try{ if(document.getElementById('pg-transactions')?.classList.contains('on')) renderTx(); }catch(e){}
+  try{ _renderReconciliation(); }catch(e){}
+  const st=document.getElementById('sync-status');
+  if(st) st.innerHTML='🧹 Opravených '+bad.length+' chybných ID. Spusti <b>🔄 Synchronizovať teraz</b>, aby sa chýbajúce transakcie doplnili.';
+}
 function _renderSyncSec(){
   const host=document.getElementById('sync-sec'); if(!host) return;
   host.innerHTML=`<div style="border-top:1px solid var(--bd);padding-top:14px">
@@ -2184,6 +2206,7 @@ function _renderSyncSec(){
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn prim" onclick="_syncNow()" style="font-size:12px;padding:7px 16px">🔄 Synchronizovať teraz</button>
       <button class="btn" onclick="_syncAdoptBalance()" style="font-size:11px" title="Nastaví počiatočný zostatok tak, aby vypočítaný zostatok sedel s bankou na cent">📥 Prevziať zostatok z banky</button>
+      <button class="btn" onclick="_syncFixBadIds()" style="font-size:11px;color:var(--acc2);border-color:var(--acc2)" title="Odoberie bankové ID transakciám mimo bežného účtu (chyba do v159) — chýbajúce transakcie sa doplnia pri najbližšej synchronizácii">🩹 Opraviť chybné bankové ID</button>
       <button class="btn" onclick="_syncPurge()" style="font-size:11px;color:var(--red);border-color:var(--red)" title="Vymaže len transakcie pridané synchronizáciou; pôvodné importované ostávajú">🧹 Odstrániť synchronizované</button>
       <span id="sync-status" style="font-size:11px;color:var(--mu)">${syncCfg.last?('Naposledy: '+syncCfg.last):''}</span>
     </div>
@@ -3073,7 +3096,7 @@ function _renderMarkedTransfers(){
 // Count-based: if new file has 2× same key and DB has 1 → the 2nd is genuinely new.
 
 function mergeTransactions(newTxs, source) {
-  let added = 0, upgraded = 0;
+  let added = 0, upgraded = 0, enriched = 0;
   const dupLog = [];
 
   if (source === 'credit_card') {
@@ -3226,6 +3249,8 @@ function mergeTransactions(newTxs, source) {
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(tx);
     }
+    // Sync placeholder už obohatený v tejto dávke — nesmie ho zobrať druhý riadok.
+    const enrichedIds = new Set();
     for (const [, newGrp] of groups) {
       const ref = newGrp[0]; ref.matchDate = ref.dateBank || ref.date;
       const merch = (ref.merchant||'').trim();
@@ -3251,9 +3276,38 @@ function mergeTransactions(newTxs, source) {
             ...(ex.debtLink&&{debtLink:ex.debtLink}),
             ...(ex.excluded&&{excluded:ex.excluded}),
             ...(ex.reviewed&&{reviewed:ex.reviewed}),
-            ...(ex.categoryLocked&&{categoryLocked:ex.categoryLocked}) };
+            ...(ex.categoryLocked&&{categoryLocked:ex.categoryLocked}),
+            // Bankové ID sa NESMIE stratiť — inak by najbližší sync tú istú tx pridal znova.
+            ...(ex.tbId&&{tbId:ex.tbId}),
+            ...(ex.syncAdded&&{syncAdded:ex.syncAdded}) };
           // Silent update — not counted as dup or new
         } else {
+          // Sync placeholder? Tatra cez PSD2 pri kartových platbách meno obchodníka neposiela
+          // ('Kartová platba'), takže zhoda na presné meno vyššie zlyhá a bez tejto vetvy by
+          // import pridal DUPLIKÁT k už synchronizovanej transakcii → nafúknutý zostatok.
+          // Namiesto toho doplníme meno do existujúcej sync tx; tbId musí ostať zachované.
+          const nwDate = nw.dateBank || nw.date;
+          const ph = nwDate ? TX.find(e => e.syncPlaceholder && e.source==='account'
+            && !enrichedIds.has(e.id) && txBank(e)===txBank(nw)
+            && Math.abs(e.amount-nw.amount)<0.005
+            && e.date && Math.abs(eDate(e)-nwDate) <= 4*864e5) : null;
+          if (ph) {
+            enrichedIds.add(ph.id);
+            ph.merchant = nw.merchant;
+            if(nw.place) ph.place = nw.place;
+            if(nw.cardNo) ph.cardNo = nw.cardNo;
+            if(nw.iban) ph.iban = nw.iban;
+            if(nw.description) ph.description = nw.description;
+            if(nw.info) ph.info = nw.info;
+            if(nw.vs) ph.vs = nw.vs;
+            if(nw.dateBank) ph.dateBank = nw.dateBank;
+            delete ph.syncPlaceholder;
+            // meno konečne poznáme → skús auto-kategóriu, ale ručnú voľbu neprepisuj
+            if(!ph.categoryLocked){ const _acp=autocat(ph); if(_acp.category) ph.category=_acp.category; if(_acp.isSplatka) ph.isSplatka=true; }
+            enriched++;
+            dupLog.push({tx:ph, reason:'Doplnené meno obchodníka k synchronizovanej transakcii', type:'enriched'});
+            continue;
+          }
           // Genuinely new (e.g. 2nd identical transaction legitimately same day)
           nw.id = 'tx_'+Math.random().toString(36).slice(2);
           const _ac2=autocat(nw); nw.category=_ac2.category; if(_ac2.isSplatka)nw.isSplatka=true;
@@ -3263,7 +3317,7 @@ function mergeTransactions(newTxs, source) {
       }
     }
   }
-  return {added, upgraded, dupLog};
+  return {added, upgraded, enriched, dupLog};
 }
 
 function cycDate(tx) { return tx.source==='credit_card' && tx.dateProcParsed ? tx.dateProcParsed : tx.date; }
@@ -3619,11 +3673,12 @@ async function doImport() {
   for (const f of pend.account) {
     try {
       const txs = parseAccXLS(new Uint8Array(await rB(f)));
-      const {added, dupLog} = mergeTransactions(txs, 'account');
+      const {added, enriched, dupLog} = mergeTransactions(txs, 'account');
       lastDupLog.push(...dupLog);
-      const refreshed = txs.length - added;
+      const enrMsg = enriched > 0 ? `, ${enriched} doplnených k synchronizovaným` : '';
+      const refreshed = txs.length - added - enriched;
       const refMsg = refreshed > 0 ? `, ${refreshed} aktualizovaných z exportu` : '';
-      msgs.push(`<span class="ok">✓ ${f.name}: ${added} nových${refMsg}</span>`);
+      msgs.push(`<span class="ok">✓ ${f.name}: ${added} nových${enrMsg}${refMsg}</span>`);
     } catch(e) { msgs.push(`<span class="err">✗ ${f.name}: ${e.message}</span>`); }
   }
 
@@ -3636,10 +3691,12 @@ async function doImport() {
   const db = document.getElementById('dup-box');
   const genuineDups = lastDupLog.filter(d=>d.type==='genuine_dup');
   const upgrades = lastDupLog.filter(d=>d.type==='upgrade');
+  const enrichedLog = lastDupLog.filter(d=>d.type==='enriched');
   if (lastDupLog.length) {
     db.style.display = 'block';
     let hdrParts = [];
     if (upgrades.length) hdrParts.push(`${upgrades.length}× Autorizovaná→Zúčtovaná`);
+    if (enrichedLog.length) hdrParts.push(`${enrichedLog.length}× doplnené meno k synchronizovanej`);
     if (genuineDups.length) hdrParts.push(`${genuineDups.length}× nová identická transakcia (legitímny duplikát)`);
     document.getElementById('dup-hdr-txt').textContent = hdrParts.join(' · ') + ' — klikni pre detail';
     document.getElementById('dup-tbody').innerHTML = lastDupLog.map(({tx,reason,type}) =>
