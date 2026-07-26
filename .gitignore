@@ -1,0 +1,12 @@
+# testovacia infraštruktúra
+tests/node_modules/
+tests/package-lock.json
+
+# lokálne zálohy a export
+*.bak
+*.local.html
+.DS_Store
+
+# tajomstvá — do verejného repa nikdy
+.env
+*.pem
