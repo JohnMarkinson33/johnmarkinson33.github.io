@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v160</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v161</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -3095,9 +3095,29 @@ function _renderMarkedTransfers(){
 // Matching: exact date + exact amount + exact merchant (account) / exact date + exact amount (CC).
 // Count-based: if new file has 2× same key and DB has 1 → the 2nd is genuinely new.
 
+// 📅 Rozdelenie platby medzi mesiace mení `amount` jednotlivých častí (−300 → 3× −100),
+// ale dátum aj obchodník ostávajú z originálu. Kľúč importu je dátum+suma+obchodník, takže
+// pôvodný riadok vo výpise už nesedí so žiadnou časťou → bez tejto pomôcky by ho re-import
+// pridal ZNOVA popri častiach a zostatok/čerpanie by narástli o celú sumu.
+// Skupiny sa počítajú z dát (súčet častí), takže to funguje aj na platby rozdelené skôr.
+function _monthSplitGroups(source){
+  const m = new Map();
+  TX.forEach(t=>{
+    if(!t.monthSplitGroup || t.source!==source) return;
+    const g = m.get(t.monthSplitGroup) || {total:0, matchDate:null, merchant:'', parts:0};
+    g.total += t.amount||0;
+    if(!g.matchDate){ g.matchDate = t.dateBank || t.date; g.merchant = (t.merchant||'').trim(); }
+    g.parts++;
+    m.set(t.monthSplitGroup, g);
+  });
+  return [...m.values()].filter(g=>g.parts>1 && g.matchDate);
+}
+
 function mergeTransactions(newTxs, source) {
-  let added = 0, upgraded = 0, enriched = 0;
+  let added = 0, upgraded = 0, enriched = 0, msCovered = 0;
   const dupLog = [];
+  const msGroups = _monthSplitGroups(source);
+  const msUsed = new Set();
 
   if (source === 'credit_card') {
     const settled = newTxs.filter(t=>t.isSettled);
@@ -3155,6 +3175,16 @@ function mergeTransactions(newTxs, source) {
         // Already have as many copies as appear in this import file → reimport, skip
         continue;
       }
+      // Pokrytá už rozdelenou platbou (📅)? Časti majú iné sumy, takže sig vyššie ich minie.
+      const msHitC = msGroups.find(g=>!msUsed.has(g)
+        && g.matchDate?.getTime()===nw.date?.getTime()
+        && Math.abs(g.total-nw.amount)<0.005
+        && fuzzyMatch(g.merchant, nw.merchant));
+      if(msHitC){
+        msUsed.add(msHitC); msCovered++;
+        dupLog.push({tx:nw, reason:`Už evidované ako platba rozdelená medzi mesiace (${msHitC.parts} častí)`, type:'msplit'});
+        continue;
+      }
       processingSigCount.set(sig,procCount+1);
 
       // Try to find a matching PENDING to upgrade to settled
@@ -3186,7 +3216,9 @@ function mergeTransactions(newTxs, source) {
           ...(ex.debtLink&&{debtLink:ex.debtLink}),
           ...(ex.excluded&&{excluded:ex.excluded}),
           ...(ex.reviewed&&{reviewed:ex.reviewed}),
-          ...(ex.categoryLocked&&{categoryLocked:ex.categoryLocked})};
+          ...(ex.categoryLocked&&{categoryLocked:ex.categoryLocked}),
+          // rozdelenie medzi mesiace vrátane sumy časti — inak by ju upgrade prepísal plnou sumou
+          ...(ex.monthSplitGroup&&{monthSplitGroup:ex.monthSplitGroup, monthSplitPart:ex.monthSplitPart, amount:ex.amount})};
         upgraded++;
         dupLog.push({tx:nw,reason:'Autorizovaná → Zúčtovaná'+(fuzzyEx?' (fuzzy)':''),type:'upgrade'});
       } else {
@@ -3279,7 +3311,10 @@ function mergeTransactions(newTxs, source) {
             ...(ex.categoryLocked&&{categoryLocked:ex.categoryLocked}),
             // Bankové ID sa NESMIE stratiť — inak by najbližší sync tú istú tx pridal znova.
             ...(ex.tbId&&{tbId:ex.tbId}),
-            ...(ex.syncAdded&&{syncAdded:ex.syncAdded}) };
+            ...(ex.syncAdded&&{syncAdded:ex.syncAdded}),
+            // Rozdelenie medzi mesiace vrátane sumy časti — refresh by ju prepísal
+            // sumou z výpisu a skupina by prestala sedieť.
+            ...(ex.monthSplitGroup&&{monthSplitGroup:ex.monthSplitGroup, monthSplitPart:ex.monthSplitPart, amount:ex.amount}) };
           // Silent update — not counted as dup or new
         } else {
           // Sync placeholder? Tatra cez PSD2 pri kartových platbách meno obchodníka neposiela
@@ -3308,6 +3343,16 @@ function mergeTransactions(newTxs, source) {
             dupLog.push({tx:ph, reason:'Doplnené meno obchodníka k synchronizovanej transakcii', type:'enriched'});
             continue;
           }
+          // Pokrytá už rozdelenou platbou (📅)? Časti majú iné sumy, takže exGrp ich minie.
+          const msHit = nwDate ? msGroups.find(g=>!msUsed.has(g)
+            && g.matchDate?.getTime()===nwDate.getTime()
+            && Math.abs(g.total-nw.amount)<0.005
+            && g.merchant===(nw.merchant||'').trim()) : null;
+          if(msHit){
+            msUsed.add(msHit); msCovered++;
+            dupLog.push({tx:nw, reason:`Už evidované ako platba rozdelená medzi mesiace (${msHit.parts} častí)`, type:'msplit'});
+            continue;
+          }
           // Genuinely new (e.g. 2nd identical transaction legitimately same day)
           nw.id = 'tx_'+Math.random().toString(36).slice(2);
           const _ac2=autocat(nw); nw.category=_ac2.category; if(_ac2.isSplatka)nw.isSplatka=true;
@@ -3317,7 +3362,7 @@ function mergeTransactions(newTxs, source) {
       }
     }
   }
-  return {added, upgraded, enriched, dupLog};
+  return {added, upgraded, enriched, msCovered, dupLog};
 }
 
 function cycDate(tx) { return tx.source==='credit_card' && tx.dateProcParsed ? tx.dateProcParsed : tx.date; }
@@ -3661,24 +3706,26 @@ async function doImport() {
   for (const f of pend.credit_card) {
     try {
       const txs = parseCCcsv(await rT(f));
-      const {added, upgraded, dupLog} = mergeTransactions(txs, 'credit_card');
+      const {added, upgraded, msCovered, dupLog} = mergeTransactions(txs, 'credit_card');
       lastDupLog.push(...dupLog);
       const upMsg = upgraded ? `, ${upgraded} Autorizovaná→Zúčtovaná` : '';
-      const existRefreshed = txs.length - added - upgraded;
+      const msMsg = msCovered > 0 ? `, ${msCovered} už rozdelených medzi mesiace` : '';
+      const existRefreshed = txs.length - added - upgraded - msCovered;
       const refMsg = existRefreshed > 0 ? `, ${existRefreshed} aktualizovaných` : '';
-      msgs.push(`<span class="ok">✓ ${f.name}: ${added} nových${upMsg}${refMsg}</span>`);
+      msgs.push(`<span class="ok">✓ ${f.name}: ${added} nových${upMsg}${msMsg}${refMsg}</span>`);
     } catch(e) { msgs.push(`<span class="err">✗ ${f.name}: ${e.message}</span>`); }
   }
 
   for (const f of pend.account) {
     try {
       const txs = parseAccXLS(new Uint8Array(await rB(f)));
-      const {added, enriched, dupLog} = mergeTransactions(txs, 'account');
+      const {added, enriched, msCovered, dupLog} = mergeTransactions(txs, 'account');
       lastDupLog.push(...dupLog);
       const enrMsg = enriched > 0 ? `, ${enriched} doplnených k synchronizovaným` : '';
-      const refreshed = txs.length - added - enriched;
+      const msMsg2 = msCovered > 0 ? `, ${msCovered} už rozdelených medzi mesiace` : '';
+      const refreshed = txs.length - added - enriched - msCovered;
       const refMsg = refreshed > 0 ? `, ${refreshed} aktualizovaných z exportu` : '';
-      msgs.push(`<span class="ok">✓ ${f.name}: ${added} nových${enrMsg}${refMsg}</span>`);
+      msgs.push(`<span class="ok">✓ ${f.name}: ${added} nových${enrMsg}${msMsg2}${refMsg}</span>`);
     } catch(e) { msgs.push(`<span class="err">✗ ${f.name}: ${e.message}</span>`); }
   }
 
@@ -3697,6 +3744,8 @@ async function doImport() {
     let hdrParts = [];
     if (upgrades.length) hdrParts.push(`${upgrades.length}× Autorizovaná→Zúčtovaná`);
     if (enrichedLog.length) hdrParts.push(`${enrichedLog.length}× doplnené meno k synchronizovanej`);
+    const msLog = lastDupLog.filter(d=>d.type==='msplit');
+    if (msLog.length) hdrParts.push(`${msLog.length}× už rozdelené medzi mesiace (nepridané znova)`);
     if (genuineDups.length) hdrParts.push(`${genuineDups.length}× nová identická transakcia (legitímny duplikát)`);
     document.getElementById('dup-hdr-txt').textContent = hdrParts.join(' · ') + ' — klikni pre detail';
     document.getElementById('dup-tbody').innerHTML = lastDupLog.map(({tx,reason,type}) =>

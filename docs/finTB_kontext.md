@@ -89,6 +89,27 @@ chýbajúce účtové transakcie stiahli nanovo.
 Regresné testy v `tests/smoke.mjs` (5 nových asercií) — overené, že na v159 kóde padajú
 (`FINTB_APP=… node smoke.mjs` proti `git show HEAD:index.html`). Golden pivot nedotknutý.
 
+**v161 (re-import zdvojoval platby rozdelené medzi mesiace):** skutočná príčina toho,
+prečo Matovi po **ručnom importe** nesedel zostatok ani čerpanie — v160 opravoval síce
+reálne, ale iné chyby (sync), ktoré sa ho pri čisto manuálnom workflow netýkali.
+
+*Root cause:* `splitTxAcrossMonths()` mení `amount` jednotlivých častí (−300 € → 3× −100 €)
+a časti sú `{...tx}` kópie, takže **dátum aj obchodník ostávajú z originálu**. Import ale
+páruje na `dátum + suma + obchodník` (účet: `mergeTransactions`, kreditka: `existingSigMap`
+so zhodou na presnú sumu). Pôvodný riadok vo výpise (−300 €) tak nesedel so žiadnou časťou
+→ import ho pridal **znova popri častiach** → zostatok aj čerpanie narástli o celú sumu.
+Pri každom ďalšom importe prekrývajúceho obdobia sa to zopakovalo.
+
+*Fix:* `_monthSplitGroups(source)` poskladá skupiny z dát (súčet častí + dátum a obchodník
+z originálu) a obe vetvy importu pred pridaním novej tx overia, či ju už nepokrýva
+rozdelená platba. Skupiny sa počítajú z existujúcich dát, takže to funguje **aj na platby
+rozdelené pred v161** — netreba migráciu. Navyše refresh aj CC upgrade teraz zachovávajú
+`monthSplitGroup`/`monthSplitPart`/`amount`, inak by re-import časť prepísal plnou sumou
+z výpisu a skupina by prestala sedieť. Import to hlási: „N už rozdelených medzi mesiace".
+
+Regresné testy: 4 nové asercie, overené proti v159 — tam padajú s posunom zostatku
+**−300 €** (presne plná suma rozdelenej platby) a duplikátom v účte aj na kreditke.
+
 ---
 
 ## 2. Stav roadmapy

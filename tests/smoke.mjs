@@ -107,6 +107,50 @@ if (txCount > 0) {
   ok('import doplní meno obchodníka', B.merchant === 'ALZA.SK' && B.ph === false,
      `merchant=${B.merchant} placeholder=${B.ph}`);
   ok('obohatenie zachová tbId', B.tbId === 'BANK_B1', `tbId=${B.tbId}`);
+
+  // --- 12. v161: re-import NESMIE zdvojiť platbu rozdelenú medzi mesiace ---
+  // Rozdelenie zmení sumy častí (−300 → 3× −100), takže kľúč dátum+suma+obchodník
+  // pôvodný riadok vo výpise minie a import ho pridal znova → zostatok +300.
+  const msAcc = E(`(function(){
+    var d = new Date(${Y}, ${M}, 9);
+    var gid = 'ms_test';
+    ['1/3','2/3','3/3'].forEach(function(p,i){
+      TX.push({ id:'ms_'+i, source:'account', date:d, amount:-100, merchant:'POISTOVNA',
+                monthSplitGroup:gid, monthSplitPart:p });
+    });
+    var before = TX.length;
+    var bal0 = accountBalance('tatra');
+    var r = mergeTransactions([{ source:'account', date:new Date(${Y}, ${M}, 9),
+                                 amount:-300, merchant:'POISTOVNA' }], 'account');
+    var out = { grew: TX.length-before, added: r.added, msCovered: r.msCovered,
+                balDrift: Math.round((accountBalance('tatra')-bal0)*100)/100 };
+    TX = TX.filter(function(t){ return t.monthSplitGroup!==gid && !(t.merchant==='POISTOVNA'); });
+    return JSON.stringify(out);
+  })()`);
+  const MS = JSON.parse(msAcc);
+  ok('re-import nezdvojí rozdelenú platbu (účet)', MS.grew === 0 && MS.added === 0,
+     `TX narástlo o ${MS.grew}, added=${MS.added}`);
+  ok('zostatok účtu sa re-importom nezmení', MS.balDrift === 0, `posun: ${MS.balDrift} €`);
+  ok('rozdelená platba sa vykáže ako pokrytá', MS.msCovered === 1, `msCovered=${MS.msCovered}`);
+
+  // to isté pre kreditku (čerpanie)
+  const msCC = E(`(function(){
+    var d = new Date(${Y}, ${M}, 11);
+    var gid = 'ms_cc';
+    ['1/2','2/2'].forEach(function(p,i){
+      TX.push({ id:'mscc_'+i, source:'credit_card', isSettled:true, date:d, amount:-75,
+                merchant:'ELEKTRO', monthSplitGroup:gid, monthSplitPart:p });
+    });
+    var before = TX.length;
+    var r = mergeTransactions([{ source:'credit_card', isSettled:true,
+                                 date:new Date(${Y}, ${M}, 11), amount:-150, merchant:'ELEKTRO' }], 'credit_card');
+    var out = { grew: TX.length-before, added: r.added, msCovered: r.msCovered };
+    TX = TX.filter(function(t){ return t.monthSplitGroup!==gid; });
+    return JSON.stringify(out);
+  })()`);
+  const MC = JSON.parse(msCC);
+  ok('re-import nezdvojí rozdelenú platbu (kreditka)', MC.grew === 0 && MC.added === 0,
+     `TX narástlo o ${MC.grew}, added=${MC.added}`);
 }
 
 // --- 10. žiadne nezachytené chyby v konzole ---
