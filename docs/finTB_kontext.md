@@ -1,11 +1,11 @@
-# finTB — referenčný kontext (stav v159, júl 2026)
+# finTB — referenčný kontext (stav v161, august 2026)
 
 > Tento súbor sa **nenačítava automaticky**. Otvor ho, len keď je téma relevantná.
 > Trvalé pravidlá sú v `/CLAUDE.md`.
 
 ---
 
-## 1. História v134 → v159
+## 1. História v134 → v161
 
 **v134–v137 (Balík 8 — multibank):** `_anBank` scope ('tatra' default), párové presuny,
 Revolut poplatky, Slsp `bankCat`, `_accClearTxs`, Slsp stávková kniha.
@@ -127,16 +127,28 @@ porovnanie účtov vedľa seba.
 
 ---
 
-## 3. Banková synchronizácia
+## 3. Banková synchronizácia — ARCHIVOVANÉ
+
+> **Stav: archivované, 15. 8. 2026.** Rozhodnutie zastaviť aktívne používanie — dáta
+> z Enable Banking cez PSD2 sú neúplné (kartové platby bez mena obchodníka, kreditka
+> nedostupná vôbec), takže sync generoval viac ručnej práce, než ušetril. `worker.js`
+> ostáva v repe funkčný, len nepoužívaný — ak PSD3 (~2027) prinesie plné dáta, dá sa
+> oživiť. UI sekcia 🔄 Synchronizácia v modáli Účty ostáva v kóde, len sa nepoužíva —
+> **nemazať, kým sa nerozhodne inak.**
+
+Zvyšok sekcie je zachovaný ako technická pamäť: JWT signing, PSD2 limity, dedup logika
+a chybové hlášky z ladenia majú hodnotu, keby sa sync niekedy oživoval.
+
+**Aktuálny workflow: ručné nahrávanie výpisov** (XLS/XLSX bežný účet, CSV kreditka).
 
 ### 3.1 Preverené cesty
 - Vlastná AISP licencia (NBS, eIDAS) → nereálne.
 - GoCardless/Nordigen free tier → **zrušený** pre nové registrácie.
 - Tatra Premium API → sandbox funkčný, produkcia **ZAMIETNUTÁ** (len firemní klienti).
-- **Enable Banking → VÍŤAZ, beží v produkcii.**
+- **Enable Banking → vybraný ako víťaz, bežal v produkcii do 8/2026.**
 - Scraping → nie (zakázaný, PSD3 to potvrdzuje).
 
-### 3.2 Čo beží dnes
+### 3.2 Ako to fungovalo
 ```
 finTB (GitHub Pages) ──► Cloudflare Worker ──► Enable Banking API ──► Tatra banka
    „🔄 Synchronizovať"    JWT RS256, session v KV     licencovaný AISP     SCA v IB
@@ -200,31 +212,23 @@ Sekcia **🔄 Synchronizácia s bankou** v modáli 🏦 Účty:
 - **Výhľad:** PSD3/PSR (~2027) zavádza data-access parity → mená obchodníkov by mali
   pribudnúť; súhlas sa predĺži na 365 dní.
 
-**Dôsledok:** funguje **hybrid** — sync = prevody, zostatky, čerstvosť;
-XLSX/CSV import = mená obchodníkov a kreditka.
+**Dôsledok:** vynútený **hybrid** — sync = prevody, zostatky, čerstvosť;
+XLSX/CSV import = mená obchodníkov a kreditka. Práve táto polovičatosť viedla
+k archivovaniu: keďže výpisy bolo treba nahrávať tak či tak, sync pridával už len
+ďalšiu vrstvu párovania a dedupu (viď v160/v161 chyby) namiesto úspory práce.
 
 ---
 
 ## 4. Otvorené úlohy
 
-### 4.1 ✅ Obohacovanie pri importe — HOTOVÉ vo v160
-Import pri zhode (suma + dátum ±4 dni + `syncPlaceholder:true`) nepridá novú tx, ale
-doplní meno obchodníka (+ miesto/číslo karty/VS) do existujúcej sync transakcie a spustí
-`autocat()`. `tbId`/`syncAdded` ostávajú zachované. Pravidlo „najprv import, potom sync"
-už **neplatí** — poradie je ľubovoľné. Detaily a root cause v §1, v160.
+Úlohy naviazané na bankový sync (obohacovanie pri importe, multibank, rotácia `APP_KEY`)
+sú **uzavreté** — buď hotové, alebo bezpredmetné archivovaním §3.
 
-### 4.2 🔐 Bezpečnosť — overiť
-Hodnota `APP_KEY` bola omylom vložená do chatu. Odporúčaná výmena
-(Cloudflare → Settings → APP_KEY → nová hodnota → **Deploy** → prepísať v appke).
-**Overiť, či sa to spravilo.**
-
-### 4.3 🟠 Multibank sync
-Worker dnes drží **jednu banku naraz** (jedna `EB_ASPSP_NAME`, jedna session v KV) a
-**všetko syncnuté padá pod „Tatra"** bez ohľadu na zvolený IBAN. Ďalší krok: sessions per
-banka, výber banky pri pripájaní, mapovanie IBAN → finTB účet.
-
-### 4.4 🔵 Ostatné
-- Aktualizovať `docs/finTB_roadmap.md` o v146–v159 + bankovú synchronizáciu.
+### 4.1 🔵 Ostatné
+- `docs/finTB_roadmap.md` **neexistuje**, hoci naň `CLAUDE.md` odkazuje — buď ju založiť
+  (stav v146–v161), alebo odkaz z `CLAUDE.md` odstrániť.
+- Nezdokumentovaná je celá **pre-v134 vrstva funkcií**: Google Drive sync (`gd*`),
+  XTB/investície, Majetok, Ciele, opakované platby, shared výdavky a pohľadávky, tagy,
+  stávková kniha, bulk režim, edit log a kôš. Kód je živý, popis nikde.
 - Voliteľné: PDF report s periódovými presetmi, Word export, porovnanie účtov vedľa seba.
-- **Webhooky:** Enable Banking má vlastný model — preskúmať, ak bude záujem o notifikácie
-  „N nových transakcií" bez pollingu.
+- ~~Webhooky~~ — odpadá spolu s archivovaným syncom (§3).

@@ -1,7 +1,17 @@
-# finTB — kontext pre nový chat (stav: v159, júl 2026)
+# finTB — kontext pre nový chat (stav: v161, august 2026)
 
-> Skopíruj celý tento súbor do prvej správy nového chatu (alebo ho nahraj ako prílohu).
-> Obsahuje všetko potrebné: pravidlá práce, invarianty kódu, históriu, stav bankovej synchronizácie a otvorené úlohy.
+> ## ⚠️ ZASTARANÝ DOKUMENT — needitovať podľa neho
+>
+> Vznikol pre **starý chat workflow** (nahrávanie `index.html` do chatu, práca
+> v `/mnt/user-data/outputs`, edity cez Python `str.replace`). Projekt odvtedy beží
+> v **Claude Code nad git repom** — platné pravidlá sú v **`/CLAUDE.md`**, história
+> a technický stav v **`docs/finTB_kontext.md`**.
+>
+> Konkrétne **§2 (build postup) tu protirečí `CLAUDE.md`** a nesmie sa podľa neho
+> postupovať. §6 (banková synchronizácia) je archivovaný — viď `finTB_kontext.md` §3.
+> §7 (otvorené úlohy) je neaktuálny.
+>
+> Súbor je ponechaný len ako historický záznam. Zvážiť zmazanie.
 
 ---
 
