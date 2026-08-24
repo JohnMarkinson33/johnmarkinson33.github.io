@@ -1,11 +1,11 @@
-# finTB — referenčný kontext (stav v161, august 2026)
+# finTB — referenčný kontext (stav v162, august 2026)
 
 > Tento súbor sa **nenačítava automaticky**. Otvor ho, len keď je téma relevantná.
 > Trvalé pravidlá sú v `/CLAUDE.md`.
 
 ---
 
-## 1. História v134 → v161
+## 1. História v134 → v162
 
 **v134–v137 (Balík 8 — multibank):** `_anBank` scope ('tatra' default), párové presuny,
 Revolut poplatky, Slsp `bankCat`, `_accClearTxs`, Slsp stávková kniha.
@@ -109,6 +109,36 @@ z výpisu a skupina by prestala sedieť. Import to hlási: „N už rozdelených
 
 Regresné testy: 4 nové asercie, overené proti v159 — tam padajú s posunom zostatku
 **−300 €** (presne plná suma rozdelenej platby) a duplikátom v účte aj na kreditke.
+
+**v162 (import bežného účtu aj z CSV):** dropzone „Bežný účet" berie popri XLS/XLSX aj
+**CSV** (Tatra), parser sa volí podľa prípony. Nový `parseAccCSV()` + `_decodeCsv()`.
+
+*Formát:* stĺpce `Dátum spracovania | Dátum zúčtovania | Suma | Mena | Typ | Predčíslie |
+Číslo účtu | Kód banky | IBAN | VS | ŠS | KS | Referencia platiteľa | Informácia pre
+príjemcu | Popis`. Suma je vždy kladná, **znamienko nesie stĺpec `Typ`** (Kredit/Debet).
+
+*Dve pasce, ktoré CSV prináša:*
+1. **Kódovanie.** Výpis účtu chodí v **UTF-8**, výpis kreditky vo **windows-1250** —
+   `doImport` pritom čítal text natvrdo ako 1250. `_decodeCsv()` skúsi striktný UTF-8
+   a pri páde spadne na 1250 (CP1250 diakritika tvorí neplatné UTF-8 sekvencie).
+2. **CSV nemá stĺpec `Príjemca` ani `Obchodné miesto`.** Tá istá platba preto z CSV vyjde
+   s **iným `merchant` stringom** než z XLS → kľúč `dátum|suma|merchant` ju minie a import
+   by pridal duplikát (rovnaká trieda chyby ako v160/v161 → nesedel by zostatok).
+   Riešenie: **zhoda cez protiúčet** — `_crossFormatMatch()` páruje na rovnakú sumu +
+   rovnaký IBAN + dátum do 3 dní, VS musí sedieť, ak ho poznajú obe strany. Nájdený
+   existujúci riadok sa **neprepíše** (XLS meno je bohatšie), len sa doplnia prázdne polia;
+   hlási sa ako „N už evidovaných z iného formátu". `_monthSplitGroups()` preto nesie aj
+   `iban`, inak by rozdelená platba z CSV pribudla znova celá.
+
+*„Informácia pre príjemcu" má dva významy:* pri prevode je to poznámka používateľa
+(„Azifood"), pri karte reťazec banky `<maska karty> <MIESTO> <RRRRMMDD> <čas> <suma>`.
+`_accCsvCardInfo()` rozoberie kartový tvar, inak sa pole berie ako poznámka.
+⚠️ Kartová vetva je odvodená z XLS správania — **vzorka CSV s kartovými platbami zatiaľ
+nebola k dispozícii**, po prvom reálnom importe overiť mená a dátumy.
+
+Testy: 16 nových asercií (41 celkovo), golden pivot nedotknutý. Overené aj end-to-end
+v prehliadači: prvý import 3 nové, re-import 0 nových, import nad XLS dátami 0 nových
+a nulový posun zostatku.
 
 ---
 

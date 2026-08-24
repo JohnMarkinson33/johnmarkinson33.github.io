@@ -42,6 +42,11 @@ export async function loadApp(seed = {}) {
       w.HTMLCanvasElement.prototype.toDataURL = () => 'data:,';
 
       // --- ostatné stuby ---
+      // jsdom nevystavuje TextDecoder na window, hoci v prehliadači je bežne dostupný.
+      // Appka ho potrebuje na detekciu kódovania CSV (_decodeCsv) a na opravu Revolut
+      // mojibake (_fixCp1250) — bez neho by testy merali iné prostredie než realitu.
+      if (!w.TextDecoder) w.TextDecoder = TextDecoder;
+      if (!w.TextEncoder) w.TextEncoder = TextEncoder;
       w.HTMLElement.prototype.scrollIntoView = () => {};
       w.alert = () => {};
       w.confirm = () => true;

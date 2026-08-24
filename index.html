@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v161</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v162</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -696,8 +696,8 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <div class="dz-row">
     <div>
       <div class="dz" id="dz-a" ondragover="dzO(event,'dz-a')" ondragleave="dzX('dz-a')" ondrop="dzD(event,'account')">
-        <input type="file" accept=".xls,.xlsx" multiple onchange="onF(this,'account')">
-        <div class="badge">XLS / XLSX</div><div class="dz-icon">🏦</div>
+        <input type="file" accept=".xls,.xlsx,.csv" multiple onchange="onF(this,'account')">
+        <div class="badge">XLS / XLSX / CSV</div><div class="dz-icon">🏦</div>
         <div class="dz-title">Bežný účet</div><div class="dz-sub">pohyby na účte</div>
       </div>
       <div class="fl" id="fl-a"></div>
@@ -2887,6 +2887,79 @@ function parseAccXLS(data) {
   return txs;
 }
 
+// Tatra banka — CSV export pohybov na bežnom účte (alternatíva k XLS, v162).
+// Stĺpce: Dátum spracovania, Dátum zúčtovania, Suma, Mena, Typ, Predčíslie, Číslo účtu,
+// Kód banky, IBAN, VS, ŠS, KS, Referencia platiteľa, Informácia pre príjemcu, Popis.
+//
+// Oproti XLS tu CHÝBA stĺpec „Príjemca" aj „Obchodné miesto", takže meno protistrany nie je
+// k dispozícii priamo. Dôsledok: merchant string tej istej platby vyjde z CSV inak než z XLS
+// → párovanie naprieč formátmi drží IBAN fallback v mergeTransactions().
+//
+// „Informácia pre príjemcu" má DVA významy podľa typu pohybu:
+//   prevod → poznámka, ktorú zadal používateľ („Diaľničná známka a parkovanie")
+//   karta  → reťazec banky „<maska karty> <MIESTO> <RRRRMMDD> <HH:MM:SS> <suma><MENA>"
+// Preto sa najprv skúsi rozobrať kartový tvar a až potom sa pole berie ako poznámka.
+function _accCsvCardInfo(info){
+  if(!info) return null;
+  const m=info.match(/^\s*([\d*x]{6,})\s+(.+?)\s+20\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\b/i);
+  if(!m) return null;
+  return {cardNo:m[1].trim(), place:m[2].trim()};
+}
+function parseAccCSV(txt){
+  const lines=txt.replace(/^﻿/,'').trim().split('\n');
+  if(lines.length<2) return [];
+  const hds=csvRow(lines[0].trim()).map(h=>String(h||'').toLowerCase().trim());
+  const fi=(...ts)=>{ for(const t of ts){ const i=hds.findIndex(h=>h.includes(t)); if(i>=0) return i; } return -1; };
+  const iDz=fi('dátum zúčtovania','datum zuctovania');
+  const iDs=fi('dátum spracovania','datum spracovania');
+  const iA=fi('suma','objem');
+  const iT=fi('typ');
+  const iIB=fi('iban');
+  const iAcc=fi('číslo účtu','cislo uctu');
+  const iBc=fi('kód banky','kod banky');
+  const iVS=fi('variabilný','variabilny');
+  const iRe=fi('referencia');
+  const iInfo=fi('informácia pre príjemcu','informacia pre prijemcu');
+  const iDe=fi('popis');
+  // Bez dátumu a sumy sa nedá robiť nič — radšej hlásiť, než ticho vrátiť 0 transakcií.
+  if(iA<0||(iDz<0&&iDs<0)) throw new Error('Neznáma hlavička CSV — chýba stĺpec so sumou alebo dátumom.');
+  const txs=[];
+  for(let i=1;i<lines.length;i++){
+    const raw=lines[i].trim(); if(!raw) continue;
+    const r=csvRow(raw);
+    const g=idx=>String(idx>=0?(r[idx]||''):'').trim();
+    const dateBook=pDate(g(iDz)||g(iDs)); if(!dateBook) continue;
+    const sum=pAmt(g(iA)); if(!sum) continue;
+    const typ=g(iT).toLowerCase();
+    // Suma je v CSV vždy kladná, znamienko nesie stĺpec Typ.
+    const amount=(typ.startsWith('debet')||typ.startsWith('debit')) ? -Math.abs(sum) : Math.abs(sum);
+    const info=g(iInfo), desc=g(iDe);
+    const card=_accCsvCardInfo(info);
+    const place=card?card.place:'';
+    // Rovnako ako pri XLS: pri karte je skutočný dátum transakcie v info reťazci, banka ju
+    // zaúčtuje neskôr. dateBank drží bankový dátum, ktorý je kľúčom pre dedup.
+    const realDate=extractDateFromInfo(info);
+    // Bez stĺpca Príjemca je najlepšie dostupné meno: miesto z karty → poznámka → popis.
+    const merchant=place||info||desc||g(iAcc);
+    txs.push({date:realDate||dateBook, dateBank:realDate?dateBook:undefined,
+      amount, merchant, description:desc, info, place,
+      iban:g(iIB), vs:g(iVS), ref:g(iRe), cardNo:card?card.cardNo:'', bankCode:g(iBc),
+      type:g(iT), source:'account'});
+  }
+  return txs;
+}
+// CSV z Tatry chodí v dvoch kódovaniach: výpis kreditky vo windows-1250, výpis účtu v UTF-8.
+// Rozhodne sa podľa toho, či sa bajty dajú prečítať ako striktné UTF-8 (CP1250 diakritika
+// tvorí neplatné UTF-8 sekvencie, takže fatal dekodér na nej spoľahlivo spadne).
+function _decodeCsv(buf){
+  const u8=buf instanceof Uint8Array?buf:new Uint8Array(buf);
+  // Bez TextDecoder (veľmi staré prostredie) radšej UTF-8 než pád celého importu.
+  if(typeof TextDecoder==='undefined') return String.fromCharCode.apply(null,u8);
+  try{ return new TextDecoder('utf-8',{fatal:true}).decode(u8); }
+  catch(e){ try{ return new TextDecoder('windows-1250').decode(u8); }
+            catch(e2){ return new TextDecoder('utf-8').decode(u8); } }
+}
+
 function extractDateFromInfo(info){
   // Parse real transaction date from "Informácia pre príjemcu" e.g. "440577******0450 TALLINN 20260428 23:36:57 7.90EUR"
   if(!info)return null;
@@ -3104,9 +3177,10 @@ function _monthSplitGroups(source){
   const m = new Map();
   TX.forEach(t=>{
     if(!t.monthSplitGroup || t.source!==source) return;
-    const g = m.get(t.monthSplitGroup) || {total:0, matchDate:null, merchant:'', parts:0};
+    const g = m.get(t.monthSplitGroup) || {total:0, matchDate:null, merchant:'', iban:'', parts:0};
     g.total += t.amount||0;
-    if(!g.matchDate){ g.matchDate = t.dateBank || t.date; g.merchant = (t.merchant||'').trim(); }
+    // iban sa nesie kvôli importu z iného formátu, kde merchant string nesedí (v162)
+    if(!g.matchDate){ g.matchDate = t.dateBank || t.date; g.merchant = (t.merchant||'').trim(); g.iban = (t.iban||'').trim(); }
     g.parts++;
     m.set(t.monthSplitGroup, g);
   });
@@ -3114,7 +3188,7 @@ function _monthSplitGroups(source){
 }
 
 function mergeTransactions(newTxs, source) {
-  let added = 0, upgraded = 0, enriched = 0, msCovered = 0;
+  let added = 0, upgraded = 0, enriched = 0, msCovered = 0, crossFmt = 0;
   const dupLog = [];
   const msGroups = _monthSplitGroups(source);
   const msUsed = new Set();
@@ -3283,6 +3357,34 @@ function mergeTransactions(newTxs, source) {
     }
     // Sync placeholder už obohatený v tejto dávke — nesmie ho zobrať druhý riadok.
     const enrichedIds = new Set();
+    // Jeden existujúci riadok nesmie zobrať viac skupín — platí pre presnú zhodu aj
+    // pre zhodu naprieč formátmi nižšie.
+    const claimedIds = new Set();
+    // Tá istá platba vyjde z XLS a z CSV s INÝM merchant stringom: CSV výpis nemá stĺpec
+    // Príjemca ani Obchodné miesto, takže presná zhoda vyššie ju minie a import by pridal
+    // duplikát (rovnaká trieda chyby ako v160/v161 → nesedel by zostatok).
+    // Záchranná sieť: rovnaká suma + rovnaký protiúčet + dátum do 3 dní.
+    // Tolerancia dátumu je nutná, lebo formáty sa líšia v tom, či nesú dátum zúčtovania
+    // alebo spracovania. VS musí sedieť, ak ho poznajú obe strany — iný VS = iná platba.
+    const _ibanKey = s => String(s||'').replace(/\s+/g,'').toUpperCase();
+    const _crossFormatMatch = ref => {
+      const iban = _ibanKey(ref.iban);
+      if (!iban || !ref.matchDate) return null;
+      const vs = String(ref.vs||'').trim();
+      const cands = TX.filter(e => {
+        if (e.source!=='account' || claimedIds.has(e.id)) return false;
+        if (_ibanKey(e.iban)!==iban) return false;
+        if (Math.abs(e.amount-ref.amount)>=0.005) return false;
+        const evs = String(e.vs||'').trim();
+        if (vs && evs && vs!==evs) return false;
+        const ed = e.dateBank || e.date;
+        return ed && Math.abs(ed.getTime()-ref.matchDate.getTime()) <= 3*864e5;
+      });
+      if (!cands.length) return null;
+      // najbližší dátum vyhráva (rovnaký vzor ako claim v _syncApply)
+      cands.sort((a,b)=>Math.abs((a.dateBank||a.date)-ref.matchDate)-Math.abs((b.dateBank||b.date)-ref.matchDate));
+      return cands[0];
+    };
     for (const [, newGrp] of groups) {
       const ref = newGrp[0]; ref.matchDate = ref.dateBank || ref.date;
       const merch = (ref.merchant||'').trim();
@@ -3293,6 +3395,7 @@ function mergeTransactions(newTxs, source) {
           Math.abs(e.amount-ref.amount)<0.005 &&
           (e.merchant||'').trim()===merch;
       });
+      exGrp.forEach(e => claimedIds.add(e.id));
       for (let i=0; i<newGrp.length; i++) {
         const nw = newGrp[i];
         if (i < exGrp.length) {
@@ -3344,13 +3447,31 @@ function mergeTransactions(newTxs, source) {
             continue;
           }
           // Pokrytá už rozdelenou platbou (📅)? Časti majú iné sumy, takže exGrp ich minie.
+          // Pri importe z iného formátu výpisu merchant string nesedí (v162), preto sa
+          // zhoda uzná aj cez protiúčet — inak by sa rozdelená platba pridala znova celá.
           const msHit = nwDate ? msGroups.find(g=>!msUsed.has(g)
             && g.matchDate?.getTime()===nwDate.getTime()
             && Math.abs(g.total-nw.amount)<0.005
-            && g.merchant===(nw.merchant||'').trim()) : null;
+            && (g.merchant===(nw.merchant||'').trim()
+                || (_ibanKey(g.iban) && _ibanKey(g.iban)===_ibanKey(nw.iban)))) : null;
           if(msHit){
             msUsed.add(msHit); msCovered++;
             dupLog.push({tx:nw, reason:`Už evidované ako platba rozdelená medzi mesiace (${msHit.parts} častí)`, type:'msplit'});
+            continue;
+          }
+          // Tá istá platba už v dátach je, len prišla z iného formátu výpisu (XLS ↔ CSV)
+          // a merchant string nesedí. Existujúci riadok je spravidla bohatší (XLS pozná
+          // Príjemcu aj Obchodné miesto), takže ho NEPREPISUJEME — len doplníme prázdne
+          // polia, aby sa nestratilo, čo nový formát vie navyše.
+          const cf = _crossFormatMatch({...nw, matchDate:nwDate});
+          if (cf) {
+            claimedIds.add(cf.id);
+            ['iban','vs','ref','info','description','place','cardNo','bankCode','type'].forEach(k=>{
+              if(!cf[k] && nw[k]) cf[k]=nw[k];
+            });
+            if(!cf.dateBank && nw.dateBank) cf.dateBank = nw.dateBank;
+            crossFmt++;
+            dupLog.push({tx:cf, reason:`Tá istá platba už evidovaná z iného formátu výpisu (zhoda cez protiúčet ${_ibanKey(nw.iban).slice(-6)})`, type:'crossfmt'});
             continue;
           }
           // Genuinely new (e.g. 2nd identical transaction legitimately same day)
@@ -3362,7 +3483,7 @@ function mergeTransactions(newTxs, source) {
       }
     }
   }
-  return {added, upgraded, enriched, msCovered, dupLog};
+  return {added, upgraded, enriched, msCovered, crossFmt, dupLog};
 }
 
 function cycDate(tx) { return tx.source==='credit_card' && tx.dateProcParsed ? tx.dateProcParsed : tx.date; }
@@ -3718,12 +3839,18 @@ async function doImport() {
 
   for (const f of pend.account) {
     try {
-      const txs = parseAccXLS(new Uint8Array(await rB(f)));
-      const {added, enriched, msCovered, dupLog} = mergeTransactions(txs, 'account');
+      // Bežný účet chodí v dvoch formátoch — XLS/XLSX aj CSV. Rozlišuje sa príponou;
+      // obsah sa načíta raz ako ArrayBuffer a podľa toho sa buď dekóduje, alebo dá SheetJS.
+      const buf = await rB(f);
+      const txs = /\.csv$/i.test(f.name)
+        ? parseAccCSV(_decodeCsv(buf))
+        : parseAccXLS(new Uint8Array(buf));
+      const {added, enriched, msCovered, crossFmt, dupLog} = mergeTransactions(txs, 'account');
       lastDupLog.push(...dupLog);
       const enrMsg = enriched > 0 ? `, ${enriched} doplnených k synchronizovaným` : '';
       const msMsg2 = msCovered > 0 ? `, ${msCovered} už rozdelených medzi mesiace` : '';
-      const refreshed = txs.length - added - enriched - msCovered;
+      const cfMsg = crossFmt > 0 ? `, ${crossFmt} už evidovaných z iného formátu` : '';
+      const refreshed = txs.length - added - enriched - msCovered - crossFmt;
       const refMsg = refreshed > 0 ? `, ${refreshed} aktualizovaných z exportu` : '';
       msgs.push(`<span class="ok">✓ ${f.name}: ${added} nových${enrMsg}${msMsg2}${refMsg}</span>`);
     } catch(e) { msgs.push(`<span class="err">✗ ${f.name}: ${e.message}</span>`); }
@@ -3744,6 +3871,8 @@ async function doImport() {
     let hdrParts = [];
     if (upgrades.length) hdrParts.push(`${upgrades.length}× Autorizovaná→Zúčtovaná`);
     if (enrichedLog.length) hdrParts.push(`${enrichedLog.length}× doplnené meno k synchronizovanej`);
+    const cfLog = lastDupLog.filter(d=>d.type==='crossfmt');
+    if (cfLog.length) hdrParts.push(`${cfLog.length}× už evidované z iného formátu výpisu (nepridané znova)`);
     const msLog = lastDupLog.filter(d=>d.type==='msplit');
     if (msLog.length) hdrParts.push(`${msLog.length}× už rozdelené medzi mesiace (nepridané znova)`);
     if (genuineDups.length) hdrParts.push(`${genuineDups.length}× nová identická transakcia (legitímny duplikát)`);
