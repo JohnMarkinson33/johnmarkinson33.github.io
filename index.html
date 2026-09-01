@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v162</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v163</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -4912,7 +4912,7 @@ function toggleCyTxList(forceRefresh=false){
       <span style="color:var(--mu);font-size:10px;min-width:36px;flex-shrink:0">${d?`${d.getDate()}.${d.getMonth()+1}`:''}</span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tx.merchantOverride||tx.merchant||tx.description||'—'}</span>
       ${cat?`<span style="font-size:9px;background:${cat.c}22;color:${cat.c};padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0">${cat.l}</span>`:''}
-      <span style="color:var(--red);font-weight:600;white-space:nowrap;min-width:72px;text-align:right;flex-shrink:0">${fabs(tx.amount)}</span>
+      <span style="color:${tx.amount>0?'var(--grn)':'var(--red)'};font-weight:600;white-space:nowrap;min-width:72px;text-align:right;flex-shrink:0">${tx.amount>0?'+':''}${fabs(tx.amount)}</span>
     </div>`;
   }).join('')+`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);font-size:11px;display:flex;flex-direction:column;gap:3px">
     <div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">Hrubé čerpanie</span><span style="color:var(--red);font-weight:600">${fabs(grossD)}</span></div>
@@ -4941,8 +4941,10 @@ function renderCycle(){
   const cerpNet=debits-refunds;
 
   const lim=parseFloat(document.getElementById('cc-lim')?.value)||0;
-  // Use GROSS (debits only) for display — matches internet banking and dashboard ccSpent card
-  // cerpNet (net) is kept for the expanded footer breakdown only
+  // Dlaždica Čerpanie ukazuje ČISTÉ čerpanie (v163) — refundy sa reálne vracajú na kartu,
+  // takže hrubé číslo nadhodnocovalo, koľko ma karta naozaj stála.
+  // Limit ostáva na HRUBOM čerpaní, aby sedel s internet bankingom; hrubá suma sa preto
+  // drží viditeľná v podnadpise dlaždice, nech sa dá dopočítať.
   const pct=lim?Math.min(100,(debits/lim*100)):0;
   const col=pct>90?'var(--red)':pct>70?'var(--acc2)':'var(--acc3)';
   const pend2=cyc.filter(t=>!t.isSettled).length;
@@ -4950,8 +4952,8 @@ function renderCycle(){
   document.getElementById('cy-stats').innerHTML=`
     <div class="sc r" style="margin:0;cursor:pointer" onclick="toggleCyTxList()" title="Zobraziť transakcie">
       <div class="sc-l">Čerpanie <span style="font-size:9px;opacity:0.6">▾</span></div>
-      <div class="sc-v neg">${fabs(debits)}</div>
-      <div class="sc-s">${nonSplatky.length} txn${pend2?`, ${pend2} čaká`:''}</div>
+      <div class="sc-v neg">${fabs(cerpNet)}</div>
+      <div class="sc-s">${nonSplatky.length} txn${pend2?`, ${pend2} čaká`:''}${refunds>0?` · hrubé ${fabs(debits)}`:''}</div>
     </div>
     <div class="sc g" style="margin:0">
       <div class="sc-l">Splátky</div>
