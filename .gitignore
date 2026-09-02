@@ -10,3 +10,9 @@ tests/package-lock.json
 # tajomstvá — do verejného repa nikdy
 .env
 *.pem
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
