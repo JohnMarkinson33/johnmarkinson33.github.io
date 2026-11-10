@@ -1,0 +1,15 @@
+Subject: debet na kreditnej karte (ID=4412345678)
+
+Vazeny klient,
+na Vasej kreditnej karte sme zaznamenali pohyb.
+
+Cislo karty: 123456******7890
+Datum a cas: 07.11.2026 18:15
+Suma: 25.00 EUR
+Popis transakcie: TESTFIRMA, s.r.o., Bratislava - SK, dom nakup - autorizovana
+Disponibilny zostatok: 2805.00 EUR
+
+---
+Tato sprava bola vygenerovana automaticky, neodpovedajte na nu.
+Viac informacii najdete na www.tatrabanka.sk
+Odporucame Vam notifikacie po precitani vymazat.

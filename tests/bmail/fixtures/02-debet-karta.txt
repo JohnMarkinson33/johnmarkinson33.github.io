@@ -1,0 +1,17 @@
+Subject: Debet na ucte (ID=051126/100002-1)
+
+Vazeny klient,
+na Vasom ucte sme zaznamenali pohyb.
+
+Ucet: 1234567890/1100
+Datum a cas: 05.11.2026 09:41
+Suma: -12,80 EUR
+Popis transakcie: Platba kartou 123456******7890, KAVIAREN U JANA.
+Uctovny zostatok: 1 221,76 EUR
+Aktualny zostatok: 1 221,76 EUR
+Disponibilny zostatok: 1 221,76 EUR
+
+---
+Tato sprava bola vygenerovana automaticky, neodpovedajte na nu.
+Viac informacii najdete na www.tatrabanka.sk
+Odporucame Vam notifikacie po precitani vymazat.

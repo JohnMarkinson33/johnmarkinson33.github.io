@@ -8,6 +8,7 @@
     "smoke": "node smoke.mjs",
     "golden": "node golden.mjs --write",
     "check": "node golden.mjs",
+    "bmail": "node bmail.mjs",
     "test": "node syntax.mjs && node smoke.mjs && node golden.mjs"
   },
   "dependencies": {

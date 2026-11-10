@@ -1,0 +1,21 @@
+Subject: Kredit na ucte (ID=061126/100003-1)
+
+Vazeny klient,
+na Vasom ucte sme zaznamenali pohyb.
+
+Ucet: 1234567890/1100
+Datum a cas: 06.11.2026 11:02
+Suma: 450,00 EUR
+Popis transakcie: PLATBA 0200/000000-1112223334
+Referencia platitela: /VS202611/SS/KS
+Informacia pre prijemcu: NOT PROVIDED
+Ucet protistrany: 1112223334/0200
+Variabilny symbol: 202611
+Uctovny zostatok: 1 671,76 EUR
+Aktualny zostatok: 1 671,76 EUR
+Disponibilny zostatok: 1 671,76 EUR
+
+---
+Tato sprava bola vygenerovana automaticky, neodpovedajte na nu.
+Viac informacii najdete na www.tatrabanka.sk
+Odporucame Vam notifikacie po precitani vymazat.

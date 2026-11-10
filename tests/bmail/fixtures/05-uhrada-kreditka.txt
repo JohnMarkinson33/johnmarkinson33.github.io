@@ -1,0 +1,15 @@
+Subject: uhrada dlznej sumy na kreditnej karte (ID=4412345679)
+
+Vazeny klient,
+na Vasej kreditnej karte sme zaznamenali pohyb.
+
+Meno karty: 123456******7890
+Datum a cas: 08.11.2026 00:00
+Suma: 150.00 EUR
+Popis transakcie: Vasa platba - dakujeme
+Disponibilny zostatok: 2955.00 EUR
+
+---
+Tato sprava bola vygenerovana automaticky, neodpovedajte na nu.
+Viac informacii najdete na www.tatrabanka.sk
+Odporucame Vam notifikacie po precitani vymazat.

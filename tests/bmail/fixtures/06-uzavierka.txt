@@ -1,0 +1,16 @@
+Subject: Informácia o mesačnej uzavierke kreditnej karty
+
+Vazeny klient,
+zasielame Vam informaciu o mesacnej uzavierke kreditnej karty.
+
+Cislo karty: 123456******7890
+ID=44120001
+Datum uzavierky: 09.11.2026
+Dlzna suma: 487.65 EUR
+Minimalna splatka: 24.40 EUR
+Datum splatnosti: 25.11.2026
+
+---
+Tato sprava bola vygenerovana automaticky, neodpovedajte na nu.
+Viac informacii najdete na www.tatrabanka.sk
+Odporucame Vam notifikacie po precitani vymazat.
