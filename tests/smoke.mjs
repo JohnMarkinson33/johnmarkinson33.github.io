@@ -243,6 +243,36 @@ if (E('typeof parseAccCSV') === 'function') {
      `added=${cfNoIban.added}, crossFmt=${cfNoIban.crossFmt}`);
 }
 
+// --- 14. v164: obnova zálohy musí ULOŽIŤ všetko, nielen priradiť do pamäte ---
+// importBackup() priradil reconciliations, syncCfg a ccLimit, ale nezavolal na ne
+// Store.set. Prežili len do najbližšieho saveD() — kto po obnove reloadol skôr, než
+// čokoľvek zmenil, prišiel o rekonciliácie aj o limit kreditky. Tichá strata dát.
+// Test ide ZÁMERNE AŽ NAKONIEC — importBackup prepíše TX, takže by rozbil testy nad ním.
+{
+  const zaloha = {
+    version: 5, tx: [], deletedTX: [],
+    reconciliations: { tatra: { balance: 123.45, date: '2026-11-01T10:00:00.000Z' } },
+    syncCfg: { url: 'https://w.example', key: 'K', iban: 'SK00', last: null },
+    ccLimit: '2750',
+  };
+  const res = JSON.parse(await E(`(async()=>{
+    await importBackup({ files:[ new File([${JSON.stringify(JSON.stringify(zaloha))}],'z.json',{type:'application/json'}) ], value:'' });
+    return JSON.stringify({
+      recon: await Store.get('reconciliations'),
+      sync:  await Store.get('syncCfg'),
+      cclim: await Store.get('cclim'),
+      reconVPamati: reconciliations
+    });
+  })()`));
+  ok('obnova zálohy uloží rekonciliácie', res.recon?.tatra?.balance === 123.45,
+     `v úložisku: ${JSON.stringify(res.recon)}`);
+  ok('obnova zálohy uloží syncCfg', res.sync?.url === 'https://w.example',
+     `v úložisku: ${JSON.stringify(res.sync)}`);
+  ok('obnova zálohy uloží limit kreditky', res.cclim === '2750',
+     `v úložisku: ${JSON.stringify(res.cclim)}`);
+  ok('rekonciliácie sú aj v pamäti', res.reconVPamati?.tatra?.balance === 123.45);
+}
+
 // --- 10. žiadne nezachytené chyby v konzole ---
 console.log(`\n${pass} prešlo, ${fail} zlyhalo`);
 process.exit(fail ? 1 : 0);

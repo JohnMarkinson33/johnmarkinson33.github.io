@@ -661,7 +661,7 @@ tr.tx-excluded>td:first-child{border-left:3px solid var(--red)}
   <button class="ib-close" onclick="dismissInstall()">✕</button>
 </div>
 <header>
-  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v163</span></div>
+  <div class="logo">fin<span>TB</span><span style="font-size:9px;color:var(--mu);font-weight:400;margin-left:5px;vertical-align:middle" title="verzia buildu">v164</span></div>
   <nav class="nav">
     <button class="nb on" onclick="go('data')">Dáta</button>
     <button class="nb" onclick="go('dashboard')">Dashboard</button>
@@ -7388,6 +7388,12 @@ async function importBackup(inp){
     await Store.set('exctags',[...excludedTags]); await Store.set('recurmarks',recurMarks);
     await Store.set('colWidths',colWidths);
     await Store.set('accounts',accounts);
+    // v164: tieto tri sa predtým priradili do pamäte/DOM, ale NEULOŽILI. Prežili len do
+    // najbližšieho saveD() — kto po obnove zálohy reloadol skôr, než čokoľvek zmenil,
+    // prišiel o rekonciliácie aj o limit kreditky. Musia sa ukladať ako zvyšok.
+    await Store.set('reconciliations',reconciliations);
+    await Store.set('syncCfg',syncCfg);
+    await Store.set('cclim',document.getElementById('cc-lim')?.value||'');
     updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
     alert(`Záloha načítaná: ${TX.length} transakcií, ${rules.length} pravidiel.`);
     go('dashboard');
@@ -11784,6 +11790,10 @@ async function _gdApplyData(data) {
   await Store.set('exctags', [...excludedTags]); await Store.set('recurmarks', recurMarks);
   await Store.set('colWidths', colWidths);
   await Store.set('accounts', accounts);
+  // v164: rovnaká medzera ako v importBackup() — obnova z Drive ich tiež neukladala.
+  await Store.set('reconciliations', reconciliations);
+  await Store.set('syncCfg', syncCfg);
+  await Store.set('cclim', document.getElementById('cc-lim')?.value || '');
   updateFilters(); updateBkInfo(); renderCatGrid(); initRuleCatSelect();
 }
 function _gdFmtTime(iso) {
